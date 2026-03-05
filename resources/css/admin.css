@@ -1,0 +1,826 @@
+/* CANDIDATES */
+
+.candidate-admin-card {
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+}
+
+.candidate-admin-card .candidate-avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid var(--accent);
+}
+
+.candidate-admin-card .candidate-avatar-placeholder {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--purple));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+.action-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.action-btn-edit {
+    background: rgba(103, 58, 183, 0.15);
+    color: var(--purple);
+}
+
+.action-btn-edit:hover {
+    background: var(--purple);
+    color: #fff;
+}
+
+.action-btn-delete {
+    background: rgba(220, 53, 69, 0.15);
+    color: #dc3545;
+}
+
+.action-btn-delete:hover {
+    background: #dc3545;
+    color: #fff;
+}
+
+.action-btn-view {
+    background: rgba(56, 142, 60, 0.15);
+    color: var(--accent);
+}
+
+.action-btn-view:hover {
+    background: var(--accent);
+    color: #fff;
+}
+
+.search-glass {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    color: #fff;
+    padding: 10px 16px 10px 40px;
+    font-size: 0.9rem;
+    width: 100%;
+    transition: border-color 0.3s;
+}
+
+.search-glass:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(56, 142, 60, 0.15);
+}
+
+.search-wrap {
+    position: relative;
+}
+
+.search-wrap i {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-secondary);
+}
+
+.modal-glass .modal-content {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    color: #fff;
+}
+
+.modal-glass .modal-header {
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.modal-glass .modal-footer {
+    border-top: 1px solid var(--glass-border);
+}
+
+.form-control-glass {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    color: #fff;
+    padding: 10px 14px;
+}
+
+.form-control-glass:focus {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--accent);
+    color: #fff;
+    box-shadow: 0 0 0 3px rgba(56, 142, 60, 0.15);
+}
+
+.form-label-glass {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    font-weight: 500;
+    margin-bottom: 6px;
+}
+
+/* ELECTION-CYCLE */
+
+.cycle-card {
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+}
+
+.cycle-timeline {
+    position: relative;
+    padding-left: 30px;
+}
+
+.cycle-timeline::before {
+    content: "";
+    position: absolute;
+    left: 10px;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: linear-gradient(
+        180deg,
+        var(--accent),
+        var(--purple),
+        var(--warning)
+    );
+    border-radius: 2px;
+}
+
+.cycle-step {
+    position: relative;
+    padding: 16px 0;
+}
+
+.cycle-step::before {
+    content: "";
+    position: absolute;
+    left: -24px;
+    top: 22px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 3px solid var(--accent);
+    background: var(--bg-dark);
+    z-index: 1;
+}
+
+.cycle-step.active::before {
+    background: var(--accent);
+    box-shadow: 0 0 12px rgba(56, 142, 60, 0.5);
+}
+
+.cycle-step.completed::before {
+    background: var(--accent);
+    border-color: var(--accent);
+}
+
+.cycle-step.upcoming::before {
+    border-color: var(--text-secondary);
+}
+
+.cycle-step.purple::before {
+    border-color: var(--purple);
+}
+
+.cycle-step.purple.active::before {
+    background: var(--purple);
+    box-shadow: 0 0 12px rgba(103, 58, 183, 0.5);
+}
+
+.cycle-step.purple.completed::before {
+    background: var(--purple);
+    border-color: var(--purple);
+}
+
+.cycle-step-title {
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.cycle-step-date {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.settings-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.settings-item:last-child {
+    border-bottom: none;
+}
+
+.toggle-switch {
+    width: 44px;
+    height: 24px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.3s;
+    border: none;
+}
+
+.toggle-switch.active {
+    background: var(--accent);
+}
+
+.toggle-switch::after {
+    content: "";
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #fff;
+    top: 3px;
+    left: 3px;
+    transition: transform 0.3s;
+}
+
+.toggle-switch.active::after {
+    transform: translateX(20px);
+}
+
+.form-control-glass {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    color: #fff;
+    padding: 10px 14px;
+}
+
+.form-control-glass:focus {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--accent);
+    color: #fff;
+    box-shadow: 0 0 0 3px rgba(56, 142, 60, 0.15);
+}
+
+.modal-glass .modal-content {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    color: #fff;
+}
+
+.modal-glass .modal-header {
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.modal-glass .modal-footer {
+    border-top: 1px solid var(--glass-border);
+}
+
+/* PLATFORMS */
+
+.platform-card {
+    padding: 24px;
+    position: relative;
+}
+
+.platform-card .platform-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.platform-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--purple));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+}
+
+.platform-tag {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    margin-right: 4px;
+    margin-bottom: 4px;
+}
+
+.platform-tag-green {
+    background: rgba(56, 142, 60, 0.15);
+    color: var(--accent);
+}
+
+.platform-tag-purple {
+    background: rgba(103, 58, 183, 0.15);
+    color: var(--purple);
+}
+
+.platform-tag-warning {
+    background: rgba(253, 203, 110, 0.15);
+    color: var(--warning);
+}
+
+.platform-priorities {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.platform-priorities li {
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.platform-priorities li:last-child {
+    border-bottom: none;
+}
+
+.platform-priorities li i {
+    color: var(--accent);
+    font-size: 0.7rem;
+}
+
+.search-glass {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    color: #fff;
+    padding: 10px 16px 10px 40px;
+    font-size: 0.9rem;
+    width: 100%;
+}
+
+.search-glass:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.search-wrap {
+    position: relative;
+}
+
+.search-wrap i {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-secondary);
+}
+
+.form-control-glass {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    color: #fff;
+    padding: 10px 14px;
+}
+
+.form-control-glass:focus {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--accent);
+    color: #fff;
+}
+
+.modal-glass .modal-content {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    color: #fff;
+}
+
+.modal-glass .modal-header {
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.modal-glass .modal-footer {
+    border-top: 1px solid var(--glass-border);
+}
+
+/* POSITIONS */
+.avatar-sm-circle {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--purple));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.65rem;
+    font-weight: 700;
+}
+.position-card {
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    transition: all 0.3s ease;
+}
+
+.position-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.position-count {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 4px 12px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.action-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.action-btn-edit {
+    background: rgba(103, 58, 183, 0.15);
+    color: var(--purple);
+}
+
+.action-btn-edit:hover {
+    background: var(--purple);
+    color: #fff;
+}
+
+.action-btn-delete {
+    background: rgba(220, 53, 69, 0.15);
+    color: #dc3545;
+}
+
+.action-btn-delete:hover {
+    background: #dc3545;
+    color: #fff;
+}
+
+.form-control-glass {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    color: #fff;
+    padding: 10px 14px;
+}
+
+.form-control-glass:focus {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--accent);
+    color: #fff;
+    box-shadow: 0 0 0 3px rgba(56, 142, 60, 0.15);
+}
+
+.modal-glass .modal-content {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    color: #fff;
+}
+
+.modal-glass .modal-header {
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.modal-glass .modal-footer {
+    border-top: 1px solid var(--glass-border);
+}
+
+.hierarchy-line {
+    width: 3px;
+    background: linear-gradient(180deg, var(--accent), var(--purple));
+    position: absolute;
+    left: 44px;
+    top: 0;
+    bottom: 0;
+}
+
+/* PROFILES */
+
+.profile-card {
+    padding: 0;
+    overflow: hidden;
+    transition: all 0.4s ease;
+}
+
+.profile-card-header {
+    height: 80px;
+    position: relative;
+}
+
+.profile-card-header.green-bg {
+    background: linear-gradient(
+        135deg,
+        rgba(56, 142, 60, 0.3),
+        rgba(76, 175, 80, 0.15)
+    );
+}
+
+.profile-card-header.purple-bg {
+    background: linear-gradient(
+        135deg,
+        rgba(103, 58, 183, 0.3),
+        rgba(156, 39, 176, 0.15)
+    );
+}
+
+.profile-card-body {
+    padding: 20px;
+    padding-top: 40px;
+    text-align: center;
+}
+
+.profile-avatar {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--purple));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #fff;
+    position: absolute;
+    bottom: -35px;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 4px solid var(--bg-dark);
+}
+
+.profile-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 16px;
+}
+
+.profile-actions .btn {
+    font-size: 0.78rem;
+    padding: 6px 14px;
+}
+
+.profile-info-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    font-size: 0.85rem;
+}
+
+.profile-info-item:last-child {
+    border-bottom: none;
+}
+
+.search-glass {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    color: #fff;
+    padding: 10px 16px 10px 40px;
+    font-size: 0.9rem;
+    width: 100%;
+}
+
+.search-glass:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(56, 142, 60, 0.15);
+}
+
+.search-wrap {
+    position: relative;
+}
+
+.search-wrap i {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-secondary);
+}
+
+.form-control-glass {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    color: #fff;
+    padding: 10px 14px;
+}
+
+.form-control-glass:focus {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--accent);
+    color: #fff;
+    box-shadow: 0 0 0 3px rgba(56, 142, 60, 0.15);
+}
+
+.modal-glass .modal-content {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    color: #fff;
+}
+
+.modal-glass .modal-header {
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.modal-glass .modal-footer {
+    border-top: 1px solid var(--glass-border);
+}
+
+/* STUDENTS */
+
+.small-email {
+    font-size: 0.75rem;
+    letter-spacing: 0.3px;
+}
+
+.text-accent {
+    color: var(--accent);
+}
+
+.custom-page-link {
+    background: transparent !important;
+    border-color: var(--glass-border) !important;
+    color: var(--text-secondary) !important;
+}
+
+.active-link {
+    background: var(--accent) !important;
+    border-color: var(--accent) !important;
+    color: white !important;
+}
+
+.search-glass {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    color: #fff;
+    padding: 10px 16px 10px 40px;
+    font-size: 0.9rem;
+    width: 100%;
+}
+
+.search-glass:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(56, 142, 60, 0.15);
+}
+
+.search-wrap {
+    position: relative;
+}
+
+.search-wrap i {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-secondary);
+}
+
+.action-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.action-btn-edit {
+    background: rgba(103, 58, 183, 0.15);
+    color: var(--purple);
+}
+
+.action-btn-edit:hover {
+    background: var(--purple);
+    color: #fff;
+}
+
+.action-btn-delete {
+    background: rgba(220, 53, 69, 0.15);
+    color: #dc3545;
+}
+
+.action-btn-delete:hover {
+    background: #dc3545;
+    color: #fff;
+}
+
+.action-btn-view {
+    background: rgba(56, 142, 60, 0.15);
+    color: var(--accent);
+}
+
+.action-btn-view:hover {
+    background: var(--accent);
+    color: #fff;
+}
+
+.voter-status-voted {
+    background: rgba(56, 142, 60, 0.15);
+    color: var(--accent);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.voter-status-pending {
+    background: rgba(253, 203, 110, 0.15);
+    color: var(--warning);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.voter-status-disabled {
+    background: rgba(220, 53, 69, 0.15);
+    color: #dc3545;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.form-control-glass {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--glass-border);
+    border-radius: 10px;
+    color: #fff;
+    padding: 10px 14px;
+}
+
+.form-control-glass:focus {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--accent);
+    color: #fff;
+    box-shadow: 0 0 0 3px rgba(56, 142, 60, 0.15);
+}
+
+.modal-glass .modal-content {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    color: #fff;
+}
+
+.modal-glass .modal-header {
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.modal-glass .modal-footer {
+    border-top: 1px solid var(--glass-border);
+}
