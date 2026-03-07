@@ -1,17 +1,28 @@
 <?php
 
-use function Livewire\Volt\{state, layout, title, computed};
+use Livewire\Volt\Component;
+use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
+use Livewire\Attributes\Computed;
+use Livewire\Attributes\Url;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Session;
 
-layout('layouts.app');
-title('Profiles & Candidates');
+new #[Layout('layouts.app')] #[Title('Profiles & Candidates')] class extends Component {
+    /**
+     * Using #[Url] ensures that if a user refreshes the page,
+     * their search and filter settings remain active in the URL.
+     */
+    #[Url]
+    public string $search = '';
 
-state([
-    'search' => '',
-    'selectedPosition' => 'All Positions',
-    'positions' => ['All Positions', 'President', 'Vice President', 'Secretary', 'Treasurer'],
+    #[Url]
+    public string $selectedPosition = 'All Positions';
 
-    // Sample Data (Sa production, ito ay Candidate::with('party')->get())
-    'candidates' => [
+    public array $positions = ['All Positions', 'President', 'Vice President', 'Secretary', 'Treasurer'];
+
+    // Sample Data
+    public array $candidates = [
         [
             'id' => 1,
             'name' => 'Maria Santos',
@@ -25,54 +36,33 @@ state([
             'year' => '3rd',
             'course' => 'BSIT',
         ],
-        [
-            'id' => 2,
-            'name' => 'Juan Dela Cruz',
-            'position' => 'President',
-            'party' => 'Progress Alliance',
-            'party_class' => 'party-purple',
-            'initials' => 'JD',
-            'color' => '#673AB7',
-            'motto' => 'Championing academic excellence and student welfare for a brighter tomorrow.',
-            'gpa' => '4.5',
-            'year' => '4th',
-            'course' => 'BSCS',
-        ],
-        [
-            'id' => 5,
-            'name' => 'Patricia Lim',
-            'position' => 'Treasurer',
-            'party' => 'Independent',
-            'party_class' => 'party-gold',
-            'initials' => 'PL',
-            'color' => '#fdcb6e',
-            'motto' => 'Financial transparency and responsible budgeting for every student org.',
-            'gpa' => '4.7',
-            'year' => '3rd',
-            'course' => 'BSA',
-        ],
-    ],
-]);
+    ];
 
-// Reactive filtering logic
-$filteredCandidates = computed(function () {
-    return collect($this->candidates)->filter(function ($candidate) {
-        $matchesSearch = empty($this->search) || str_contains(strtolower($candidate['name']), strtolower($this->search)) || str_contains(strtolower($candidate['party']), strtolower($this->search));
+    /**
+     * Computed property for filtering.
+     * Access this in Blade using $this->filteredCandidates
+     */
+    #[Computed]
+    public function filteredCandidates()
+    {
+        return collect($this->candidates)->filter(function ($candidate) {
+            $matchesSearch = empty($this->search) || str_contains(strtolower($candidate['name']), strtolower($this->search)) || str_contains(strtolower($candidate['party']), strtolower($this->search));
 
-        $matchesPosition = $this->selectedPosition === 'All Positions' || $candidate['position'] === $this->selectedPosition;
+            $matchesPosition = $this->selectedPosition === 'All Positions' || $candidate['position'] === $this->selectedPosition;
 
-        return $matchesSearch && $matchesPosition;
-    });
-});
+            return $matchesSearch && $matchesPosition;
+        });
+    }
 
-$logout = function () {
-    Auth::guard('web')->logout();
-    Session::invalidate();
-    Session::regenerateToken();
-    return $this->redirect('/', navigate: true);
-};
+    public function logout()
+    {
+        Auth::guard('web')->logout();
+        Session::invalidate();
+        Session::regenerateToken();
 
-?>
+        return $this->redirect('/', navigate: true);
+    }
+}; ?>
 
 <div>
     <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
@@ -82,24 +72,30 @@ $logout = function () {
 
     <main class="main-content">
         {{-- Top Bar --}}
-        <div class="topbar" data-aos="fade-down">
+        <div class="topbar" wire:key="persistent-topbar-header">
             <div>
                 <h2>Profiles & <span>Candidates</span></h2>
                 <p class="text-white-50 mb-0">Meet the candidates running for student council</p>
             </div>
             <a href="/students/profile" wire:navigate class="text-decoration-none">
                 <div class="d-flex align-items-center gap-3">
-                    <div class="d-flex align-items-center gap-2">
-                        <div class="avatar-circle">
+                    <div class="avatar-circle overflow-hidden">
+                        @if ($photo ?? '')
+                            <img src="{{ $photo->temporaryUrl() }}"
+                                style="width: 100%; height: 100%; object-fit: cover;">
+                        @elseif($profile_photo_path ?? '')
+                            <img src="{{ asset('storage/' . $profile_photo_path) }}"
+                                style="width: 100%; height: 100%; object-fit: cover;">
+                        @else
                             <i class="bi bi-person-fill text-white"></i>
-                        </div>
+                        @endif
                     </div>
                 </div>
             </a>
         </div>
 
         {{-- Search & Filter Bar --}}
-        <div class="search-filter-bar mb-4" data-aos="fade-up">
+        <div class="search-filter-bar mb-4 fade-in-up delay-1">
             <div class="row g-3 align-items-center">
                 <div class="col-lg-5">
                     <div class="position-relative">
@@ -123,9 +119,9 @@ $logout = function () {
         </div>
 
         {{-- Candidates Grid --}}
-        <div class="row g-4">
+        <div class="row row-cols-1 row-cols-md-2 row-cols-xl-3 g-4">
             @forelse($this->filteredCandidates as $candidate)
-                <div class="col-lg-4 col-md-6" wire:key="cand-{{ $candidate['id'] }}" data-aos="zoom-in">
+                <div class="col-lg-4 col-md-6 fade-in-up delay-2" wire:key="cand-{{ $candidate['id'] }}">
                     <div class="glass-card candidate-card p-4 h-100 text-center">
                         <div class="mb-3 position-relative d-inline-block">
                             <div class="candidate-avatar d-flex align-items-center justify-content-center fw-bold text-white fs-2"

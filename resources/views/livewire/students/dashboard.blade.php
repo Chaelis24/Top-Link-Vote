@@ -1,25 +1,35 @@
 <?php
 
-use function Livewire\Volt\{state, layout, title};
+use Livewire\Volt\Component;
+use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 
-layout('layouts.app');
-title('Student Dashboard');
+new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Component {
+    public $student;
+    public $hasVoted = false;
 
-state([
-    'student' => fn() => Auth::user(),
-    'hasVoted' => false, // Maaari mong lagyan ng logic ito sa hinaharap
-]);
+    /**
+     * Mount is the class-based equivalent of the initial state logic.
+     */
+    public function mount()
+    {
+        $this->student = Auth::user();
+    }
 
-$logout = function () {
-    Auth::guard('web')->logout();
-    Session::invalidate();
-    Session::regenerateToken();
-    return $this->redirect('/', navigate: true);
-};
+    /**
+     * The logout logic.
+     */
+    public function logout()
+    {
+        Auth::guard('web')->logout();
+        Session::invalidate();
+        Session::regenerateToken();
 
-?>
+        return $this->redirect('/', navigate: true);
+    }
+}; ?>
 
 <div>
     {{-- Sidebar --}}
@@ -33,7 +43,7 @@ $logout = function () {
     {{-- Main Content --}}
     <main class="main-content">
         {{-- Top Bar --}}
-        <div class="topbar" data-aos="fade-down">
+        <div class="topbar" wire:key="persistent-topbar-header">
             <div>
                 <h2>Student <span>Dashboard</span></h2>
                 <p class="text-white-50 mb-0" style="font-size: 0.85rem;">
@@ -42,10 +52,16 @@ $logout = function () {
             </div>
             <a href="/students/profile" wire:navigate class="text-decoration-none">
                 <div class="d-flex align-items-center gap-3">
-                    <div class="d-flex align-items-center gap-2">
-                        <div class="avatar-circle">
+                    <div class="avatar-circle overflow-hidden">
+                        @if ($photo ?? '')
+                            <img src="{{ $photo->temporaryUrl() }}"
+                                style="width: 100%; height: 100%; object-fit: cover;">
+                        @elseif($profile_photo_path ?? '')
+                            <img src="{{ asset('storage/' . $profile_photo_path) }}"
+                                style="width: 100%; height: 100%; object-fit: cover;">
+                        @else
                             <i class="bi bi-person-fill text-white"></i>
-                        </div>
+                        @endif
                     </div>
                 </div>
             </a>
@@ -54,7 +70,7 @@ $logout = function () {
         {{-- Quick Action Cards Row --}}
         <div class="row g-3 mb-4">
             {{-- Profile Card --}}
-            <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="100">
+            <div class="col-lg-4 col-md-6 fade-in-up delay-1">
                 <div class="glass-card p-4 h-100">
                     <div class="d-flex align-items-center gap-3 mb-3">
                         <div class="stat-icon icon-accent">
@@ -69,7 +85,7 @@ $logout = function () {
             </div>
 
             {{-- Platforms Card --}}
-            <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="200">
+            <div class="col-lg-4 col-md-6 fade-in-up delay-2">
                 <div class="glass-card p-4 h-100">
                     <div class="d-flex align-items-center gap-3 mb-3">
                         <div class="stat-icon icon-purple">
@@ -84,7 +100,7 @@ $logout = function () {
             </div>
 
             {{-- Vote Now Card --}}
-            <div class="col-lg-4 col-md-12" data-aos="fade-up" data-aos-delay="300">
+            <div class="col-lg-4 col-md-12 fade-in-up delay-3">
                 <div class="glass-card p-4 h-100 highlight-border">
                     <div class="d-flex align-items-center gap-3 mb-3">
                         <div class="stat-icon icon-success">
@@ -102,7 +118,7 @@ $logout = function () {
 
         {{-- Real-time Election Tally (Optional for Student) --}}
         <div class="row g-3">
-            <div class="col-lg-7" data-aos="fade-up" data-aos-delay="400">
+            <div class="col-lg-7 fade-in-up delay-4">
                 <div class="glass-card p-4">
                     <h5 class="text-white mb-4"><i class="bi bi-bar-chart-fill text-accent me-2"></i>Live Election Tally
                     </h5>
@@ -111,7 +127,7 @@ $logout = function () {
                     </div>
                 </div>
             </div>
-            <div class="col-lg-5" data-aos="fade-up" data-aos-delay="500">
+            <div class="col-lg-5 fade-in-up delay-5">
                 <div class="glass-card p-4">
                     <h5 class="text-white mb-4"><i class="bi bi-pie-chart-fill text-info me-2"></i>Vote Distribution
                     </h5>

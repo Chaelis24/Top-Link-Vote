@@ -4,6 +4,9 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Student extends Model
 {
@@ -18,15 +21,35 @@ class Student extends Model
         'last_name',
         'suffix',
         'course',
-        'year_level',
-        'photo',
         'status',
+        'year_level',
+        'phone',
+        'address',
+        'birthday',
+        'gender',
+        'photo',
         'has_voted',
         'voted_at',
     ];
 
-    public function user()
+    protected $casts = [
+        'birthday' => 'date',
+        'voted_at' => 'datetime',
+        'has_voted' => 'boolean',
+    ];
+
+    public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function candidate(): HasOne
+    {
+        return $this->hasOne(Candidate::class);
+    }
+
+    public function votes(): HasMany
+    {
+        return $this->hasMany(Vote::class);
     }
 }

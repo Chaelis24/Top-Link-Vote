@@ -1,52 +1,93 @@
 <?php
 
-use function Livewire\Volt\{state, layout, title, middleware};
+use Livewire\Volt\Component;
+use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 
-layout('layouts.app');
-title('Election Cycle - Admin');
-
-state([
+new #[Layout('layouts.app')] #[Title('Election Cycle')] class extends Component {
     // Election Settings Toggle States
-    'allowVoting' => true,
-    'showResults' => false,
-    'registrationOpen' => false,
-    'emailNotifications' => true,
+    public bool $allowVoting = true;
+    public bool $showResults = false;
+    public bool $registrationOpen = false;
+    public bool $emailNotifications = true;
 
-    // Cycle Data (Static placeholders)
-    'progress' => 65,
-    'currentCycle' => 'S.Y. 2024-2025 Election',
-]);
+    // Cycle Data
+    public int $progress = 65;
+    public string $currentCycle = 'S.Y. 2024-2025 Election';
 
-// Logout function para sa sidebar
-$logout = function () {
-    Auth::guard('web')->logout();
-    Session::invalidate();
-    Session::regenerateToken();
-    return $this->redirect('/', navigate: true);
-};
+    // Form States (New Cycle / Edit Dates)
+    public string $cycle_name = '';
+    public string $start_date = '';
+    public string $end_date = '';
+    public string $description = '';
 
-// Toggle Handlers para sa Settings
-$toggleSetting = function ($setting) {
-    if (isset($this->{$setting})) {
-        $this->{$setting} = !$this->{$setting};
-        // Dito papasok ang DB update sa future (e.g., Setting::update(...))
+    /**
+     * Save New Election Cycle
+     */
+    public function createNewCycle()
+    {
+        $this->validate([
+            'cycle_name' => 'required|min:5',
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after:start_date',
+        ]);
+
+        // Logic para i-save sa Database (Example: Election::create(...))
+
+        $this->dispatch('swal', title: 'New Cycle Started!', text: 'The election cycle has been initialized.', icon: 'success');
+        $this->reset(['cycle_name', 'start_date', 'end_date', 'description']);
+        $this->dispatch('close-modal', id: 'newCycleModal');
     }
-};
 
-?>
+    /**
+     * Update Current Dates
+     */
+    public function updateDates()
+    {
+        $this->validate([
+            'start_date' => 'required|date',
+            'end_date' => 'required|date|after:start_date',
+        ]);
+
+        $this->dispatch('swal', title: 'Updated!', text: 'Election dates have been modified.', icon: 'success');
+        $this->dispatch('close-modal', id: 'editDatesModal');
+    }
+
+    public function toggleSetting(string $setting)
+    {
+        if (property_exists($this, $setting)) {
+            $this->{$setting} = !$this->{$setting};
+        }
+    }
+
+    public function endElection()
+    {
+        $this->allowVoting = false;
+        $this->progress = 100;
+        $this->dispatch('swal', title: 'Finalized!', text: 'Election cycle has been ended.', icon: 'info');
+    }
+
+    public function logout()
+    {
+        Auth::guard('web')->logout();
+        Session::invalidate();
+        Session::regenerateToken();
+        return $this->redirect('/', navigate: true);
+    }
+}; ?>
 
 <div>
-    {{-- Sidebar & Overlay Elements --}}
+    {{-- Sidebar & UI Elements --}}
     <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
     <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
 
     @include('layouts.partials.admin-sidebar')
 
     <main class="main-content">
-        {{-- Topbar --}}
-        <div class="topbar" data-aos="fade-down">
+        {{-- Persistent Topbar --}}
+        <div class="topbar" wire:key="cycle-topbar">
             <div>
                 <h2>Election <span>Cycle</span></h2>
                 <p class="text-white-50 mb-0" style="font-size: 0.85rem;">Configure election dates, phases, and settings
@@ -61,7 +102,7 @@ $toggleSetting = function ($setting) {
 
         <div class="row g-4">
             {{-- Current Cycle Status --}}
-            <div class="col-lg-8" data-aos="fade-up" data-aos-delay="100">
+            <div class="col-lg-8" style="animation: fadeInUp 0.5s ease forwards;">
                 <div class="glass-card cycle-card">
                     <div class="d-flex justify-content-between align-items-center mb-4">
                         <div>
@@ -71,8 +112,7 @@ $toggleSetting = function ($setting) {
                         </div>
                         <span class="badge badge-status badge-open">
                             <span class="pulse-dot me-1"
-                                style="background: var(--success); width: 8px; height: 8px;"></span>
-                            Active
+                                style="background: var(--success); width: 8px; height: 8px;"></span> Active
                         </span>
                     </div>
 
@@ -94,76 +134,47 @@ $toggleSetting = function ($setting) {
                         <div class="cycle-step completed">
                             <div class="cycle-step-title" style="color: var(--accent);">Filing of Candidacy</div>
                             <div class="cycle-step-date">Jan 15 - Jan 31, 2025</div>
-                            <small class="text-white-50">12 candidates filed</small>
                         </div>
                         <div class="cycle-step completed purple">
                             <div class="cycle-step-title" style="color: var(--purple);">Campaign Period</div>
                             <div class="cycle-step-date">Feb 1 - Feb 14, 2025</div>
-                            <small class="text-white-50">All platforms submitted</small>
                         </div>
                         <div class="cycle-step active">
                             <div class="cycle-step-title" style="color: var(--accent);">Voting Period</div>
                             <div class="cycle-step-date">Feb 15 - Feb 28, 2025</div>
-                            <small style="color: var(--accent);">🔴 Currently Active — 3 days remaining</small>
                         </div>
                         <div class="cycle-step upcoming">
                             <div class="cycle-step-title">Vote Counting & Results</div>
                             <div class="cycle-step-date">Mar 1 - Mar 3, 2025</div>
-                            <small class="text-white-50">Automated tally</small>
                         </div>
                     </div>
                 </div>
             </div>
 
             {{-- Settings Panel --}}
-            <div class="col-lg-4" data-aos="fade-up" data-aos-delay="200">
+            <div class="col-lg-4" style="animation: fadeInUp 0.5s ease forwards; animation-delay: 0.2s;">
                 <div class="glass-card cycle-card h-100">
-                    <h5 class="fw-bold mb-4"><i class="bi bi-gear-fill me-2" style="color: var(--purple);"></i>Election
-                        Settings</h5>
+                    <h5 class="fw-bold mb-4"><i class="bi bi-gear-fill me-2" style="color: var(--purple);"></i>Settings
+                    </h5>
 
-                    <div class="settings-item">
-                        <div>
-                            <div class="fw-medium" style="font-size: 0.9rem;">Allow Voting</div>
-                            <small class="text-white-50">Enable/disable voting portal</small>
+                    @foreach ([['key' => 'allowVoting', 'label' => 'Allow Voting', 'desc' => 'Enable portal'], ['key' => 'showResults', 'label' => 'Show Results', 'desc' => 'Live results'], ['key' => 'registrationOpen', 'label' => 'Registration', 'desc' => 'Candidate filing'], ['key' => 'emailNotifications', 'label' => 'Email', 'desc' => 'Confirmations']] as $setting)
+                        <div class="settings-item d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <div class="fw-medium small">{{ $setting['label'] }}</div>
+                                <small class="text-white-50" style="font-size: 0.7rem;">{{ $setting['desc'] }}</small>
+                            </div>
+                            <button wire:click="toggleSetting('{{ $setting['key'] }}')"
+                                class="toggle-switch {{ $this->{$setting['key']} ? 'active' : '' }}"></button>
                         </div>
-                        <button wire:click="toggleSetting('allowVoting')"
-                            class="toggle-switch {{ $allowVoting ? 'active' : '' }}"></button>
-                    </div>
+                    @endforeach
 
-                    <div class="settings-item">
-                        <div>
-                            <div class="fw-medium" style="font-size: 0.9rem;">Show Results</div>
-                            <small class="text-white-50">Display live results to students</small>
-                        </div>
-                        <button wire:click="toggleSetting('showResults')"
-                            class="toggle-switch {{ $showResults ? 'active' : '' }}"></button>
-                    </div>
-
-                    <div class="settings-item">
-                        <div>
-                            <div class="fw-medium" style="font-size: 0.9rem;">Registration Open</div>
-                            <small class="text-white-50">Allow new candidate filing</small>
-                        </div>
-                        <button wire:click="toggleSetting('registrationOpen')"
-                            class="toggle-switch {{ $registrationOpen ? 'active' : '' }}"></button>
-                    </div>
-
-                    <div class="settings-item">
-                        <div>
-                            <div class="fw-medium" style="font-size: 0.9rem;">Email Notifications</div>
-                            <small class="text-white-50">Send vote confirmations</small>
-                        </div>
-                        <button wire:click="toggleSetting('emailNotifications')"
-                            class="toggle-switch {{ $emailNotifications ? 'active' : '' }}"></button>
-                    </div>
-
-                    <div class="mt-4 pt-3" style="border-top: 1px solid rgba(255,255,255,0.05);">
+                    <div class="mt-4 pt-3 border-top border-white-10">
                         <button class="btn btn-outline-glow btn-sm w-100 mb-2" data-bs-toggle="modal"
                             data-bs-target="#editDatesModal">
                             <i class="bi bi-pencil me-1"></i>Edit Dates
                         </button>
                         <button class="btn btn-outline-glow btn-sm w-100 text-danger border-danger"
-                            wire:confirm="Are you sure you want to end this election cycle? This cannot be undone.">
+                            wire:click="endElection" wire:confirm="Are you sure?">
                             <i class="bi bi-stop-circle me-1"></i>End Election
                         </button>
                     </div>
@@ -171,103 +182,87 @@ $toggleSetting = function ($setting) {
             </div>
         </div>
 
-        {{-- Past Elections --}}
-        <div class="glass-card p-4 mt-4" data-aos="fade-up" data-aos-delay="300">
-            <h5 class="fw-bold mb-3"><i class="bi bi-clock-history me-2"
-                    style="color: var(--text-secondary);"></i>Past Elections</h5>
-            <div class="table-responsive">
-                <table class="table table-glass mb-0">
-                    <thead>
-                        <tr>
-                            <th>Election</th>
-                            <th>Period</th>
-                            <th>Candidates</th>
-                            <th>Total Votes</th>
-                            <th>Turnout</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td class="fw-semibold text-white">S.Y. 2023-2024</td>
-                            <td><small class="text-white-50">Feb 10 - Feb 24, 2024</small></td>
-                            <td>10</td>
-                            <td>1,102</td>
-                            <td><span style="color: var(--accent);">82%</span></td>
-                            <td><span class="badge badge-status badge-closed">Completed</span></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </main>
-
-    {{-- New Cycle Modal --}}
-    <div class="modal fade modal-glass" id="newCycleModal" tabindex="-1" wire:ignore.self>
-        <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="bi bi-calendar-plus me-2" style="color: var(--accent);"></i>New
-                        Election Cycle</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form>
-                        <div class="mb-3">
-                            <label class="form-label text-white-50 small">Election Title</label>
-                            <input type="text" class="form-control-glass w-100"
-                                placeholder="e.g. S.Y. 2025-2026 Student Council Election">
+        {{-- NEW CYCLE MODAL --}}
+        <div class="modal fade" id="newCycleModal" tabindex="-1" wire:ignore.self>
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content glass-card"
+                    style="background: #0f172a; border: 1px solid rgba(255,255,255,0.1);">
+                    <div class="modal-header border-0">
+                        <h5 class="modal-title text-white fw-bold">New Election Cycle</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form wire:submit.prevent="createNewCycle">
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="text-white-50 small mb-1">Cycle Name</label>
+                                <input type="text" wire:model="cycle_name" class="form-control-glass w-100"
+                                    placeholder="e.g. S.Y. 2025-2026 Election">
+                                @error('cycle_name')
+                                    <small class="text-danger">{{ $message }}</small>
+                                @enderror
+                            </div>
+                            <div class="row">
+                                <div class="col-6 mb-3">
+                                    <label class="text-white-50 small mb-1">Start Date</label>
+                                    <input type="date" wire:model="start_date" class="form-control-glass w-100">
+                                </div>
+                                <div class="col-6 mb-3">
+                                    <label class="text-white-50 small mb-1">End Date</label>
+                                    <input type="date" wire:model="end_date" class="form-control-glass w-100">
+                                </div>
+                            </div>
                         </div>
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label text-white-50 small">Voting Start</label>
-                                <input type="date" class="form-control-glass w-100">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label text-white-50 small">Voting End</label>
-                                <input type="date" class="form-control-glass w-100">
-                            </div>
+                        <div class="modal-footer border-0">
+                            <button type="button" class="btn btn-outline-glow btn-sm"
+                                data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-glow btn-sm">Start New Cycle</button>
                         </div>
                     </form>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-glow btn-sm"
-                        data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-glow btn-sm">Create Cycle</button>
-                </div>
             </div>
         </div>
-    </div>
 
-    {{-- Edit Dates Modal --}}
-    <div class="modal fade modal-glass" id="editDatesModal" tabindex="-1" wire:ignore.self>
-        <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="bi bi-calendar-range me-2"
-                            style="color: var(--accent);"></i>Edit Dates</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <p class="text-white-50 small">Adjust the timeline for the current election cycle.</p>
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label text-white-50 small">Campaign Period Start</label>
-                            <input type="date" class="form-control-glass w-100" value="2025-02-01">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label text-white-50 small">Campaign Period End</label>
-                            <input type="date" class="form-control-glass w-100" value="2025-02-14">
-                        </div>
+        {{-- EDIT DATES MODAL --}}
+        <div class="modal fade" id="editDatesModal" tabindex="-1" wire:ignore.self>
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content glass-card"
+                    style="background: #0f172a; border: 1px solid rgba(255,255,255,0.1);">
+                    <div class="modal-header border-0">
+                        <h5 class="modal-title text-white fw-bold">Edit Election Dates</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-glow btn-sm"
-                        data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-glow btn-sm">Update Timeline</button>
+                    <form wire:submit.prevent="updateDates">
+                        <div class="modal-body">
+                            <div class="row">
+                                <div class="col-6 mb-3">
+                                    <label class="text-white-50 small mb-1">Start Date</label>
+                                    <input type="date" wire:model="start_date" class="form-control-glass w-100">
+                                </div>
+                                <div class="col-6 mb-3">
+                                    <label class="text-white-50 small mb-1">End Date</label>
+                                    <input type="date" wire:model="end_date" class="form-control-glass w-100">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer border-0">
+                            <button type="button" class="btn btn-outline-glow btn-sm"
+                                data-bs-dismiss="modal">Cancel</button>
+                            <button type="submit" class="btn btn-glow btn-sm">Update Dates</button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
-    </div>
 
+    </main>
 </div>
+
+<script>
+    window.addEventListener('close-modal', event => {
+        const modalId = event.detail.id;
+        const modalElement = document.getElementById(modalId);
+        if (modalElement) {
+            bootstrap.Modal.getInstance(modalElement).hide();
+        }
+    });
+</script>

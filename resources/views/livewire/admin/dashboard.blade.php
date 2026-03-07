@@ -1,28 +1,40 @@
 <?php
 
-use function Livewire\Volt\{state, layout, title};
+use Livewire\Volt\Component;
+use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 
-layout('layouts.app');
-title('Admin Dashboard');
+new #[Layout('layouts.app')] #[Title('Admin Dashboard')] class extends Component {
+    // Component State
+    public int $totalVotes = 1254;
+    public int $candidatesCount = 4;
+    public string $turnout = '87%';
+    public int $daysLeft = 3;
+    public array $chartData = [339, 557, 213, 125];
 
-$logout = function () {
-    Auth::guard('web')->logout();
-    Session::invalidate();
-    Session::regenerateToken();
-    return $this->redirect('/', navigate: true);
-};
+    /**
+     * Handle the admin logout logic.
+     */
+    public function logout()
+    {
+        Auth::guard('web')->logout();
+        Session::invalidate();
+        Session::regenerateToken();
 
-state([
-    'totalVotes' => 1254,
-    'candidatesCount' => 4,
-    'turnout' => '87%',
-    'daysLeft' => 3,
-    'chartData' => [339, 557, 213, 125],
-]);
+        return $this->redirect('/', navigate: true);
+    }
 
-?>
+    /**
+     * Example method for generating reports
+     */
+    public function downloadReport()
+    {
+        // Logic for PDF generation would go here
+        session()->flash('message', 'Report generation started...');
+    }
+}; ?>
 
 <div>
     {{-- Sidebar & Navigation --}}
@@ -33,45 +45,47 @@ state([
 
     <main class="main-content">
         {{-- Top Bar --}}
-        <div class="topbar" data-aos="fade-down">
+        <div class="topbar">
             <div>
                 <h2>Admin <span>Dashboard</span></h2>
                 <p class="text-white-50 mb-0" style="font-size: 0.85rem;">Welcome, Administrator</p>
             </div>
             <div class="d-flex align-items-center gap-3">
-                <button class="btn btn-outline-glow btn-sm">
+                <button wire:click="downloadReport" class="btn btn-outline-glow btn-sm">
                     <i class="bi bi-download me-1"></i>Download PDF
                 </button>
-                <div class="admin-avatar-glow">
-                    <i class="bi bi-shield-lock-fill text-white"></i>
-                </div>
+                <a href="{{ url('/admin/settings') }}">
+                    <div class="admin-avatar-glow">
+                        <i class="bi bi-person-fill text-white"></i>
+                    </div>
+                </a>
             </div>
         </div>
 
         {{-- Quick Stat Cards --}}
         <div class="row g-3 mb-4">
-            <div class="col-6 col-lg-3" data-aos="fade-up" data-aos-delay="100">
+            <div class="col-6 col-lg-3 fade-in-up delay-1">
                 <div class="glass-card stat-card">
                     <div class="stat-icon icon-green"><i class="bi bi-person-fill-check"></i></div>
                     <div class="stat-value text-accent">{{ number_format($totalVotes) }}</div>
                     <div class="stat-label">Total Votes</div>
                 </div>
             </div>
-            <div class="col-6 col-lg-3" data-aos="fade-up" data-aos-delay="200">
+            <div class="col-6 col-lg-3 fade-in-up delay-2">
                 <div class="glass-card stat-card">
                     <div class="stat-icon icon-purple"><i class="bi bi-people-fill"></i></div>
                     <div class="stat-value text-purple">{{ $candidatesCount }}</div>
                     <div class="stat-label">Candidates</div>
                 </div>
             </div>
-            <div class="col-6 col-lg-3" data-aos="fade-up" data-aos-delay="300">
+            <div class="col-6 col-lg-3 fade-in-up delay-3">
                 <div class="glass-card stat-card">
                     <div class="stat-icon icon-green"><i class="bi bi-check-circle-fill"></i></div>
                     <div class="stat-value text-success">{{ $turnout }}</div>
                     <div class="stat-label">Turnout Rate</div>
                 </div>
             </div>
-            <div class="col-6 col-lg-3" data-aos="fade-up" data-aos-delay="400">
+            <div class="col-6 col-lg-3 fade-in-up delay-4">
                 <div class="glass-card stat-card">
                     <div class="stat-icon icon-warning"><i class="bi bi-clock-history"></i></div>
                     <div class="stat-value text-warning">{{ $daysLeft }}</div>
@@ -82,7 +96,7 @@ state([
 
         {{-- Charts Section --}}
         <div class="row g-3 mb-4">
-            <div class="col-lg-8" data-aos="fade-up" data-aos-delay="500">
+            <div class="col-lg-8 fade-in-up delay-5">
                 <div class="glass-card chart-container">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h5 class="mb-0"><i class="bi bi-lightning-fill text-warning me-2"></i>Elections Cycle</h5>
@@ -98,6 +112,7 @@ state([
                                 <small class="text-white-50 extra-small">Total Votes</small>
                             </div>
                         </div>
+                        {{-- Data points here could be dynamic in the future based on $chartData --}}
                         <div class="col-3">
                             <div class="text-center p-2 glass rounded-3">
                                 <div class="fw-bold text-purple">50%</div>
@@ -124,7 +139,7 @@ state([
                 </div>
             </div>
 
-            <div class="col-lg-4" data-aos="fade-up" data-aos-delay="600">
+            <div class="col-lg-4 fade-in-up delay-5">
                 <div class="glass-card chart-container h-100">
                     <h5><i class="bi bi-pie-chart-fill text-info me-2"></i>Elections Reports</h5>
                     <div style="height: 220px;" wire:ignore>
@@ -246,6 +261,7 @@ state([
 
     @script
         <script>
+            // Encapsulating Chart logic
             const initCharts = () => {
                 const barCtx = document.getElementById('adminBarChart');
                 const pieCtx = document.getElementById('adminPieChart');
@@ -256,8 +272,9 @@ state([
                         data: {
                             labels: ['Candidate A', 'Candidate B', 'Candidate C', 'Candidate D'],
                             datasets: [{
-                                data: [339, 557, 213, 125],
-                                backgroundColor: ['rgba(56, 142, 60, 0.7)', 'rgba(103, 58, 183, 0.7)',
+                                data: @js($chartData), // Passing class property to JS
+                                backgroundColor: [
+                                    'rgba(56, 142, 60, 0.7)', 'rgba(103, 58, 183, 0.7)',
                                     'rgba(76, 175, 80, 0.7)', 'rgba(253, 203, 110, 0.7)'
                                 ],
                                 borderColor: ['#388e3c', '#673ab7', '#4caf50', '#fdcb6e'],
@@ -320,10 +337,9 @@ state([
                 }
             };
 
-            // Takbo sa unang load
             initCharts();
 
-            // Takbo sa bawat "Navigate" ng Livewire
+            // Support for SPA navigation
             document.addEventListener('livewire:navigated', () => {
                 initCharts();
             });

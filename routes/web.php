@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
 
 Volt::route('/', 'pages.auth.login')->name('login');
+Volt::route('/forgot-password', 'pages.auth.forgot-password')->name('forgot-password');
 
 Route::middleware(['auth', 'role:student'])
     ->prefix('students')

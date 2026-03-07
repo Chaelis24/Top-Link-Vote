@@ -1,53 +1,76 @@
 <?php
 
-use function Livewire\Volt\{state, layout, title};
+use Livewire\Volt\Component;
+use Livewire\Attributes\Layout;
+use Livewire\Attributes\Title;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Session;
 
-layout('layouts.app');
-title('Cast Your Vote');
+new #[Layout('layouts.app')] #[Title('Cast Your Vote')] class extends Component {
+    public int $currentStep = 1;
 
-state([
-    'currentStep' => 1,
-    'selections' => [
+    public array $selections = [
         'President' => null,
         'Vice President' => null,
         'Secretary' => null,
         'Treasurer' => null,
-    ],
-    // Sample Data
-    'candidates' => [
-        'President' => [['id' => 1, 'name' => 'Maria Santos', 'party' => 'Unity Party', 'info' => 'BSIT 3rd Year', 'initials' => 'MS', 'bg' => '#388E3C'], ['id' => 2, 'name' => 'Juan Dela Cruz', 'party' => 'Progress Alliance', 'info' => 'BSCS 4th Year', 'initials' => 'JD', 'bg' => '#673AB7']],
-        'Vice President' => [['id' => 3, 'name' => 'Anna Reyes', 'party' => 'Unity Party', 'info' => 'BSA 3rd Year', 'initials' => 'AR', 'bg' => '#388E3C'], ['id' => 6, 'name' => 'Mark Garcia', 'party' => 'Progress Alliance', 'info' => 'BSIT 4th Year', 'initials' => 'MG', 'bg' => '#673AB7']],
-        'Secretary' => [['id' => 4, 'name' => 'Carlos Ramos', 'party' => 'Progress Alliance', 'info' => 'BSBA 2nd Year', 'initials' => 'CR', 'bg' => '#673AB7']],
-        'Treasurer' => [['id' => 5, 'name' => 'Patricia Lim', 'party' => 'Independent', 'info' => 'BSA 3rd Year', 'initials' => 'PL', 'bg' => '#fdcb6e']],
-    ],
-]);
+    ];
 
-$setStep = function ($step) {
-    if ($step == 2) {
-        // I-check kung may kulang na position
-        $empty = collect($this->selections)->filter(fn($val) => is_null($val));
-        if ($empty->count() > 0) {
-            $this->dispatch('swal', title: 'Wait!', text: 'Please select candidates for all positions.', icon: 'warning');
-        }
+    public array $candidates = [];
+
+    /**
+     * Initialize data. In a real app, you would likely fetch
+     * these candidates from a database model here.
+     */
+    public function mount()
+    {
+        $this->candidates = [
+            'President' => [['id' => 1, 'name' => 'Maria Santos', 'party' => 'Unity Party', 'info' => 'BSIT 3rd Year', 'initials' => 'MS', 'bg' => '#388E3C'], ['id' => 2, 'name' => 'Juan Dela Cruz', 'party' => 'Progress Alliance', 'info' => 'BSCS 4th Year', 'initials' => 'JD', 'bg' => '#673AB7']],
+            'Vice President' => [['id' => 3, 'name' => 'Anna Reyes', 'party' => 'Unity Party', 'info' => 'BSA 3rd Year', 'initials' => 'AR', 'bg' => '#388E3C'], ['id' => 6, 'name' => 'Mark Garcia', 'party' => 'Progress Alliance', 'info' => 'BSIT 4th Year', 'initials' => 'MG', 'bg' => '#673AB7']],
+            'Secretary' => [['id' => 4, 'name' => 'Carlos Ramos', 'party' => 'Progress Alliance', 'info' => 'BSBA 2nd Year', 'initials' => 'CR', 'bg' => '#673AB7']],
+            'Treasurer' => [['id' => 5, 'name' => 'Patricia Lim', 'party' => 'Independent', 'info' => 'BSA 3rd Year', 'initials' => 'PL', 'bg' => '#fdcb6e']],
+        ];
     }
-    $this->currentStep = $step;
-};
 
-$submitVote = function () {
-    // DB Logic Here (e.g., Vote::create(...))
-    $this->dispatch('swal', title: 'Success!', text: 'Your vote has been cast.', icon: 'success');
-    return $this->redirect('/student/dashboard', navigate: true);
-};
+    /**
+     * Logic for navigating between steps with validation.
+     */
+    public function setStep($step)
+    {
+        if ($step == 2) {
+            $empty = collect($this->selections)->filter(fn($val) => is_null($val));
+            if ($empty->count() > 0) {
+                $this->dispatch('swal', title: 'Wait!', text: 'Please select candidates for all positions.', icon: 'warning');
+                return;
+            }
+        }
+        $this->currentStep = $step;
+    }
 
-$logout = function () {
-    Auth::guard('web')->logout();
-    Session::invalidate();
-    Session::regenerateToken();
-    return $this->redirect('/', navigate: true);
-};
+    /**
+     * Submit the vote and redirect.
+     */
+    public function submitVote()
+    {
+        // DB Logic Here:
+        // Vote::create(['user_id' => auth()->id(), 'votes' => json_encode($this->selections)]);
 
-?>
+        $this->dispatch('swal', title: 'Success!', text: 'Your vote has been cast.', icon: 'success');
+
+        return $this->redirect('/student/dashboard', navigate: true);
+    }
+
+    /**
+     * Logout logic.
+     */
+    public function logout()
+    {
+        Auth::guard('web')->logout();
+        Session::invalidate();
+        Session::regenerateToken();
+        return $this->redirect('/', navigate: true);
+    }
+}; ?>
 
 <div>
     <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
@@ -57,7 +80,7 @@ $logout = function () {
 
     <main class="main-content">
         {{-- Header --}}
-        <div class="topbar" data-aos="fade-down">
+        <div class="topbar" wire:key="persistent-topbar-header">
             <div>
                 <h2>Cast Your <span>Vote</span></h2>
                 <p class="text-white-50 mb-0">Select your preferred candidate for each position</p>
@@ -73,10 +96,8 @@ $logout = function () {
             </a>
         </div>
 
-
         {{-- Stepper Progress --}}
-
-        <div class="vote-stepper mb-5" data-aos="fade-up">
+        <div class="vote-stepper mb-5 fade-in-up delay-1">
             @foreach ([1 => 'Select', 2 => 'Review', 3 => 'Confirm'] as $num => $label)
                 <div class="step {{ $currentStep == $num ? 'active' : ($currentStep > $num ? 'completed' : '') }}">
                     <div class="step-circle">{{ $num }}</div>

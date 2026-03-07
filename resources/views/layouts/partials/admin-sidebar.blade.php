@@ -29,7 +29,7 @@
                 class="nav-link {{ request()->is('admin/candidates*') ? 'active' : '' }}">
                 <i class="bi bi-people-fill"></i>
                 <div>
-                    Candidates
+                    Manage Candidates
                     <span class="nav-desc">View Candidate</span>
                 </div>
             </a>
@@ -53,7 +53,7 @@
                 class="nav-link {{ request()->is('admin/platforms*') ? 'active' : '' }}">
                 <i class="bi bi-megaphone-fill"></i>
                 <div>
-                    Platforms
+                    Manage Platforms
                     <span class="nav-desc">Campaign Platforms</span>
                 </div>
             </a>

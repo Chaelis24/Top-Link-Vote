@@ -12,4 +12,5 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     Volt::route('/positions', 'admin.positions')->name('admin.positions');
     Volt::route('/profiles', 'admin.profiles')->name('admin.profiles');
     Volt::route('/students', 'admin.students')->name('admin.students');
+    Volt::route('/settings', 'admin.settings')->name('admin.settings');
 });
