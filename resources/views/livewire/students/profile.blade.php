@@ -258,7 +258,7 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                         <div class="d-flex gap-3 mb-3 pb-3 border-bottom border-white-5">
                             <div class="timeline-dot-sm {{ $has_voted ? 'bg-success' : 'bg-warning' }}"></div>
                             <span class="text-white-50 small">
-                                {{ $has_voted ? 'Voted successfully at ' . $voted_at : 'You have not cast your vote yet.' }}
+                                {{ $has_voted ? 'Voted successfully at ' . $voted_at?->timezone('Asia/Manila')->format('F d, Y - h:i A') : 'You have not cast your vote yet.' }}
                             </span>
                         </div>
                     </div>

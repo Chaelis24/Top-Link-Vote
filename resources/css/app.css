@@ -258,7 +258,7 @@ body {
     );
     border-right: 1px solid var(--glass-border);
     padding: 24px 0;
-    z-index: 1000;
+    z-index: 1200;
     transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     overflow-y: auto;
 }
@@ -517,7 +517,7 @@ body {
     position: fixed;
     top: 16px;
     left: 16px;
-    z-index: 1100;
+    z-index: 1300;
     background: var(--accent);
     border: none;
     color: #fff;
@@ -530,9 +530,22 @@ body {
 }
 
 /* ===== RESPONSIVE ===== */
+/* ===== RESPONSIVE (MOBILE & TABLET) ===== */
 @media (max-width: 991.98px) {
+    /* Hide Burger Button kapag open ang sidebar */
+    /* Gumagamit ng ~ selector: hinahanap ang .sidebar-toggle na kasunod ng .sidebar.show */
+    .sidebar.show ~ .sidebar-toggle,
+    .sidebar.show + .sidebar-toggle {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transform: scale(0.8);
+    }
+
     .sidebar {
         transform: translateX(-100%);
+        z-index: 1200; /* Mas mataas sa overlay at topbar */
+        transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .sidebar.show {
@@ -548,10 +561,17 @@ body {
         display: flex;
         align-items: center;
         justify-content: center;
+        transition: all 0.3s ease; /* Para smooth ang pag-fade out */
+        z-index: 1100; /* Mas mababa sa sidebar */
     }
 
     .topbar {
         padding-top: 50px;
+    }
+
+    .sidebar-overlay.show {
+        display: block;
+        z-index: 1150; /* Sa pagitan ng main content at sidebar */
     }
 }
 
@@ -636,7 +656,7 @@ body {
     width: 100%;
     height: 100%;
     background: rgba(0, 0, 0, 0.5);
-    z-index: 999;
+    z-index: 1100;
 }
 
 .sidebar-overlay.show {

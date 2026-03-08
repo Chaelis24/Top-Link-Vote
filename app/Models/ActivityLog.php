@@ -7,12 +7,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ActivityLog extends Model
 {
+    public $timestamps = false;
+
     protected $fillable = [
         'user_id',
         'action',
         'description',
         'ip_address',
         'user_agent',
+        'created_at'
     ];
 
     public function user(): BelongsTo

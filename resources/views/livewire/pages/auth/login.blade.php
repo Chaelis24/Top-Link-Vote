@@ -19,7 +19,7 @@ new #[Layout('layouts.guest')] class extends Component {
 
         $user = auth()->user();
 
-        if ($user->hasRole('admin')) {
+        if ($user->roles()->where('name', 'admin')->exists()) {
             $this->redirectIntended(route('admin.dashboard'), navigate: true);
             return;
         }
@@ -30,7 +30,7 @@ new #[Layout('layouts.guest')] class extends Component {
 
 <div>
     <div class="login-wrapper">
-        <div class="login-card glass fade-in-up">
+        <div class="login-card glass fade-in-up delay-1">
             <div class="login-glow-ring"></div>
 
             <div class="login-logo">

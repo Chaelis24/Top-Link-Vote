@@ -15,9 +15,9 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('academic_year');
-            $table->enum('semester', ['1st', '2nd', 'Summer']);
-            $table->date('filing_start');
-            $table->date('filing_end');
+            $table->enum('semester', ['1st Semester', '2nd Semester', 'Summer']);
+            $table->date('filing_start')->nullable();
+            $table->date('filing_end')->nullable();
             $table->date('campaign_start');
             $table->date('campaign_end');
             $table->dateTime('voting_start');

@@ -6,7 +6,7 @@ use Livewire\Attributes\Title;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
 
-new #[Layout('layouts.app')] #[Title('Admin Settings')] class extends Component {
+new #[Layout('layouts.app')] #[Title('Settings')] class extends Component {
     // Profile Props
     public string $name = '';
     public string $email = '';
@@ -78,6 +78,12 @@ new #[Layout('layouts.app')] #[Title('Admin Settings')] class extends Component 
 }">
 
     @include('layouts.partials.admin-sidebar')
+
+    <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+    <button class="sidebar-toggle" onclick="toggleSidebar()">
+        <i class="bi bi-list"></i>
+    </button>
 
     <div class="main-content">
         <div class="topbar">

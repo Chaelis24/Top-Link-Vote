@@ -26,9 +26,6 @@ Route::middleware(['auth', 'role:student'])
             ->name('student.cast-vote');
     });
 
-Route::view('dashboard', 'dashboard')
-    ->middleware(['auth', 'verified'])
-    ->name('dashboard');
 
 Route::view('profile', 'profile')
     ->middleware(['auth'])

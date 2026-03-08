@@ -3,8 +3,10 @@
 namespace App\Livewire\Forms;
 
 use App\Models\Student;
+use App\Models\User;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -29,15 +31,25 @@ class LoginForm extends Form
     {
         $this->ensureIsNotRateLimited();
 
+        $user = null;
+
         $student = Student::where('student_id', $this->student_id)->first();
 
-        if (! $student || ! Auth::attempt(['id' => $student->user_id, 'password' => $this->password], $this->remember)) {
+        if ($student) {
+            $user = $student->user;
+        } else {
+            $user = User::where('email', $this->student_id)->first();
+        }
+
+        if (!$user || ! Hash::check($this->password, $user->password)) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
                 'form.student_id' => trans('auth.failed'),
             ]);
         }
+
+        Auth::login($user, $this->remember);
 
         RateLimiter::clear($this->throttleKey());
     }

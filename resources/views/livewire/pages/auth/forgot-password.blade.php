@@ -7,6 +7,7 @@ use Livewire\Volt\Component;
 new #[Layout('layouts.guest')] class extends Component {
     public string $email = '';
     public string $student_id = '';
+    public bool $isSent = false;
 
     /**
      * Send a password reset link.
@@ -18,9 +19,9 @@ new #[Layout('layouts.guest')] class extends Component {
             'email' => ['required', 'string', 'email'],
         ]);
 
-        $user = \App\Models\User::where('email', $this->email)->where('student_id', $this->student_id)->first();
+        $student = \App\Models\Student::where('student_id', $this->student_id)->first();
 
-        if (!$user) {
+        if (!$student || $student->user?->email !== $this->email) {
             $this->addError('student_id', 'The provided details do not match our records.');
             return;
         }
@@ -32,13 +33,13 @@ new #[Layout('layouts.guest')] class extends Component {
             return;
         }
 
-        $this->reset(['email', 'student_id']);
+        $this->isSent = true;
         session()->flash('status', __($status));
     }
 }; ?>
 
 <div>
-    <div class="forgot-wrapper">
+    <div class="forgot-wrapper fade-in-up delay-1">
         <div class="forgot-card glass fade-in-up" data-aos="zoom-in" data-aos-duration="1000">
             <div class="forgot-glow-ring"></div>
 

@@ -7,11 +7,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Vote extends Model
 {
+    public $timestamps = false;
+
     protected $fillable = [
         'student_id',
         'candidate_id',
         'position_id',
         'election_cycle_id',
+        'reference_number',
         'voted_at',
     ];
 

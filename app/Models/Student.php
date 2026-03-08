@@ -30,6 +30,7 @@ class Student extends Model
         'photo',
         'has_voted',
         'voted_at',
+        'vote_reference'
     ];
 
     protected $casts = [

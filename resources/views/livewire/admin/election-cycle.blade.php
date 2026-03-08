@@ -23,6 +23,42 @@ new #[Layout('layouts.app')] #[Title('Election Cycle')] class extends Component 
     public string $end_date = '';
     public string $description = '';
 
+    // public function with(): array
+    // {
+    //     $studentCourse = auth()->user()->course;
+
+    //     return [
+    //         // Kukunin lang ang positions na may lamang candidates para sa kurso ng user
+    //         'positions' => Position::query()
+    //             ->withWhereHas('candidates', function ($query) use ($studentCourse) {
+    //                 $query->where('course', $studentCourse);
+    //             })
+    //             ->orderBy('order') // O kung ano mang sorting ang gamit mo
+    //             ->get(),
+    //     ];
+    // }
+
+    public function castVote($candidateId)
+    {
+        $candidate = Candidate::findOrFail($candidateId);
+
+        // Strict Security Check
+        if ($candidate->course !== auth()->user()->course) {
+            session()->flash('error', 'Hindi ka pwedeng bumoto sa kandidato ng ibang kurso.');
+            return;
+        }
+
+        // Logic para i-save ang boto (halimbawa)
+        auth()
+            ->user()
+            ->votes()
+            ->create([
+                'candidate_id' => $candidateId,
+            ]);
+
+        session()->flash('success', 'Boto ay matagumpay na naitala!');
+    }
+
     /**
      * Save New Election Cycle
      */

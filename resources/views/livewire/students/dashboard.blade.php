@@ -3,6 +3,7 @@
 use Livewire\Volt\Component;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Computed;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 
@@ -10,17 +11,33 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
     public $student;
     public $hasVoted = false;
 
-    /**
-     * Mount is the class-based equivalent of the initial state logic.
-     */
+    #[Computed]
+    public function tallyData()
+    {
+        // Kukunin lahat ng Positions at ang kanilang mga Candidates
+        return \App\Models\Position::with([
+            'candidates' => function ($query) {
+                $query->orderBy('votes_count', 'desc');
+            },
+            'candidates.student',
+        ])
+            ->get()
+            ->map(function ($position) {
+                return [
+                    'id' => $position->id,
+                    'name' => $position->name,
+                    // Dito ifi-filter para hindi mag-error ang last_name kung null ang student
+                    'labels' => $position->candidates->filter(fn($c) => $c->student !== null)->map(fn($c) => $c->student->last_name)->toArray(),
+                    'votes' => $position->candidates->filter(fn($c) => $c->student !== null)->pluck('votes_count')->toArray(),
+                ];
+            });
+    }
+
     public function mount()
     {
         $this->student = Auth::user();
     }
 
-    /**
-     * The logout logic.
-     */
     public function logout()
     {
         Auth::guard('web')->logout();
@@ -53,11 +70,8 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
             <a href="/students/profile" wire:navigate class="text-decoration-none">
                 <div class="d-flex align-items-center gap-3">
                     <div class="avatar-circle overflow-hidden">
-                        @if ($photo ?? '')
-                            <img src="{{ $photo->temporaryUrl() }}"
-                                style="width: 100%; height: 100%; object-fit: cover;">
-                        @elseif($profile_photo_path ?? '')
-                            <img src="{{ asset('storage/' . $profile_photo_path) }}"
+                        @if ($student->profile_photo_path ?? '')
+                            <img src="{{ asset('storage/' . $student->profile_photo_path) }}"
                                 style="width: 100%; height: 100%; object-fit: cover;">
                         @else
                             <i class="bi bi-person-fill text-white"></i>
@@ -116,45 +130,48 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
             </div>
         </div>
 
-        {{-- Real-time Election Tally (Optional for Student) --}}
+        {{-- Real-time Election Tally Section --}}
         <div class="row g-3">
-            <div class="col-lg-7 fade-in-up delay-4">
-                <div class="glass-card p-4">
-                    <h5 class="text-white mb-4"><i class="bi bi-bar-chart-fill text-accent me-2"></i>Live Election Tally
-                    </h5>
-                    <div style="height: 300px;" wire:ignore>
-                        <canvas id="voteBarChart"></canvas>
+            @foreach ($this->tallyData as $index => $pos)
+                <div class="col-lg-6 fade-in-up">
+                    <div class="glass-card p-4 mb-3">
+                        <h5 class="text-white mb-4">
+                            <i class="bi bi-bar-chart-fill text-accent me-2"></i>{{ $pos['name'] }} Tally
+                        </h5>
+                        <div style="height: 300px;" wire:ignore>
+                            <canvas id="chart-{{ $pos['id'] }}"></canvas>
+                        </div>
                     </div>
                 </div>
-            </div>
-            <div class="col-lg-5 fade-in-up delay-5">
-                <div class="glass-card p-4">
-                    <h5 class="text-white mb-4"><i class="bi bi-pie-chart-fill text-info me-2"></i>Vote Distribution
-                    </h5>
-                    <div style="height: 300px;" wire:ignore>
-                        <canvas id="votePieChart"></canvas>
-                    </div>
-                </div>
-            </div>
+            @endforeach
         </div>
     </main>
 
     @script
         <script>
             const renderCharts = () => {
-                const barCtx = document.getElementById('voteBarChart');
-                const pieCtx = document.getElementById('votePieChart');
+                const tallyData = @json($this->tallyData);
 
-                if (barCtx) {
-                    new Chart(barCtx, {
-                        type: 'bar',
+                tallyData.forEach(pos => {
+                    const ctx = document.getElementById(`chart-${pos.id}`);
+                    if (!ctx) return;
+
+                    const existingChart = Chart.getChart(ctx);
+                    if (existingChart) existingChart.destroy();
+
+                    new Chart(ctx, {
+                        type: 'bar', // Nananatiling Bar Chart gaya ng original
                         data: {
-                            labels: ['Candidate A', 'Candidate B', 'Candidate C', 'Candidate D'],
+                            labels: pos.labels,
                             datasets: [{
                                 label: 'Votes',
-                                data: [339, 557, 213, 125],
-                                backgroundColor: ['rgba(56, 142, 60, 0.7)', 'rgba(103, 58, 183, 0.7)',
-                                    'rgba(76, 175, 80, 0.7)', 'rgba(253, 203, 110, 0.7)'
+                                data: pos.votes,
+                                backgroundColor: [
+                                    'rgba(103, 58, 183, 0.7)', // Purple
+                                    'rgba(0, 184, 148, 0.7)', // Green
+                                    'rgba(9, 132, 227, 0.7)', // Blue
+                                    'rgba(253, 203, 110, 0.7)', // Yellow
+                                    'rgba(231, 76, 60, 0.7)' // Red
                                 ],
                                 borderRadius: 8
                             }]
@@ -169,17 +186,16 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
                             },
                             scales: {
                                 y: {
+                                    beginAtZero: true,
                                     grid: {
                                         color: 'rgba(255,255,255,0.05)'
                                     },
                                     ticks: {
-                                        color: 'rgba(255,255,255,0.5)'
+                                        color: 'rgba(255,255,255,0.5)',
+                                        stepSize: 1
                                     }
                                 },
                                 x: {
-                                    grid: {
-                                        display: false
-                                    },
                                     ticks: {
                                         color: 'rgba(255,255,255,0.5)'
                                     }
@@ -187,37 +203,7 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
                             }
                         }
                     });
-                }
-
-                if (pieCtx) {
-                    new Chart(pieCtx, {
-                        type: 'doughnut',
-                        data: {
-                            labels: ['A (27%)', 'B (44.4%)', 'C (17%)', 'D (10%)'],
-                            datasets: [{
-                                data: [27, 44.4, 17, 10],
-                                backgroundColor: ['rgba(56, 142, 60, 0.8)', 'rgba(103, 58, 183, 0.8)',
-                                    'rgba(76, 175, 80, 0.8)', 'rgba(253, 203, 110, 0.8)'
-                                ],
-                                borderWidth: 0
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            cutout: '70%',
-                            plugins: {
-                                legend: {
-                                    position: 'bottom',
-                                    labels: {
-                                        color: 'rgba(255,255,255,0.7)',
-                                        usePointStyle: true
-                                    }
-                                }
-                            }
-                        }
-                    });
-                }
+                });
             };
 
             renderCharts();
