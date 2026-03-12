@@ -10,11 +10,11 @@ use Illuminate\Support\Facades\Session;
 new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Component {
     public $student;
     public $hasVoted = false;
+    public $profile_photo_path;
 
     #[Computed]
     public function tallyData()
     {
-        // Kukunin lahat ng Positions at ang kanilang mga Candidates
         return \App\Models\Position::with([
             'candidates' => function ($query) {
                 $query->orderBy('votes_count', 'desc');
@@ -26,7 +26,6 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
                 return [
                     'id' => $position->id,
                     'name' => $position->name,
-                    // Dito ifi-filter para hindi mag-error ang last_name kung null ang student
                     'labels' => $position->candidates->filter(fn($c) => $c->student !== null)->map(fn($c) => $c->student->last_name)->toArray(),
                     'votes' => $position->candidates->filter(fn($c) => $c->student !== null)->pluck('votes_count')->toArray(),
                 ];
@@ -35,7 +34,12 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
 
     public function mount()
     {
-        $this->student = Auth::user();
+        $user = Auth::user()?->load('student');
+        $this->student = $user?->student;
+
+        if ($this->student) {
+            $this->profile_photo_path = $this->student->photo ?? ($this->student->profile_photo_path ?? null);
+        }
     }
 
     public function logout()
@@ -49,7 +53,6 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
 }; ?>
 
 <div>
-    {{-- Sidebar --}}
     <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
     <button class="sidebar-toggle" onclick="toggleSidebar()">
         <i class="bi bi-list"></i>
@@ -57,9 +60,7 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
 
     @include('layouts.partials.student-sidebar')
 
-    {{-- Main Content --}}
     <main class="main-content">
-        {{-- Top Bar --}}
         <div class="topbar" wire:key="persistent-topbar-header">
             <div>
                 <h2>Student <span>Dashboard</span></h2>
@@ -70,8 +71,8 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
             <a href="/students/profile" wire:navigate class="text-decoration-none">
                 <div class="d-flex align-items-center gap-3">
                     <div class="avatar-circle overflow-hidden">
-                        @if ($student->profile_photo_path ?? '')
-                            <img src="{{ asset('storage/' . $student->profile_photo_path) }}"
+                        @if ($profile_photo_path)
+                            <img src="{{ asset('storage/' . $profile_photo_path) }}"
                                 style="width: 100%; height: 100%; object-fit: cover;">
                         @else
                             <i class="bi bi-person-fill text-white"></i>
@@ -81,9 +82,7 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
             </a>
         </div>
 
-        {{-- Quick Action Cards Row --}}
         <div class="row g-3 mb-4">
-            {{-- Profile Card --}}
             <div class="col-lg-4 col-md-6 fade-in-up delay-1">
                 <div class="glass-card p-4 h-100">
                     <div class="d-flex align-items-center gap-3 mb-3">
@@ -98,7 +97,6 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
                 </div>
             </div>
 
-            {{-- Platforms Card --}}
             <div class="col-lg-4 col-md-6 fade-in-up delay-2">
                 <div class="glass-card p-4 h-100">
                     <div class="d-flex align-items-center gap-3 mb-3">
@@ -113,7 +111,6 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
                 </div>
             </div>
 
-            {{-- Vote Now Card --}}
             <div class="col-lg-4 col-md-12 fade-in-up delay-3">
                 <div class="glass-card p-4 h-100 highlight-border">
                     <div class="d-flex align-items-center gap-3 mb-3">
@@ -130,7 +127,6 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
             </div>
         </div>
 
-        {{-- Real-time Election Tally Section --}}
         <div class="row g-3">
             @foreach ($this->tallyData as $index => $pos)
                 <div class="col-lg-6 fade-in-up">
@@ -160,18 +156,18 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
                     if (existingChart) existingChart.destroy();
 
                     new Chart(ctx, {
-                        type: 'bar', // Nananatiling Bar Chart gaya ng original
+                        type: 'bar',
                         data: {
                             labels: pos.labels,
                             datasets: [{
                                 label: 'Votes',
                                 data: pos.votes,
                                 backgroundColor: [
-                                    'rgba(103, 58, 183, 0.7)', // Purple
-                                    'rgba(0, 184, 148, 0.7)', // Green
-                                    'rgba(9, 132, 227, 0.7)', // Blue
-                                    'rgba(253, 203, 110, 0.7)', // Yellow
-                                    'rgba(231, 76, 60, 0.7)' // Red
+                                    'rgba(103, 58, 183, 0.7)',
+                                    'rgba(0, 184, 148, 0.7)',
+                                    'rgba(9, 132, 227, 0.7)',
+                                    'rgba(253, 203, 110, 0.7)',
+                                    'rgba(231, 76, 60, 0.7)'
                                 ],
                                 borderRadius: 8
                             }]

@@ -1,14 +1,15 @@
 <?php
 
 use Livewire\Volt\Component;
-use Livewire\Attributes\Layout;
-use Livewire\Attributes\Title;
-use Livewire\Attributes\Url;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Session;
+use Livewire\Attributes\{Layout, Title, Url};
+use Livewire\WithFileUploads;
+use Illuminate\Support\Facades\{Auth, Session, DB, Hash};
+use Illuminate\Support\Str;
+use App\Models\{User, Student, Role};
 
 new #[Layout('layouts.app')] #[Title('Manage Students - Admin')] class extends Component {
-    // Search and Filter State
+    use WithFileUploads;
+
     #[Url]
     public string $search = '';
     #[Url]
@@ -18,15 +19,14 @@ new #[Layout('layouts.app')] #[Title('Manage Students - Admin')] class extends C
     #[Url]
     public string $status = 'All Status';
 
-    // Stats (Static placeholders)
+    public $csvFile;
+    public string $importMessage = '';
+
     public string $totalStudents = '1,440';
     public string $votedCount = '1,254';
     public string $notVotedCount = '178';
     public string $disabledCount = '8';
 
-    /**
-     * Handle logout.
-     */
     public function logout()
     {
         Auth::guard('web')->logout();
@@ -36,36 +36,128 @@ new #[Layout('layouts.app')] #[Title('Manage Students - Admin')] class extends C
         return $this->redirect('/', navigate: true);
     }
 
-    /**
-     * Start CSV Import process.
-     */
+    public function updatedCsvFile()
+    {
+        $this->importCSV();
+    }
+
     public function importCSV()
     {
-        // Logic for CSV Import will go here
-        $this->dispatch('notify', message: 'CSV Import started...', type: 'info');
+        $this->importMessage = '';
+
+        if (!$this->csvFile) {
+            $this->importMessage = 'No file selected.';
+            return;
+        }
+
+        $this->validate([
+            'csvFile' => 'required|file|max:5120',
+        ]);
+
+        try {
+            $path = $this->csvFile->getRealPath();
+            $data = array_map('str_getcsv', file($path));
+
+            array_shift($data);
+
+            DB::beginTransaction();
+
+            $importedCount = 0;
+
+            $studentRole = Role::where('name', 'student')->first();
+
+            foreach ($data as $row) {
+                if (empty($row[0])) {
+                    continue;
+                }
+
+                $studentId = $row[0];
+
+                if (Student::where('student_id', $studentId)->exists()) {
+                    continue;
+                }
+
+                $actualEmail = !empty($row[12]) ? trim($row[12]) : strtolower($studentId) . '@toplink.edu.ph';
+
+                $user = User::create([
+                    'name' => trim($row[1] . ' ' . $row[3]),
+                    'email' => $actualEmail,
+                    'password' => Hash::make(Str::random(10)),
+                ]);
+
+                if ($studentRole) {
+                    $user->roles()->attach($studentRole->id);
+                }
+
+                $user->student()->create([
+                    'student_id' => $studentId,
+                    'first_name' => $row[1],
+                    'middle_name' => $row[2] ?: null,
+                    'last_name' => $row[3],
+                    'suffix' => $row[4] ?: null,
+                    'course' => $row[5] ?? 'IT',
+                    'year_level' => $row[6] ?? 1,
+                    'status' => $row[7] ?? 'active',
+                    'phone' => $row[8] ?: null,
+                    'address' => $row[9] ?: null,
+                    'birthday' => $row[10] ?: null,
+                    'gender' => $row[11] ?: null,
+                ]);
+
+                $importedCount++;
+            }
+
+            DB::commit();
+            $this->reset('csvFile');
+
+            $this->importMessage = "Success! {$importedCount} students imported.";
+            $this->dispatch('notify', message: "Successfully imported {$importedCount} students!", type: 'success');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            $this->reset('csvFile');
+
+            $this->importMessage = 'Error: ' . $e->getMessage();
+            $this->dispatch('notify', message: 'Import failed: ' . $e->getMessage(), type: 'error');
+        }
     }
 
-    /**
-     * Delete/Disable student record.
-     */
+    public function exportStudents()
+    {
+        $students = Student::with('user')->get();
+
+        $fileName = 'students_masterlist_' . now()->format('Y-m-d') . '.csv';
+
+        $headers = [
+            'Content-type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=$fileName",
+            'Pragma' => 'no-cache',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
+        ];
+
+        $columns = ['Student ID', 'First Name', 'Middle Name', 'Last Name', 'Suffix', 'Course', 'Year Level', 'Status', 'Phone', 'Address', 'Birthday', 'Gender', 'Email'];
+
+        $callback = function () use ($students, $columns) {
+            $file = fopen('php://output', 'w');
+            fputcsv($file, $columns);
+
+            foreach ($students as $student) {
+                fputcsv($file, [$student->student_id, $student->first_name, $student->middle_name, $student->last_name, $student->suffix, $student->course, $student->year_level, $student->status, $student->phone, $student->address, $student->birthday ? $student->birthday->format('Y-m-d') : '', $student->gender, $student->user ? $student->user->email : '']);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
     public function deleteStudent(int $id)
     {
-        // Logic to delete or disable student
         $this->dispatch('notify', message: 'Student status updated.', type: 'success');
-    }
-
-    /**
-     * Save a new student to the database.
-     */
-    public function addStudent()
-    {
-        // Add Validation and Save logic here
-        $this->dispatch('notify', message: 'Student added successfully!', type: 'success');
     }
 }; ?>
 
 <div>
-    {{-- Sidebar & Navigation --}}
     <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
     <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
 
@@ -77,15 +169,36 @@ new #[Layout('layouts.app')] #[Title('Manage Students - Admin')] class extends C
                 <h2>Manage <span>Students / Voters</span></h2>
                 <p class="text-white-50 mb-0" style="font-size: 0.85rem;">View, update, and manage student voter list</p>
             </div>
-            <div class="d-flex align-items-center gap-3">
-                <button class="btn btn-outline-glow btn-sm" wire:click="importCSV"><i
-                        class="bi bi-upload me-1"></i>Import CSV</button>
-                <button class="btn btn-glow btn-sm" data-bs-toggle="modal" data-bs-target="#addStudentModal"><i
-                        class="bi bi-plus-lg me-1"></i>Add Student</button>
+
+            <div class="d-flex flex-column align-items-end gap-2" x-data>
+                <div class="d-flex align-items-center gap-3">
+
+                    <input type="file" x-ref="csvInput" wire:model.live="csvFile" class="d-none" accept=".csv">
+
+                    <button type="button" class="btn btn-outline-glow btn-sm" @click="$refs.csvInput.click()">
+                        <span wire:loading.remove wire:target="csvFile">
+                            <i class="bi bi-upload me-1"></i>Import CSV
+                        </span>
+                        <span wire:loading wire:target="csvFile">
+                            <span class="spinner-border spinner-border-sm me-1" role="status"
+                                aria-hidden="true"></span>Uploading...
+                        </span>
+                    </button>
+                </div>
+
+                @error('csvFile')
+                    <span class="text-danger small"><i
+                            class="bi bi-exclamation-triangle me-1"></i>{{ $message }}</span>
+                @enderror
+
+                @if ($importMessage)
+                    <span class="small {{ str_contains($importMessage, 'Error') ? 'text-danger' : 'text-success' }}">
+                        {{ $importMessage }}
+                    </span>
+                @endif
             </div>
         </div>
 
-        {{-- Stats Row --}}
         <div class="row g-3 mb-4">
             <div class="col-6 col-lg-3 fade-in-up delay-1">
                 <div class="glass-card stat-card">
@@ -121,7 +234,6 @@ new #[Layout('layouts.app')] #[Title('Manage Students - Admin')] class extends C
             </div>
         </div>
 
-        {{-- Search & Filters --}}
         <div class="glass-card p-3 mb-4 fade-in-up delay-4">
             <div class="row g-3 align-items-center">
                 <div class="col-md-4">
@@ -158,12 +270,13 @@ new #[Layout('layouts.app')] #[Title('Manage Students - Admin')] class extends C
                     </select>
                 </div>
                 <div class="col-md-2 text-end">
-                    <button class="btn btn-outline-glow btn-sm w-100"><i class="bi bi-download me-1"></i>Export</button>
+                    <button class="btn btn-outline-glow btn-sm w-100" wire:click="exportStudents">
+                        <i class="bi bi-download me-1"></i>Export
+                    </button>
                 </div>
             </div>
         </div>
 
-        {{-- Students Table --}}
         <div class="glass-card p-0 overflow-hidden fade-in-up delay-5">
             <div class="table-responsive">
                 <table class="table table-glass mb-0">
@@ -201,37 +314,4 @@ new #[Layout('layouts.app')] #[Title('Manage Students - Admin')] class extends C
             </div>
         </div>
     </main>
-
-    {{-- Modals (Add Student) --}}
-    <div class="modal fade modal-glass" id="addStudentModal" tabindex="-1" wire:ignore.self>
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="bi bi-person-plus-fill me-2 text-accent"></i>Add Student</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form wire:submit.prevent="addStudent">
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="form-label text-white-50 small">Student ID</label>
-                                <input type="text" class="form-control-glass w-100" placeholder="e.g. 2024-00001">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label text-white-50 small">Full Name</label>
-                                <input type="text" class="form-control-glass w-100" placeholder="Enter full name">
-                            </div>
-                            {{-- ... more fields ... --}}
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-glow btn-sm"
-                        data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" wire:click="addStudent" class="btn btn-glow btn-sm"
-                        data-bs-dismiss="modal">Add Student</button>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>

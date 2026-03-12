@@ -1,14 +1,12 @@
 <?php
 
 use Livewire\Volt\Component;
-use Livewire\Attributes\Layout;
-use Livewire\Attributes\Title;
-use Livewire\Attributes\Computed;
-use Livewire\Attributes\Url;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Session;
+use Livewire\WithFileUploads;
+use Livewire\Attributes\{Layout, Title, Computed, Url};
+use Illuminate\Support\Facades\{Auth, Session};
 
 new #[Layout('layouts.app')] #[Title('Profiles & Candidates')] class extends Component {
+    use WithFileUploads;
     /**
      * Using #[Url] ensures that if a user refreshes the page,
      * their search and filter settings remain active in the URL.
@@ -52,6 +50,16 @@ new #[Layout('layouts.app')] #[Title('Profiles & Candidates')] class extends Com
 
             return $matchesSearch && $matchesPosition;
         });
+    }
+
+    public function mount()
+    {
+        $user = Auth::user()?->load('student');
+        $this->student = $user?->student;
+
+        if ($this->student) {
+            $this->profile_photo_path = $this->student->photo ?? ($this->student->profile_photo_path ?? null);
+        }
     }
 
     public function logout()

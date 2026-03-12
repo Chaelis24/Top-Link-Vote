@@ -17,9 +17,10 @@ return new class extends Migration
             $table->foreignId('student_id')->constrained()->cascadeOnDelete();
             $table->foreignId('position_id')->constrained()->cascadeOnDelete();
             $table->foreignId('election_cycle_id')->constrained()->cascadeOnDelete();
-            $table->string('course');
+
             $table->string('party_name')->nullable();
             $table->string('slogan')->nullable();
+            $table->string('course');
             $table->string('photo')->nullable();
             $table->text('bio')->nullable();
             $table->text('achievements')->nullable();

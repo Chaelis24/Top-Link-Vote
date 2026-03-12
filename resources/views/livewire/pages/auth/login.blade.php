@@ -76,11 +76,11 @@ new #[Layout('layouts.guest')] class extends Component {
                 </button>
             </form>
 
-            {{-- <div class="login-divider"><span>or</span></div>
+            <div class="login-divider"><span>or</span></div>
 
-            <a href="/register" class="btn-register" wire:navigate>
-                <i class="bi bi-person-plus-fill"></i>Create an Account
-            </a> --}}
+            <a href="/verify-account" class="btn-register" wire:navigate>
+                <i class="bi bi-person-plus-fill"></i>Verify an Account
+            </a>
         </div>
     </div>
 </div>

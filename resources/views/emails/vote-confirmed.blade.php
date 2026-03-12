@@ -87,7 +87,7 @@
                 </div>
                 <div style="display: flex; justify-content: space-between;">
                     <strong>Timestamp:</strong>
-                    <span>{{ $student->voted_at->timezone('Asia/Manila')->format('M d, Y - h:i A') }}</span>
+                    <span> {{ $student->voted_at->timezone('Asia/Manila')->format('M d, Y - h:i A') }}</span>
                 </div>
             </div>
 

@@ -30,6 +30,7 @@ class UserAndStudentSeeder extends Seeder
             'last_name' => 'Opena',
             'course' => 'HRMT',
             'year_level' => 3,
+            'birthday' => '2002-06-20',
             'gender' => 'Female',
             'status' => 'active',
         ]);
@@ -47,50 +48,51 @@ class UserAndStudentSeeder extends Seeder
             'last_name' => 'Farinas',
             'course' => 'IT',
             'year_level' => 3,
+            'birthday' => '2004-09-24',
             'gender' => 'Male',
             'status' => 'active',
         ]);
 
-        foreach ($availableCourses as $course) {
-            for ($i = 1; $i <= 2; $i++) {
-                $candidateUser = User::create([
-                    'name' => "Candidate $i - $course",
-                    'email' => "candidate{$i}_" . strtolower($course) . "@school.edu.ph",
-                    'password' => Hash::make('password123'),
-                ]);
+        // foreach ($availableCourses as $course) {
+        //     for ($i = 1; $i <= 2; $i++) {
+        //         $candidateUser = User::create([
+        //             'name' => "Candidate $i - $course",
+        //             'email' => "candidate{$i}_" . strtolower($course) . "@school.edu.ph",
+        //             'password' => Hash::make('password123'),
+        //         ]);
 
-                $candidateUser->roles()->attach([$studentRole->id, $candidateRole->id]);
+        //         $candidateUser->roles()->attach([$studentRole->id, $candidateRole->id]);
 
-                $candidateUser->student()->create([
-                    'student_id' => "2026-" . strtoupper($course) . "-00" . $i,
-                    'first_name' => "Candidate $i",
-                    'last_name' => $course,
-                    'course' => $course,
-                    'year_level' => rand(2, 4),
-                    'gender' => $i % 2 == 0 ? 'Male' : 'Female',
-                    'status' => 'active',
-                ]);
-            }
-        }
+        //         $candidateUser->student()->create([
+        //             'student_id' => "2026-" . strtoupper($course) . "-00" . $i,
+        //             'first_name' => "Candidate $i",
+        //             'last_name' => $course,
+        //             'course' => $course,
+        //             'year_level' => rand(2, 4),
+        //             'gender' => $i % 2 == 0 ? 'Male' : 'Female',
+        //             'status' => 'active',
+        //         ]);
+        //     }
+        // }
 
-        for ($j = 1; $j <= 5; $j++) {
-            $user = User::create([
-                'name' => "Regular Student $j",
-                'email' => "reg_student$j@school.edu.ph",
-                'password' => Hash::make('password123'),
-            ]);
+        // for ($j = 1; $j <= 5; $j++) {
+        //     $user = User::create([
+        //         'name' => "Regular Student $j",
+        //         'email' => "reg_student$j@school.edu.ph",
+        //         'password' => Hash::make('password123'),
+        //     ]);
 
-            $user->roles()->attach($studentRole->id);
+        //     $user->roles()->attach($studentRole->id);
 
-            $user->student()->create([
-                'student_id' => "2026-REG-000$j",
-                'first_name' => "Student",
-                'last_name' => "Regular $j",
-                'course' => $availableCourses[array_rand($availableCourses)],
-                'year_level' => rand(1, 4),
-                'gender' => rand(0, 1) ? 'Male' : 'Female',
-                'status' => 'active',
-            ]);
-        }
+        //     $user->student()->create([
+        //         'student_id' => "2026-REG-000$j",
+        //         'first_name' => "Student",
+        //         'last_name' => "Regular $j",
+        //         'course' => $availableCourses[array_rand($availableCourses)],
+        //         'year_level' => rand(1, 4),
+        //         'gender' => rand(0, 1) ? 'Male' : 'Female',
+        //         'status' => 'active',
+        //     ]);
+        // }
     }
 }

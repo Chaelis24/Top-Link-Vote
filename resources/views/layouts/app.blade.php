@@ -43,27 +43,6 @@
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-    <script>
-        window.addEventListener('swal:modal', event => {
-            Swal.fire({
-                title: `<span style="color: #ffffff; font-family: sans-serif;">${event.detail[0].title}</span>`,
-                text: event.detail[0].text,
-                icon: event.detail[0].type,
-                background: '#1a222c',
-                color: '#cbd5e0',
-                confirmButtonText: 'Understood',
-                confirmButtonColor: '#28a745',
-                borderRadius: '15px',
-                showClass: {
-                    popup: 'animate__animated animate__fadeInDown'
-                },
-                hideClass: {
-                    popup: 'animate__animated animate__fadeOutUp'
-                }
-            });
-        });
-    </script>
     {{-- Livewire Scripts --}}
     @livewireScripts
     @stack('scripts')

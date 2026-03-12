@@ -27,7 +27,7 @@ return new class extends Migration
             $table->date('birthday')->nullable();
             $table->enum('gender', ['Male', 'Female', 'Other'])->nullable();
             $table->string('photo', 255)->nullable();
-            $table->string('vote_reference', 20)->nullable();
+            $table->string('vote_reference', 20)->nullable()->unique();
             $table->boolean('has_voted')->default(false);
             $table->timestamp('voted_at')->nullable();
             $table->timestamps();
