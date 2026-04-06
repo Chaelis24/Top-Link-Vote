@@ -20,11 +20,11 @@ return new class extends Migration
 
             $table->string('party_name')->nullable();
             $table->string('slogan')->nullable();
-            $table->string('course');
+            $table->string('course')->nullable();
             $table->string('photo')->nullable();
             $table->text('bio')->nullable();
             $table->text('achievements')->nullable();
-            $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending');
+            $table->enum('status', ['pending', 'approved', 'rejected', 'active'])->default('pending');
             $table->timestamp('approved_at')->nullable();
             $table->integer('votes_count')->default(0);
             $table->timestamps();

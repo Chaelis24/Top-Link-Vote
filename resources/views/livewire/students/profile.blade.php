@@ -59,7 +59,6 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
             $this->last_name = $profile->last_name;
             $this->suffix = $profile->suffix;
             $this->course = $profile->course;
-            $this->department = $profile->department ?? '';
             $this->gpa = $profile->gpa ?? '';
             $this->status = $profile->status;
             $this->year_level = $profile->year_level;
@@ -155,8 +154,8 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
             <a href="/students/profile" wire:navigate class="text-decoration-none">
                 <div class="d-flex align-items-center gap-3">
                     <div class="avatar-circle overflow-hidden">
-                        @if ($photo?->temporaryUrl())
-                            <img src="{{ $photo?->temporaryUrl() }}"
+                        @if ($photo)
+                            <img src="{{ $photo->temporaryUrl() }}"
                                 style="width: 100%; height: 100%; object-fit: cover;">
                         @elseif($profile_photo_path)
                             <img src="{{ asset('storage/' . $profile_photo_path) }}"
@@ -173,8 +172,8 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
             <div class="row align-items-center">
                 <div class="col-md-auto text-center text-md-start mb-3 mb-md-0">
                     <div class="position-relative d-inline-block">
-                        @if ($photo?->temporaryUrl())
-                            <img src="{{ $photo?->temporaryUrl() }}" class="profile-avatar-lg">
+                        @if ($photo)
+                            <img src="{{ $photo->temporaryUrl() }}" class="profile-avatar-lg">
                         @elseif($profile_photo_path)
                             <img src="{{ asset('storage/' . $profile_photo_path) }}" class="profile-avatar-lg">
                         @else
@@ -194,12 +193,12 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                     </p>
                     <div class="d-flex flex-wrap gap-2">
                         <span
-                            class="badge rounded-pill bg-success bg-opacity-10 text-success border border-success-subtle px-3">
+                            class="badge rounded-pill {{ $has_voted ? 'bg-success' : 'bg-primary' }} bg-opacity-10 {{ $has_voted ? 'text-success' : 'text-primary' }} border {{ $has_voted ? 'border-success-subtle' : 'border-primary-subtle' }} px-3">
                             {{ $has_voted ? 'Already Voted' : 'Eligible Voter' }}
                         </span>
                         <span
                             class="badge rounded-pill bg-primary bg-opacity-10 text-primary border border-primary-subtle px-3">
-                            S.Y. {{ $year_level ?: 'N/A' }}
+                            S.Y. {{ $year_level ?: '2025-2026' }}
                         </span>
                     </div>
                 </div>
@@ -272,9 +271,7 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                         </div>
                         <div>
                             <div class="small text-white-50">Date of Birth</div>
-                            <div class="fw-semibold text-white">
-                                {{ $birthday ?: 'N/A' }}
-                            </div>
+                            <div class="fw-semibold text-white">{{ $birthday ?: 'N/A' }}</div>
                         </div>
                     </div>
                 </div>
@@ -301,35 +298,12 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
 
                     <div class="d-flex gap-3 mb-4">
                         <div class="info-icon d-flex align-items-center justify-content-center rounded"
-                            style="width: 40px; height: 40px; background: rgba(103, 58, 183, 0.15); color: var(--purple);">
-                            <i class="bi bi-building fs-5"></i>
-                        </div>
-                        <div>
-                            <div class="small text-white-50">Department</div>
-                            <div class="fw-semibold text-white">{{ $department ?? 'N/A' }}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="d-flex gap-3 mb-4">
-                        <div class="info-icon d-flex align-items-center justify-content-center rounded"
                             style="width: 40px; height: 40px; background: rgba(56, 142, 60, 0.15); color: var(--accent);">
                             <i class="bi bi-layers fs-5"></i>
                         </div>
                         <div>
                             <div class="small text-white-50">Year Level</div>
                             <div class="fw-semibold text-white">{{ $year_level ?? 'N/A' }}</div>
-                        </div>
-                    </div>
-
-                    <div class="d-flex gap-3 mb-4">
-                        <div class="info-icon d-flex align-items-center justify-content-center rounded"
-                            style="width: 40px; height: 40px; background: rgba(253, 203, 110, 0.15); color: var(--warning);">
-                            <i class="bi bi-award-fill fs-5"></i>
-                        </div>
-                        <div>
-                            <div class="small text-white-50">GPA</div>
-                            <div class="fw-semibold text-white">{{ $gpa ?? '0.00' }}</div>
                         </div>
                     </div>
 
@@ -361,32 +335,15 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                     @if ($has_voted)
                         <span class="badge bg-success text-white px-3 py-2 mb-3 rounded-pill">Voted</span>
                         <p class="text-white-50 mb-0 small">
-                            You have successfully cast your vote on
-                            {{ $voted_at ? \Carbon\Carbon::parse($voted_at)->format('M d, Y') : 'the election date' }}.
+                            You cast your vote on {{ \Carbon\Carbon::parse($voted_at)->format('M d, Y') }}.
                         </p>
                     @else
                         <span
                             class="badge bg-primary bg-opacity-25 text-primary border border-primary-subtle px-3 py-2 mb-3 rounded-pill">Eligible</span>
-                        <p class="text-white-50 mb-0 small">
-                            You are eligible to vote in the current Student Council Election.
-                        </p>
-                    @endif
-
-                    <hr class="border-white-10 my-3">
-                    <div class="text-start ps-2">
-                        <small class="text-white-50 d-block mb-1">
-                            <strong style="color: var(--accent);">Has Voted:</strong> {{ $has_voted ? 'Yes' : 'No' }}
-                        </small>
-                        <small class="text-white-50 d-block mb-1">
-                            <strong style="color: var(--purple);">Election:</strong> S.Y.
-                            {{ $year_level ?: '2025-2026' }}
-                        </small>
-                    </div>
-
-                    @if (!$has_voted)
+                        <p class="text-white-50 mb-0 small">You are eligible to vote in this election.</p>
                         <a href="{{ url('students/cast-vote') }}" wire:navigate
                             class="btn btn-glow btn-sm mt-4 w-100">
-                            <i class="bi bi-check2-square me-1"></i>Cast Your Vote Now
+                            <i class="bi bi-check2-square me-1"></i>Cast Vote Now
                         </a>
                     @endif
                 </div>
@@ -408,13 +365,12 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                             <div class="position-relative d-flex align-items-start mb-4">
                                 <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle bg-success shadow"
                                     style="width: 32px; height: 32px; z-index: 2;">
-                                    <i class="bi bi-check-lg text-white" style="font-size: 1.1rem;"></i>
+                                    <i class="bi bi-check-lg text-white"></i>
                                 </div>
                                 <div class="ps-3 pt-1">
-                                    <div class="fw-semibold text-white" style="line-height: 1.2;">Cast Vote
-                                        Successfully</div>
+                                    <div class="fw-semibold text-white">Cast Vote Successfully</div>
                                     <small
-                                        class="text-white-50">{{ $voted_at ? \Carbon\Carbon::parse($voted_at)->format('M d, Y, h:i A') : 'Recently' }}</small>
+                                        class="text-white-50">{{ \Carbon\Carbon::parse($voted_at)->format('M d, Y, h:i A') }}</small>
                                 </div>
                             </div>
                         @endif
@@ -422,34 +378,21 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                         <div class="position-relative d-flex align-items-start mb-4">
                             <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle shadow"
                                 style="width: 32px; height: 32px; background: var(--accent); z-index: 2;">
-                                <i class="bi bi-box-arrow-in-right text-white" style="font-size: 1.1rem;"></i>
+                                <i class="bi bi-box-arrow-in-right text-white"></i>
                             </div>
                             <div class="ps-3 pt-1">
-                                <div class="fw-semibold text-white" style="line-height: 1.2;">Logged in to Voting
-                                    Portal</div>
+                                <div class="fw-semibold text-white">Logged in to Voting Portal</div>
                                 <small class="text-white-50">Today</small>
-                            </div>
-                        </div>
-
-                        <div class="position-relative d-flex align-items-start mb-4">
-                            <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle shadow"
-                                style="width: 32px; height: 32px; background: var(--warning); z-index: 2;">
-                                <i class="bi bi-person-check text-white" style="font-size: 1.1rem;"></i>
-                            </div>
-                            <div class="ps-3 pt-1">
-                                <div class="fw-semibold text-white" style="line-height: 1.2;">Account Verified for
-                                    Voting</div>
-                                <small class="text-white-50">System generated</small>
                             </div>
                         </div>
 
                         <div class="position-relative d-flex align-items-start">
                             <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle shadow"
                                 style="width: 32px; height: 32px; background: var(--purple); z-index: 2;">
-                                <i class="bi bi-person-plus text-white" style="font-size: 1.1rem;"></i>
+                                <i class="bi bi-person-plus text-white"></i>
                             </div>
                             <div class="ps-3 pt-1">
-                                <div class="fw-semibold text-white" style="line-height: 1.2;">Account Created</div>
+                                <div class="fw-semibold text-white">Account Created</div>
                                 <small class="text-white-50">Initial setup</small>
                             </div>
                         </div>
@@ -467,12 +410,14 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                     <h5 class="modal-title fw-bold text-white">Update Information</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <form wire:submit="saveProfile">
-                    <div class="modal-body p-4">
+
+                <div class="modal-body p-4">
+                    {{-- General Profile Form --}}
+                    <form wire:submit="saveProfile">
                         <div class="col-12 text-center mb-4">
                             <label for="photoUpload" style="cursor: pointer;" class="position-relative">
-                                @if ($photo?->temporaryUrl())
-                                    <img src="{{ $photo?->temporaryUrl() }}"
+                                @if ($photo)
+                                    <img src="{{ $photo->temporaryUrl() }}"
                                         style="width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 3px solid var(--accent);">
                                 @elseif($profile_photo_path)
                                     <img src="{{ asset('storage/' . $profile_photo_path) }}"
@@ -486,14 +431,11 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                             </label>
                             <input type="file" id="photoUpload" wire:model="photo" class="d-none"
                                 accept="image/*">
-                            @error('photo')
-                                <div class="text-danger small mt-1">{{ $message }}</div>
-                            @enderror
                         </div>
 
                         <div class="row g-3">
                             <div class="col-md-6">
-                                <label class="form-label small text-white-50">Email</label>
+                                <label class="form-label small text-white-50">Email Address</label>
                                 <input type="email" wire:model="email"
                                     class="form-control bg-dark border-white-10 text-white">
                                 @error('email')
@@ -501,54 +443,55 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                                 @enderror
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label small text-white-50">Phone</label>
+                                <label class="form-label small text-white-50">Phone Number</label>
                                 <input type="text" wire:model="phone"
                                     class="form-control bg-dark border-white-10 text-white">
                                 @error('phone')
                                     <small class="text-danger">{{ $message }}</small>
                                 @enderror
                             </div>
-                        </div>
-
-                        <hr class="my-4 border-white-10">
-                        <h6 class="text-accent small fw-bold mb-3">Security</h6>
-                        <div class="row g-3">
-                            <div class="col-md-4">
-                                <label class="form-label small text-white-50">Current Password</label>
-                                <input type="password" wire:model="current_password"
-                                    class="form-control bg-dark border-white-10 text-white"
-                                    placeholder="Current Password">
-                                @error('current_password')
-                                    <small class="text-danger">{{ $message }}</small>
-                                @enderror
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label small text-white-50">New Password</label>
-                                <input type="password" wire:model="new_password"
-                                    class="form-control bg-dark border-white-10 text-white"
-                                    placeholder="New Password">
-                                @error('new_password')
-                                    <small class="text-danger">{{ $message }}</small>
-                                @enderror
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label small text-white-50">Confirm Password</label>
-                                <input type="password" wire:model="new_password_confirmation"
-                                    class="form-control bg-dark border-white-10 text-white"
-                                    placeholder="Confirm Password">
-                            </div>
                             <div class="col-12 text-end">
-                                <button type="button" wire:click="updatePassword"
-                                    class="btn btn-outline-glow btn-sm">Update Password</button>
+                                <button type="submit" class="btn btn-glow btn-sm px-4">Save Basic Info</button>
                             </div>
                         </div>
+                    </form>
+
+                    <hr class="my-4 border-white-10">
+
+                    {{-- Security Form (Separate) --}}
+                    <h6 class="text-accent small fw-bold mb-3">Security & Password</h6>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <input type="password" wire:model="current_password"
+                                class="form-control bg-dark border-white-10 text-white"
+                                placeholder="Current Password">
+                            @error('current_password')
+                                <small class="text-danger">{{ $message }}</small>
+                            @enderror
+                        </div>
+                        <div class="col-md-4">
+                            <input type="password" wire:model="new_password"
+                                class="form-control bg-dark border-white-10 text-white" placeholder="New Password">
+                            @error('new_password')
+                                <small class="text-danger">{{ $message }}</small>
+                            @enderror
+                        </div>
+                        <div class="col-md-4">
+                            <input type="password" wire:model="new_password_confirmation"
+                                class="form-control bg-dark border-white-10 text-white"
+                                placeholder="Confirm Password">
+                        </div>
+                        <div class="col-12 text-end">
+                            <button type="button" wire:click="updatePassword"
+                                class="btn btn-outline-glow btn-sm">Update Password Only</button>
+                        </div>
                     </div>
-                    <div class="modal-footer border-white-10">
-                        <button type="button" class="btn btn-outline-glow btn-sm"
-                            data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-glow btn-sm">Save Profile</button>
-                    </div>
-                </form>
+                </div>
+
+                <div class="modal-footer border-white-10">
+                    <button type="button" class="btn btn-link text-white-50 text-decoration-none"
+                        data-bs-dismiss="modal">Close</button>
+                </div>
             </div>
         </div>
     </div>

@@ -59,7 +59,9 @@ class User extends Authenticatable
             'email' => $this->email,
         ], false));
 
-        Mail::to($this->email)->send(new ResetPasswordMail($url));
+        $student = $this->student;
+
+        Mail::to($this->email)->send(new ResetPasswordMail($url, $student));
     }
 
     public function roles(): BelongsToMany

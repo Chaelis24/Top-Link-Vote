@@ -1,50 +1,123 @@
 <?php
 
 use Livewire\Volt\Component;
-use Livewire\Attributes\Layout;
-use Livewire\Attributes\Title;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Session;
+use Livewire\Attributes\{Layout, Title, Url};
+use Livewire\WithPagination;
+use Illuminate\Support\Facades\{Auth, Session, DB};
+use App\Models\{Candidate, Student, Platform};
 
 new #[Layout('layouts.app')] #[Title('Manage Profiles')] class extends Component {
-    // Search state for filtering candidates
+    use WithPagination;
+
+    #[Url(history: true)]
     public string $search = '';
 
-    /**
-     * Handle the admin logout logic.
-     */
+    public $editingCandidateId;
+    public $editForm = [
+        'full_name' => '',
+        'bio' => '',
+    ];
+
+    public function with(): array
+    {
+        return [
+            'candidates' => Candidate::with(['student', 'position', 'platforms'])
+                ->whereHas('student', function ($query) {
+                    $query
+                        ->where('first_name', 'like', '%' . $this->search . '%')
+                        ->orWhere('last_name', 'like', '%' . $this->search . '%')
+                        ->orWhere('student_id', 'like', '%' . $this->search . '%');
+                })
+                ->latest()
+                ->paginate(10),
+        ];
+    }
+
+    public function updatingSearch()
+    {
+        $this->resetPage();
+    }
+
+    public function editProfile($id)
+    {
+        $candidate = Candidate::with(['student', 'platforms'])->findOrFail($id);
+        $this->editingCandidateId = $id;
+
+        $this->editForm = [
+            'full_name' => $candidate->student->first_name . ' ' . $candidate->student->last_name,
+            'bio' => $candidate->platform->vision ?? '',
+        ];
+
+        $this->dispatch('open-modal', id: 'editProfileModal');
+    }
+
+    public function updateProfile()
+    {
+        $candidate = Candidate::findOrFail($this->editingCandidateId);
+
+        if ($candidate->platform) {
+            $candidate->platform->update(['vision' => $this->editForm['bio']]);
+        }
+
+        $this->dispatch('close-modal', id: 'editProfileModal');
+        $this->dispatch('notify', message: 'Profile updated successfully!', type: 'success');
+    }
+
     public function logout()
     {
         Auth::guard('web')->logout();
         Session::invalidate();
         Session::regenerateToken();
-
         return $this->redirect('/', navigate: true);
-    }
-
-    /**
-     * Placeholder for updating candidate profile information.
-     */
-    public function updateProfile()
-    {
-        // Add Validation and Update logic here
-        $this->dispatch('notify', message: 'Profile updated successfully!', type: 'success');
-    }
-
-    /**
-     * Placeholder for updating platform details.
-     */
-    public function updatePlatform()
-    {
-        // Add Platform update logic here
-        $this->dispatch('notify', message: 'Platform details saved.', type: 'info');
     }
 }; ?>
 
 <div>
-    {{-- Sidebar & Navigation --}}
-    <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
-    <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
+    <style>
+        /* Compact Action Buttons */
+        .btn-action-sm {
+            width: 32px;
+            height: 32px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            padding: 0;
+            font-size: 1rem;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+        }
+
+        /* Edit Profile Button (Green Bordered) */
+        .btn-profile-edit {
+            background: rgba(0, 184, 148, 0.1);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .btn-profile-edit:hover {
+            background: var(--accent);
+            color: white;
+            box-shadow: 0 0 10px rgba(0, 184, 148, 0.3);
+        }
+
+        /* Platform Button (Purple Bordered) */
+        .btn-platform-edit {
+            background: rgba(162, 155, 254, 0.1);
+            border-color: var(--purple);
+            color: var(--purple);
+        }
+
+        .btn-platform-edit:hover {
+            background: var(--purple);
+            color: white;
+            box-shadow: 0 0 10px rgba(162, 155, 254, 0.3);
+        }
+
+        .table-glass td {
+            vertical-align: middle;
+        }
+    </style>
 
     @include('layouts.partials.admin-sidebar')
 
@@ -52,7 +125,7 @@ new #[Layout('layouts.app')] #[Title('Manage Profiles')] class extends Component
         <div class="topbar">
             <div>
                 <h2>Manage <span>Profiles</span></h2>
-                <p class="text-white-50 mb-0" style="font-size: 0.85rem;">Edit candidate profiles and platform details</p>
+                <p class="text-white-50 mb-0" style="font-size: 0.85rem;">Review and edit candidate profile details</p>
             </div>
             <div class="d-flex align-items-center gap-3">
                 <div class="search-wrap" style="width: 250px;">
@@ -63,107 +136,124 @@ new #[Layout('layouts.app')] #[Title('Manage Profiles')] class extends Component
             </div>
         </div>
 
-        {{-- Profile Cards Grid --}}
-        <div class="row g-4">
-            {{-- Card 1: Juan Dela Cruz --}}
-            <div class="col-md-6 col-lg-4 fade-in-up delay-1">
-                <div class="glass-card profile-card">
-                    <div class="profile-card-header green-bg">
-                        <div class="profile-avatar">JD</div>
-                    </div>
-                    <div class="profile-card-body">
-                        <h6 class="fw-bold mb-1">Juan Dela Cruz</h6>
-                        <small class="text-white-50">Running for President</small>
-                        <span class="badge badge-status badge-open d-block mx-auto mt-2"
-                            style="width: fit-content;">Approved</span>
-
-                        <div class="mt-3 text-start">
-                            <div class="profile-info-item"><span class="text-white-50">Course</span><span
-                                    class="fw-medium">BSIT - 4th Year</span></div>
-                            <div class="profile-info-item"><span class="text-white-50">Party</span><span
-                                    class="fw-medium" style="color: var(--accent);">Green Alliance</span></div>
-                            <div class="profile-info-item"><span class="text-white-50">GPA</span><span
-                                    class="fw-medium">1.50</span></div>
-                        </div>
-
-                        <div class="profile-actions">
-                            <button class="btn btn-outline-glow btn-sm" data-bs-toggle="modal"
-                                data-bs-target="#editProfileModal"><i class="bi bi-pencil me-1"></i>Edit</button>
-                            <button class="btn btn-outline-glow btn-sm"
-                                style="border-color: var(--purple); color: var(--purple);" data-bs-toggle="modal"
-                                data-bs-target="#viewPlatformModal"><i
-                                    class="bi bi-megaphone me-1"></i>Platform</button>
-                        </div>
-                    </div>
-                </div>
+        <div class="glass-card p-0 overflow-hidden">
+            <div class="table-responsive">
+                <table class="table table-glass mb-0">
+                    <thead>
+                        <tr>
+                            <th>Candidate</th>
+                            <th>Position / Party</th>
+                            <th>Status</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse($candidates as $candidate)
+                            <tr>
+                                <td>
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="profile-avatar-sm"
+                                            style="width: 38px; height: 38px; background: var(--accent); color: white; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.85rem;">
+                                            {{ substr($candidate->student->first_name, 0, 1) }}{{ substr($candidate->student->last_name, 0, 1) }}
+                                        </div>
+                                        <div>
+                                            <div class="fw-semibold text-white">{{ $candidate->student->first_name }}
+                                                {{ $candidate->student->last_name }}</div>
+                                            <div class="small text-white-50">{{ $candidate->student->course }}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="text-white small fw-medium">{{ $candidate->position->name }}</div>
+                                    <div class="text-accent small" style="font-size: 0.75rem;">
+                                        {{ $candidate->party_name }}</div>
+                                </td>
+                                <td>
+                                    @php
+                                        $statusStyle =
+                                            $candidate->status === 'pending'
+                                                ? 'background: rgba(253,203,110,0.1); color: #fdcb6e; border: 1px solid rgba(253,203,110,0.2);'
+                                                : 'background: rgba(0, 184, 148, 0.1); color: var(--accent); border: 1px solid rgba(0, 184, 148, 0.2);';
+                                    @endphp
+                                    <span class="badge"
+                                        style="{{ $statusStyle }} font-weight: 500; padding: 0.4em 0.8em;">
+                                        {{ ucfirst($candidate->status) }}
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    <div class="d-flex justify-content-center align-items-center gap-2">
+                                        {{-- Small Edit Profile Button --}}
+                                        <button class="btn-action-sm btn-profile-edit"
+                                            wire:click="editProfile({{ $candidate->id }})" title="Edit Profile">
+                                            <i class="bi bi-pencil-square"></i>
+                                        </button>
+                                        {{-- Small Platform Button --}}
+                                        <button class="btn-action-sm btn-platform-edit" title="Edit Platform">
+                                            <i class="bi bi-megaphone"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="4" class="text-center text-white-50 p-5">
+                                    <i class="bi bi-people mb-2 d-block" style="font-size: 2rem;"></i>
+                                    No profiles found matching your search.
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
             </div>
-
-            {{-- Card 3: Antonio Reyes (Pending Example) --}}
-            <div class="col-md-6 col-lg-4 fade-in-up delay-3">
-                <div class="glass-card profile-card">
-                    <div class="profile-card-header green-bg">
-                        <div class="profile-avatar">AR</div>
-                    </div>
-                    <div class="profile-card-body">
-                        <h6 class="fw-bold mb-1">Antonio Reyes</h6>
-                        <small class="text-white-50">Running for Vice President</small>
-                        <span class="badge badge-status d-block mx-auto mt-2"
-                            style="width: fit-content; background: rgba(253,203,110,0.15); color: var(--warning);">Pending</span>
-
-                        <div class="mt-3 text-start">
-                            <div class="profile-info-item"><span class="text-white-50">Course</span><span
-                                    class="fw-medium">BSBA - 4th Year</span></div>
-                            <div class="profile-info-item"><span class="text-white-50">Party</span><span
-                                    class="fw-medium" style="color: var(--accent);">Green Alliance</span></div>
-                            <div class="profile-info-item"><span class="text-white-50">GPA</span><span
-                                    class="fw-medium">1.75</span></div>
-                        </div>
-                        <div class="profile-actions">
-                            <button class="btn btn-outline-glow btn-sm"><i class="bi bi-pencil me-1"></i>Edit</button>
-                            <button class="btn btn-outline-glow btn-sm"
-                                style="border-color: var(--purple); color: var(--purple);"><i
-                                    class="bi bi-megaphone me-1"></i>Platform</button>
-                        </div>
-                    </div>
-                </div>
+            <div class="p-3 border-top border-white-10">
+                {{ $candidates->links() }}
             </div>
         </div>
     </main>
 
-    {{-- Edit Profile Modal --}}
+    {{-- Edit Modal --}}
     <div class="modal fade modal-glass" id="editProfileModal" tabindex="-1" wire:ignore.self>
-        <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="bi bi-person-gear me-2" style="color: var(--accent);"></i>Edit
-                        Profile</h5>
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content glass-card border-0">
+                <div class="modal-header border-bottom border-white-10">
+                    <h5 class="modal-title text-white"><i class="bi bi-person-gear me-2 text-accent"></i>Edit Profile
+                    </h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body">
-                    <form wire:submit.prevent="updateProfile">
+                <form wire:submit="updateProfile">
+                    <div class="modal-body">
                         <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="form-label text-white-50 small">Full Name</label>
-                                <input type="text" class="form-control-glass w-100" value="Juan Dela Cruz">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label text-white-50 small">GPA</label>
-                                <input type="text" class="form-control-glass w-100" value="1.50">
+                            <div class="col-12">
+                                <label class="form-label text-white-50 small">Candidate Name</label>
+                                <input type="text" class="form-control-glass w-100" wire:model="editForm.full_name"
+                                    readonly style="opacity: 0.7; cursor: not-allowed;">
                             </div>
                             <div class="col-12">
-                                <label class="form-label text-white-50 small">Bio / Tagline</label>
-                                <textarea class="form-control-glass w-100" rows="3" placeholder="Enter candidate bio..."></textarea>
+                                <label class="form-label text-white-50 small">Platform / Visionary Statement</label>
+                                <textarea class="form-control-glass w-100" rows="5" wire:model="editForm.bio"
+                                    placeholder="Enter the candidate's platform or vision here..."></textarea>
                             </div>
                         </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-glow btn-sm"
-                        data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" wire:click="updateProfile" class="btn btn-glow btn-sm"
-                        data-bs-dismiss="modal">Save Changes</button>
-                </div>
+                    </div>
+                    <div class="modal-footer border-top border-white-10">
+                        <button type="button" class="btn btn-outline-light btn-sm px-3"
+                            data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-glow btn-sm px-4">Update Profile</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
+
+    <script>
+        window.addEventListener('open-modal', event => {
+            let el = document.getElementById(event.detail.id);
+            bootstrap.Modal.getOrCreateInstance(el).show();
+        });
+        window.addEventListener('close-modal', event => {
+            let el = document.getElementById(event.detail.id);
+            let modal = bootstrap.Modal.getInstance(el);
+            if (modal) modal.hide();
+        });
+    </script>
 </div>

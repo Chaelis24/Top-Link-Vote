@@ -23,7 +23,7 @@ return new class extends Migration
             $table->dateTime('voting_start');
             $table->dateTime('voting_end');
             $table->dateTime('results_date')->nullable();
-            $table->enum('status', ['draft', 'upcoming', 'ongoing', 'completed', 'archived'])->default('draft');
+            $table->enum('status', ['active', 'pending', 'completed'])->default('active');
             $table->boolean('is_active')->default(false);
             $table->timestamps();
         });

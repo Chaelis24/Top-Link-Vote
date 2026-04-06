@@ -14,13 +14,17 @@ return new class extends Migration
         Schema::create('positions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('election_cycle_id')->constrained()->cascadeOnDelete();
+            $table->string('student_department')->nullable();
             $table->string('name');
+            $table->string('slug');
             $table->text('description')->nullable();
             $table->integer('max_candidates')->default(10);
             $table->integer('max_winners')->default(1);
             $table->integer('priority')->default(0);
             $table->boolean('is_active')->default(true);
             $table->timestamps();
+
+            $table->index(['election_cycle_id', 'student_department']);
         });
     }
 

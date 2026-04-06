@@ -29,10 +29,8 @@
     <div class="bg-animated"></div>
     <div class="particles" id="particles"></div>
 
-    {{-- DITO PAPASOK ANG VOLT COMPONENT --}}
     {{ $slot }}
 
-    {{-- Scripts --}}
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/aos@2.3.4/dist/aos.js"></script>
     <script>
@@ -43,7 +41,6 @@
     </script>
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    {{-- Livewire Scripts --}}
     @livewireScripts
     @stack('scripts')
 </body>

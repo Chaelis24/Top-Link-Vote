@@ -22,23 +22,8 @@ document.addEventListener("click", (e) => {
     }
 });
 
-window.addEventListener("swal:modal", (event) => {
-    Swal.fire({
-        title: `<span style="color: #ffffff; font-family: sans-serif;">${event.detail[0].title}</span>`,
-        text: event.detail[0].text,
-        icon: event.detail[0].type,
-        background: "#1a222c",
-        color: "#cbd5e0",
-        confirmButtonText: "Understood",
-        confirmButtonColor: "#28a745",
-        borderRadius: "15px",
-        showClass: {
-            popup: "animate__animated animate__fadeInDown",
-        },
-        hideClass: {
-            popup: "animate__animated animate__fadeOutUp",
-        },
-    });
+window.addEventListener("notify", (event) => {
+    clearInterval(fakeProgressInterval);
 });
 
 window.addEventListener("notify", (event) => {

@@ -41,7 +41,7 @@ class LoginForm extends Form
             $user = User::where('email', $this->student_id)->first();
         }
 
-        if (!$user || ! Hash::check($this->password, $user->password)) {
+        if (!$user || !Hash::check($this->password, $user->password)) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([

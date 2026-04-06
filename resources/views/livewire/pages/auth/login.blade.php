@@ -13,18 +13,25 @@ new #[Layout('layouts.guest')] class extends Component {
      */
     public function login(): void
     {
-        $this->validate();
+        try {
+            $this->validate();
 
-        $this->form->authenticate();
+            $this->form->authenticate();
 
-        $user = auth()->user();
+            $user = auth()->user();
 
-        if ($user->roles()->where('name', 'admin')->exists()) {
-            $this->redirectIntended(route('admin.dashboard'), navigate: true);
-            return;
+            if ($user->roles()->where('name', 'admin')->exists()) {
+                $this->redirectIntended(route('admin.dashboard'), navigate: true);
+                return;
+            }
+
+            $this->redirectIntended(route('student.dashboard'), navigate: true);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            $this->form->password = '';
+            $this->dispatch('auth-failed');
+
+            throw $e;
         }
-
-        $this->redirectIntended(route('student.dashboard'), navigate: true);
     }
 }; ?>
 
@@ -49,13 +56,20 @@ new #[Layout('layouts.guest')] class extends Component {
 
             <form wire:submit="login">
                 <div class="form-floating-custom">
-                    <input type="text" wire:model="form.student_id" placeholder="Student ID Number" required>
+                    <input type="text" id="student_id" wire:model="form.student_id" placeholder=" " required>
+                    <label for="student_id">Student ID Number</label>
                     <i class="bi bi-person-badge input-icon"></i>
                 </div>
 
-                <div class="form-floating-custom">
-                    <input type="password" wire:model="form.password" placeholder="Password" required>
+                <div class="form-floating-custom" style="position: relative;" x-data="{ show: false }">
+                    <input :type="show ? 'text' : 'password'" id="passwordInput" wire:model="form.password"
+                        placeholder=" " required>
+                    <label for="passwordInput">Password</label>
                     <i class="bi bi-lock input-icon"></i>
+
+                    <i class="bi" :class="show ? 'bi-eye' : 'bi-eye-slash'" @click="show = !show"
+                        style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; z-index: 10; opacity: 0.7;">
+                    </i>
                 </div>
 
                 <div class="remember-row">
@@ -63,7 +77,7 @@ new #[Layout('layouts.guest')] class extends Component {
                         <input type="checkbox" wire:model="form.remember" id="remember">
                         <label for="remember">Remember me</label>
                     </div>
-                    <a href="{{ url('/forgot-password') }}" class="forgot-link">Forgot password?</a>
+                    <a href="{{ route('forgot-password') }}" wire:navigate class="forgot-link">Forgot password?</a>
                 </div>
 
                 <button type="submit" class="btn btn-glow btn-login">

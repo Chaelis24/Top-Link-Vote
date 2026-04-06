@@ -71,7 +71,12 @@
 
     <div class="mt-auto px-3 pt-4" style="position: absolute; bottom: 24px; left: 0; right: 0;">
         <button wire:click="logout" class="btn btn-outline-glow w-100">
-            <i class="bi bi-box-arrow-left me-2"></i>Logout
+            <span wire:loading.remove>
+                <i class="bi bi-box-arrow-left me-2"></i>Logout
+            </span>
+            <span wire:loading>
+                Logging out...
+            </span>
         </button>
     </div>
 </aside>

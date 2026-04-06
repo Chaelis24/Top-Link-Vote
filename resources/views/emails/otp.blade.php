@@ -7,32 +7,29 @@
         style="max-width: 500px; margin: 20px auto; background: #ffffff; padding: 40px; border-radius: 12px; border: 1px solid #e1e1e1; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
 
         <div style="text-align: center; margin-bottom: 25px;">
-            <h2 style="color: #1a1a1a; margin-bottom: 10px;">Password Reset Request</h2>
+            <h2 style="color: #1a1a1a; margin-bottom: 10px;">Verify Your Account</h2>
             <div style="height: 2px; width: 50px; background-color: #007bff; margin: auto;"></div>
         </div>
 
         <p style="color: #4a4a4a; line-height: 1.6; font-size: 15px;">
-            Hello <strong>
-                {{ $student->first_name }}
-                {{ $student->middle_name ? substr($student->middle_name, 0, 1) . '.' : '' }}
-                {{ $student->last_name }}{{ $student->suffix ? ' ' . $student->suffix : '' }}</strong>,
+            Hello,
         </p>
 
         <p style="color: #4a4a4a; line-height: 1.6; font-size: 15px;">
-            We received a request to reset the password for your election account. You can reset your password by
-            clicking the button below:
+            We received a request to verify your account for the election system. Please use the verification code below
+            to complete your setup:
         </p>
 
         <div style="text-align: center; margin: 35px 0;">
-            <a href="{{ $url }}"
-                style="background-color: #007bff; color: white; padding: 14px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; display: inline-block;">
-                Reset My Password
-            </a>
+            <span
+                style="background-color: #f8f9fa; color: #007bff; padding: 15px 35px; border-radius: 8px; font-weight: bold; font-size: 28px; display: inline-block; letter-spacing: 5px; border: 2px dashed #007bff;">
+                {{ $code }}
+            </span>
         </div>
 
         <p style="color: #6c757d; font-size: 13px; line-height: 1.5;">
-            <strong>Note:</strong> This password reset link is valid for <strong>60 minutes</strong> only.
-            If you did not request a password reset, no further action is required and you can safely ignore this email.
+            <strong>Note:</strong> This verification code is valid for <strong>10 minutes</strong> only.
+            If you did not request this code, no further action is required and you can safely ignore this email.
         </p>
 
         <hr style="border: none; border-top: 1px solid #eeeeee; margin: 30px 0;">

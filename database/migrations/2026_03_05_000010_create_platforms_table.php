@@ -19,7 +19,7 @@ return new class extends Migration
             $table->text('mission')->nullable();
             $table->json('goals')->nullable();
             $table->json('action_plans')->nullable();
-            $table->enum('status', ['draft', 'submitted', 'approved'])->default('draft');
+            $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending');
             $table->text('admin_notes')->nullable();
             $table->timestamp('submitted_at')->nullable();
             $table->timestamp('approved_at')->nullable();

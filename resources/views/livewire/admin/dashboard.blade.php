@@ -5,54 +5,83 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
+use App\Models\Vote;
+use App\Models\Candidate;
+use App\Models\Student;
+use Barryvdh\DomPDF\Facade\Pdf;
 
-new #[Layout('layouts.app')] #[Title('Admin Dashboard')] class extends Component {
-    // Component State
-    public int $totalVotes = 1254;
-    public int $candidatesCount = 4;
-    public string $turnout = '87%';
-    public int $daysLeft = 3;
-    public array $chartData = [339, 557, 213, 125];
+new #[Layout('layouts.app'), Title('Admin Dashboard')] class extends Component {
+    public function with(): array
+    {
+        $departments = ['IT', 'HRMT', 'ECT', 'HST'];
+        $tallyByDept = [];
 
-    /**
-     * Handle the admin logout logic.
-     */
+        foreach ($departments as $dept) {
+            $tallyByDept[$dept] = Candidate::where('course', $dept)
+                ->with(['student', 'position'])
+                ->withCount('votes')
+                ->get()
+                ->map(function ($candidate) {
+                    return [
+                        'label' => $candidate->student->first_name . ' ' . $candidate->student->last_name,
+                        'position' => $candidate->position->name ?? 'N/A',
+                        'votes' => $candidate->votes_count,
+                    ];
+                });
+        }
+
+        $totalStudents = Student::count();
+        $totalVotes = Vote::count();
+        $turnout = $totalStudents > 0 ? number_format(($totalVotes / $totalStudents) * 100, 1) . '%' : '0%';
+
+        return [
+            'totalVotes' => $totalVotes,
+            'candidatesCount' => Candidate::count(),
+            'turnout' => $turnout,
+            'daysLeft' => 3,
+            'tallyByDept' => $tallyByDept,
+            'departments' => $departments,
+        ];
+    }
+
+    public function downloadReport()
+    {
+        $data = $this->with();
+        $data['date'] = now()->format('F d, Y h:i A');
+
+        $pdf = Pdf::loadView('pdf.election-report', $data);
+
+        return response()->streamDownload(function () use ($pdf) {
+            echo $pdf->stream();
+        }, 'Election_Report_' . now()->format('Y-m-d') . '.pdf');
+    }
+
     public function logout()
     {
         Auth::guard('web')->logout();
         Session::invalidate();
         Session::regenerateToken();
-
         return $this->redirect('/', navigate: true);
-    }
-
-    /**
-     * Example method for generating reports
-     */
-    public function downloadReport()
-    {
-        // Logic for PDF generation would go here
-        session()->flash('message', 'Report generation started...');
     }
 }; ?>
 
 <div>
-    {{-- Sidebar & Navigation --}}
     <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
     <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
 
     @include('layouts.partials.admin-sidebar')
 
     <main class="main-content">
-        {{-- Top Bar --}}
         <div class="topbar">
             <div>
                 <h2>Admin <span>Dashboard</span></h2>
                 <p class="text-white-50 mb-0" style="font-size: 0.85rem;">Welcome, Administrator</p>
             </div>
             <div class="d-flex align-items-center gap-3">
-                <button wire:click="downloadReport" class="btn btn-outline-glow btn-sm">
-                    <i class="bi bi-download me-1"></i>Download PDF
+                {{-- Gumagana na ang button na ito --}}
+                <button wire:click="downloadReport" wire:loading.attr="disabled" class="btn btn-outline-glow btn-sm">
+                    <span wire:loading.remove><i class="bi bi-download me-1"></i>Download PDF</span>
+                    <span wire:loading><i class="spinner-border spinner-border-sm me-1"></i>Generating...</span>
                 </button>
                 <a href="{{ url('/admin/settings') }}">
                     <div class="admin-avatar-glow">
@@ -62,30 +91,30 @@ new #[Layout('layouts.app')] #[Title('Admin Dashboard')] class extends Component
             </div>
         </div>
 
-        {{-- Quick Stat Cards --}}
+        {{-- Stat Cards --}}
         <div class="row g-3 mb-4">
-            <div class="col-6 col-lg-3 fade-in-up delay-1">
+            <div class="col-6 col-lg-3">
                 <div class="glass-card stat-card">
                     <div class="stat-icon icon-green"><i class="bi bi-person-fill-check"></i></div>
                     <div class="stat-value text-accent">{{ number_format($totalVotes) }}</div>
                     <div class="stat-label">Total Votes</div>
                 </div>
             </div>
-            <div class="col-6 col-lg-3 fade-in-up delay-2">
+            <div class="col-6 col-lg-3">
                 <div class="glass-card stat-card">
                     <div class="stat-icon icon-purple"><i class="bi bi-people-fill"></i></div>
                     <div class="stat-value text-purple">{{ $candidatesCount }}</div>
                     <div class="stat-label">Candidates</div>
                 </div>
             </div>
-            <div class="col-6 col-lg-3 fade-in-up delay-3">
+            <div class="col-6 col-lg-3">
                 <div class="glass-card stat-card">
                     <div class="stat-icon icon-green"><i class="bi bi-check-circle-fill"></i></div>
                     <div class="stat-value text-success">{{ $turnout }}</div>
                     <div class="stat-label">Turnout Rate</div>
                 </div>
             </div>
-            <div class="col-6 col-lg-3 fade-in-up delay-4">
+            <div class="col-6 col-lg-3">
                 <div class="glass-card stat-card">
                     <div class="stat-icon icon-warning"><i class="bi bi-clock-history"></i></div>
                     <div class="stat-value text-warning">{{ $daysLeft }}</div>
@@ -94,120 +123,23 @@ new #[Layout('layouts.app')] #[Title('Admin Dashboard')] class extends Component
             </div>
         </div>
 
-        {{-- Charts Section --}}
-        <div class="row g-3 mb-4">
-            <div class="col-lg-8 fade-in-up delay-5">
-                <div class="glass-card chart-container">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h5 class="mb-0"><i class="bi bi-lightning-fill text-warning me-2"></i>Elections Cycle</h5>
-                        <span class="badge badge-status badge-open">
-                            <span class="pulse-dot me-1" style="background: var(--success);"></span> Active
-                        </span>
-                    </div>
-
-                    <div class="row g-2 mb-3">
-                        <div class="col-3">
-                            <div class="text-center p-2 glass rounded-3">
-                                <div class="fw-bold text-accent">1,254</div>
-                                <small class="text-white-50 extra-small">Total Votes</small>
-                            </div>
+        {{-- Department Charts --}}
+        <div class="row g-4 mb-4">
+            @foreach ($departments as $dept)
+                <div class="col-lg-6">
+                    <div class="glass-card p-4 h-100">
+                        <div class="d-flex justify-content-between align-items-center mb-4">
+                            <h5 class="text-accent mb-0 fw-bold">{{ $dept }} Department</h5>
+                            <span class="badge badge-status bg-purple-soft px-3 py-2">
+                                <span class="pulse-dot me-1"></span> LIVE TALLY
+                            </span>
                         </div>
-                        {{-- Data points here could be dynamic in the future based on $chartData --}}
-                        <div class="col-3">
-                            <div class="text-center p-2 glass rounded-3">
-                                <div class="fw-bold text-purple">50%</div>
-                                <small class="text-white-50 extra-small">Candidate A</small>
-                            </div>
+                        <div style="height: 400px;" wire:ignore>
+                            <canvas id="chart-{{ $dept }}"></canvas>
                         </div>
-                        <div class="col-3">
-                            <div class="text-center p-2 glass rounded-3">
-                                <div class="fw-bold text-success">40%</div>
-                                <small class="text-white-50 extra-small">Candidate B</small>
-                            </div>
-                        </div>
-                        <div class="col-3">
-                            <div class="text-center p-2 glass rounded-3">
-                                <div class="fw-bold text-warning">10%</div>
-                                <small class="text-white-50 extra-small">Others</small>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div style="height: 280px;" wire:ignore>
-                        <canvas id="adminBarChart"></canvas>
                     </div>
                 </div>
-            </div>
-
-            <div class="col-lg-4 fade-in-up delay-5">
-                <div class="glass-card chart-container h-100">
-                    <h5><i class="bi bi-pie-chart-fill text-info me-2"></i>Elections Reports</h5>
-                    <div style="height: 220px;" wire:ignore>
-                        <canvas id="adminPieChart"></canvas>
-                    </div>
-
-                    <div class="mt-3">
-                        @foreach ([['A', 'accent', '27%'], ['B', 'purple', '44.4%'], ['C', 'success', '17%'], ['D', 'warning', '10%']] as $item)
-                            <div
-                                class="d-flex justify-content-between align-items-center py-2 border-bottom border-white-5">
-                                <div class="d-flex align-items-center gap-2">
-                                    <span class="legend-dot" style="background:var(--{{ $item[1] }});"></span>
-                                    <small>Candidate {{ $item[0] }}</small>
-                                </div>
-                                <small class="fw-semibold"
-                                    style="color: var(--{{ $item[1] }});">{{ $item[2] }}</small>
-                            </div>
-                        @endforeach
-                    </div>
-
-                    <div class="d-flex gap-2 mt-3">
-                        <button class="btn btn-outline-glow btn-sm flex-fill">Full Report</button>
-                        <button class="btn btn-outline-glow btn-sm flex-fill">PDF</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        {{-- Quick Actions --}}
-        <div class="row g-3">
-            <div class="col-md-4">
-                <div class="glass-card p-4 action-hover">
-                    <div class="d-flex align-items-center gap-3 mb-3">
-                        <div class="stat-icon icon-green"><i class="bi bi-person-plus-fill"></i></div>
-                        <div>
-                            <h6 class="mb-0 fw-semibold">Manage Candidates</h6>
-                            <small class="text-white-50">Add/Edit profiles</small>
-                        </div>
-                    </div>
-                    <a href="/admin/candidates" wire:navigate class="btn btn-outline-glow btn-sm w-100">Open
-                        Manager</a>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="glass-card p-4 action-hover">
-                    <div class="d-flex align-items-center gap-3 mb-3">
-                        <div class="stat-icon icon-purple"><i class="bi bi-person-lines-fill"></i></div>
-                        <div>
-                            <h6 class="mb-0 fw-semibold">Student/Voters</h6>
-                            <small class="text-white-50">View voter list</small>
-                        </div>
-                    </div>
-                    <a href="/admin/voters" wire:navigate class="btn btn-outline-glow btn-sm w-100">Manage Voters</a>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="glass-card p-4 action-hover">
-                    <div class="d-flex align-items-center gap-3 mb-3">
-                        <div class="stat-icon icon-green" style="color: var(--success);"><i
-                                class="bi bi-calendar-check-fill"></i></div>
-                        <div>
-                            <h6 class="mb-0 fw-semibold">Election Cycle</h6>
-                            <small class="text-white-50">Set timeline</small>
-                        </div>
-                    </div>
-                    <button class="btn btn-outline-glow btn-sm w-100">Configure</button>
-                </div>
-            </div>
+            @endforeach
         </div>
     </main>
 
@@ -238,51 +170,67 @@ new #[Layout('layouts.app')] #[Title('Admin Dashboard')] class extends Component
             color: var(--warning);
         }
 
-        .extra-small {
-            font-size: 0.7rem;
+        .bg-purple-soft {
+            background: rgba(103, 58, 183, 0.1);
+            color: var(--purple);
+            border: 1px solid rgba(103, 58, 183, 0.2);
         }
 
-        .legend-dot {
-            width: 10px;
-            height: 10px;
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--success);
             border-radius: 50%;
             display: inline-block;
+            animation: pulse 1.5s infinite;
         }
 
-        .border-white-5 {
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        }
+        @keyframes pulse {
+            0% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7);
+            }
 
-        .action-hover:hover {
-            transform: translateY(-5px);
-            transition: all 0.3s ease;
+            70% {
+                transform: scale(1);
+                box-shadow: 0 0 0 10px rgba(76, 175, 80, 0);
+            }
+
+            100% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(76, 175, 80, 0);
+            }
         }
     </style>
 
     @script
         <script>
-            // Encapsulating Chart logic
-            const initCharts = () => {
-                const barCtx = document.getElementById('adminBarChart');
-                const pieCtx = document.getElementById('adminPieChart');
+            const renderCharts = () => {
+                const tallyData = @json($tallyByDept);
+                const departments = @json($departments);
 
-                if (barCtx) {
-                    new Chart(barCtx, {
+                departments.forEach(dept => {
+                    const ctx = document.getElementById(`chart-${dept}`);
+                    if (!ctx) return;
+                    const existingChart = Chart.getChart(ctx);
+                    if (existingChart) existingChart.destroy();
+
+                    const data = tallyData[dept];
+                    new Chart(ctx, {
                         type: 'bar',
                         data: {
-                            labels: ['Candidate A', 'Candidate B', 'Candidate C', 'Candidate D'],
+                            labels: data.map(item => `${item.label} (${item.position})`),
                             datasets: [{
-                                data: @js($chartData), // Passing class property to JS
-                                backgroundColor: [
-                                    'rgba(56, 142, 60, 0.7)', 'rgba(103, 58, 183, 0.7)',
-                                    'rgba(76, 175, 80, 0.7)', 'rgba(253, 203, 110, 0.7)'
-                                ],
-                                borderColor: ['#388e3c', '#673ab7', '#4caf50', '#fdcb6e'],
+                                data: data.map(item => item.votes),
+                                backgroundColor: 'rgba(103, 58, 183, 0.7)',
+                                borderColor: 'rgba(103, 58, 183, 1)',
                                 borderWidth: 2,
-                                borderRadius: 8
+                                borderRadius: 8,
+                                barThickness: 35
                             }]
                         },
                         options: {
+                            indexAxis: 'y',
                             responsive: true,
                             maintainAspectRatio: false,
                             plugins: {
@@ -291,58 +239,28 @@ new #[Layout('layouts.app')] #[Title('Admin Dashboard')] class extends Component
                                 }
                             },
                             scales: {
-                                y: {
+                                x: {
+                                    beginAtZero: true,
                                     grid: {
                                         color: 'rgba(255,255,255,0.05)'
                                     },
                                     ticks: {
-                                        color: 'rgba(255,255,255,0.5)'
+                                        color: 'rgba(255,255,255,0.5)',
+                                        stepSize: 1
                                     }
                                 },
-                                x: {
-                                    grid: {
-                                        display: false
-                                    },
+                                y: {
                                     ticks: {
-                                        color: 'rgba(255,255,255,0.5)'
+                                        color: 'rgba(255,255,255,0.9)'
                                     }
                                 }
                             }
                         }
                     });
-                }
-
-                if (pieCtx) {
-                    new Chart(pieCtx, {
-                        type: 'doughnut',
-                        data: {
-                            labels: ['A', 'B', 'C', 'D'],
-                            datasets: [{
-                                data: [27, 44.4, 17, 10],
-                                backgroundColor: ['#388e3c', '#673ab7', '#4caf50', '#fdcb6e'],
-                                borderWidth: 0
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            cutout: '70%',
-                            plugins: {
-                                legend: {
-                                    display: false
-                                }
-                            }
-                        }
-                    });
-                }
+                });
             };
-
-            initCharts();
-
-            // Support for SPA navigation
-            document.addEventListener('livewire:navigated', () => {
-                initCharts();
-            });
+            renderCharts();
+            document.addEventListener('livewire:navigated', renderCharts);
         </script>
     @endscript
 </div>

@@ -9,27 +9,31 @@ use Illuminate\Support\Facades\Session;
 
 new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Component {
     public $student;
-    public $hasVoted = false;
     public $profile_photo_path;
 
     #[Computed]
     public function tallyData()
     {
-        return \App\Models\Position::with([
-            'candidates' => function ($query) {
-                $query->orderBy('votes_count', 'desc');
-            },
-            'candidates.student',
-        ])
+        // Kunin ang course ng current student
+        $voterCourse = $this->student->course ?? null;
+
+        return \App\Models\Candidate::with(['student', 'position'])
+            ->whereHas('position', function ($query) use ($voterCourse) {
+                // I-filter ang positions:
+                // 1. Walang department (General) OR
+                // 2. Match sa course ng student
+                $query->whereNull('student_department')->orWhere('student_department', '')->orWhere('student_department', $voterCourse);
+            })
             ->get()
-            ->map(function ($position) {
+            ->map(function ($candidate) {
                 return [
-                    'id' => $position->id,
-                    'name' => $position->name,
-                    'labels' => $position->candidates->filter(fn($c) => $c->student !== null)->map(fn($c) => $c->student->last_name)->toArray(),
-                    'votes' => $position->candidates->filter(fn($c) => $c->student !== null)->pluck('votes_count')->toArray(),
+                    'label' => ($candidate->student->last_name ?? 'Unknown') . ' (' . ($candidate->position->name ?? 'N/A') . ')',
+                    'votes' => $candidate->votes_count,
                 ];
-            });
+            })
+            ->sortByDesc('votes')
+            ->values()
+            ->toArray();
     }
 
     public function mount()
@@ -83,7 +87,7 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
         </div>
 
         <div class="row g-3 mb-4">
-            <div class="col-lg-4 col-md-6 fade-in-up delay-1">
+            <div class="col-lg-4 col-md-6">
                 <div class="glass-card p-4 h-100">
                     <div class="d-flex align-items-center gap-3 mb-3">
                         <div class="stat-icon icon-accent">
@@ -97,7 +101,7 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
                 </div>
             </div>
 
-            <div class="col-lg-4 col-md-6 fade-in-up delay-2">
+            <div class="col-lg-4 col-md-6">
                 <div class="glass-card p-4 h-100">
                     <div class="d-flex align-items-center gap-3 mb-3">
                         <div class="stat-icon icon-purple">
@@ -111,7 +115,7 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
                 </div>
             </div>
 
-            <div class="col-lg-4 col-md-12 fade-in-up delay-3">
+            <div class="col-lg-4 col-md-12">
                 <div class="glass-card p-4 h-100 highlight-border">
                     <div class="d-flex align-items-center gap-3 mb-3">
                         <div class="stat-icon icon-success">
@@ -128,82 +132,75 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
         </div>
 
         <div class="row g-3">
-            @foreach ($this->tallyData as $index => $pos)
-                <div class="col-lg-6 fade-in-up">
-                    <div class="glass-card p-4 mb-3">
-                        <h5 class="text-white mb-4">
-                            <i class="bi bi-bar-chart-fill text-accent me-2"></i>{{ $pos['name'] }} Tally
-                        </h5>
-                        <div style="height: 300px;" wire:ignore>
-                            <canvas id="chart-{{ $pos['id'] }}"></canvas>
-                        </div>
+            <div class="col-12">
+                <div class="glass-card p-4 mb-3">
+                    <h5 class="text-white mb-4">
+                        <i class="bi bi-bar-chart-line-fill text-accent me-2"></i>Live Election Standings for <span
+                            class="text-accent">{{ $student->course }}</span>
+                    </h5>
+                    <div style="height: 450px;" wire:ignore>
+                        <canvas id="mainTallyChart"></canvas>
                     </div>
                 </div>
-            @endforeach
+            </div>
         </div>
     </main>
 
     @script
         <script>
-            const renderCharts = () => {
-                const tallyData = @json($this->tallyData);
+            const renderChart = () => {
+                const data = @json($this->tallyData);
+                const ctx = document.getElementById('mainTallyChart');
+                if (!ctx) return;
 
-                tallyData.forEach(pos => {
-                    const ctx = document.getElementById(`chart-${pos.id}`);
-                    if (!ctx) return;
+                const existingChart = Chart.getChart(ctx);
+                if (existingChart) existingChart.destroy();
 
-                    const existingChart = Chart.getChart(ctx);
-                    if (existingChart) existingChart.destroy();
-
-                    new Chart(ctx, {
-                        type: 'bar',
-                        data: {
-                            labels: pos.labels,
-                            datasets: [{
-                                label: 'Votes',
-                                data: pos.votes,
-                                backgroundColor: [
-                                    'rgba(103, 58, 183, 0.7)',
-                                    'rgba(0, 184, 148, 0.7)',
-                                    'rgba(9, 132, 227, 0.7)',
-                                    'rgba(253, 203, 110, 0.7)',
-                                    'rgba(231, 76, 60, 0.7)'
-                                ],
-                                borderRadius: 8
-                            }]
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.map(item => item.label),
+                        datasets: [{
+                            label: 'Votes',
+                            data: data.map(item => item.votes),
+                            backgroundColor: 'rgba(103, 58, 183, 0.7)',
+                            borderColor: 'rgba(103, 58, 183, 1)',
+                            borderWidth: 1,
+                            borderRadius: 6
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
                         },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: {
-                                legend: {
-                                    display: false
+                        scales: {
+                            x: {
+                                beginAtZero: true,
+                                grid: {
+                                    color: 'rgba(255,255,255,0.05)'
+                                },
+                                ticks: {
+                                    color: 'rgba(255,255,255,0.5)',
+                                    stepSize: 1
                                 }
                             },
-                            scales: {
-                                y: {
-                                    beginAtZero: true,
-                                    grid: {
-                                        color: 'rgba(255,255,255,0.05)'
-                                    },
-                                    ticks: {
-                                        color: 'rgba(255,255,255,0.5)',
-                                        stepSize: 1
-                                    }
-                                },
-                                x: {
-                                    ticks: {
-                                        color: 'rgba(255,255,255,0.5)'
-                                    }
+                            y: {
+                                ticks: {
+                                    color: 'rgba(255,255,255,0.8)'
                                 }
                             }
                         }
-                    });
+                    }
                 });
             };
 
-            renderCharts();
-            document.addEventListener('livewire:navigated', renderCharts);
+            renderChart();
+            document.addEventListener('livewire:navigated', renderChart);
         </script>
     @endscript
 </div>

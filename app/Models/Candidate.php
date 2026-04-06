@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Candidate extends Model
 {
@@ -40,9 +39,9 @@ class Candidate extends Model
         return $this->belongsTo(Student::class);
     }
 
-    public function platform(): HasOne
+    public function platforms(): HasMany
     {
-        return $this->hasOne(Platform::class);
+        return $this->hasMany(Platform::class);
     }
 
     public function electionCycle(): BelongsTo

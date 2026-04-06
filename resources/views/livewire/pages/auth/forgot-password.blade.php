@@ -9,9 +9,6 @@ new #[Layout('layouts.guest')] class extends Component {
     public string $student_id = '';
     public bool $isSent = false;
 
-    /**
-     * Send a password reset link.
-     */
     public function sendPasswordResetLink(): void
     {
         $this->validate([
@@ -50,64 +47,77 @@ new #[Layout('layouts.guest')] class extends Component {
             <h1 class="forgot-title">Forgot Password</h1>
             <p class="forgot-subtitle">Account Recovery</p>
 
-            {{-- Step Indicators --}}
             <div class="reset-steps">
-                <div class="reset-step active">
+                <div class="reset-step {{ !$isSent ? 'active' : 'completed' }}"
+                    style="{{ $isSent ? 'opacity: 0.6;' : '' }}">
                     <span class="step-dot"></span>Enter ID
                 </div>
                 <div class="reset-step-divider"></div>
-                <div class="reset-step">
+
+                <div class="reset-step {{ $isSent ? 'active' : '' }}">
                     <span class="step-dot"></span>Verify
                 </div>
                 <div class="reset-step-divider"></div>
+
                 <div class="reset-step">
                     <span class="step-dot"></span>Reset
                 </div>
             </div>
 
-            <p class="forgot-desc">
-                Enter your Student ID and registered email address. We'll send you a verification link to reset your
-                password.
-            </p>
-
-            {{-- Error Messages --}}
             @if ($errors->any())
-                <div class="error-msg">
+                <div class="error-msg"
+                    style="color: #ef4444; font-size: 0.875rem; margin-bottom: 1rem; text-align: center;">
                     <i class="bi bi-exclamation-circle me-1"></i>
                     {{ $errors->first() }}
                 </div>
             @endif
 
-            {{-- Success Message --}}
-            @if (session('status'))
-                <div class="success-msg">
-                    <i class="bi bi-check-circle me-1"></i>
-                    {{ session('status') }}
+            @if (!$isSent)
+                <p class="forgot-desc">
+                    Enter your Student ID and registered email address. We'll send you a verification link to reset your
+                    password.
+                </p>
+
+                <form wire:submit="sendPasswordResetLink">
+                    <div class="form-floating-custom mb-3"
+                        style="position: relative; display: flex; align-items: center;">
+                        <i class="bi bi-person-badge input-icon-style"></i>
+                        <input type="text" wire:model="student_id" placeholder="Student ID Number"
+                            class="custom-input" required>
+                    </div>
+
+                    <div class="form-floating-custom mb-4"
+                        style="position: relative; display: flex; align-items: center;">
+                        <i class="bi bi-envelope input-icon-style"></i>
+                        <input type="email" wire:model="email" placeholder="Registered Email Address"
+                            class="custom-input" required>
+                    </div>
+
+                    <button type="submit" class="btn btn-glow btn-reset">
+                        <span wire:loading.remove wire:target="sendPasswordResetLink">
+                            <i class="bi bi-send me-2"></i>Send Reset Link
+                        </span>
+                        <span wire:loading wire:target="sendPasswordResetLink">
+                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>Sending...
+                        </span>
+                    </button>
+                </form>
+            @else
+                <div class="success-state" style="text-align: center; margin: 2rem 0;">
+                    <i class="bi bi-envelope-check"
+                        style="font-size: 3.5rem; color: #388e3c; margin-bottom: 15px; display: inline-block;"></i>
+                    <h3 style="color: #388e3c; font-size: 1.2rem; margin-bottom: 10px;">Link Sent Successfully!</h3>
+                    <p class="forgot-desc" style="margin-bottom: 0;">
+                        Please check your email (<b>{{ $email }}</b>) and click the reset link to proceed to the
+                        final step.
+                    </p>
+
+                    <button type="button" wire:click="$set('isSent', false)" class="btn-register text-white"
+                        style="margin-top: 20px; background: transparent; border: none; color: #388e3c; cursor: pointer; text-decoration: underline;">
+                        Didn't receive it? Try again
+                    </button>
                 </div>
             @endif
-
-            {{-- Forgot Password Form --}}
-            <form wire:submit="sendPasswordResetLink">
-                <div class="form-floating-custom">
-                    <input type="text" wire:model="student_id" placeholder="Student ID Number" required
-                        autocomplete="username">
-                    <i class="bi bi-person-badge input-icon"></i>
-                </div>
-
-                <div class="form-floating-custom">
-                    <input type="email" wire:model="email" placeholder="Registered Email Address" required>
-                    <i class="bi bi-envelope input-icon"></i>
-                </div>
-
-                <button type="submit" class="btn btn-glow btn-reset">
-                    <span wire:loading.remove>
-                        <i class="bi bi-send me-2"></i>Send Reset Link
-                    </span>
-                    <span wire:loading>
-                        <span class="spinner-border spinner-border-sm me-2" role="status"></span>Sending...
-                    </span>
-                </button>
-            </form>
 
             <div class="back-link">
                 <a href="{{ url('/') }}" wire:navigate><i class="bi bi-arrow-left me-1"></i>Back to Login</a>

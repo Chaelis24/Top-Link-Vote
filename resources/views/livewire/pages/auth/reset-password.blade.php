@@ -61,11 +61,11 @@ new #[Layout('layouts.guest')] class extends Component {
                 <i class="bi bi-shield-lock-fill"></i>
             </div>
 
-            <h1 class="forgot-title">Reset Password</h1>
-            <p class="forgot-subtitle">Secure Your Account</p>
+            <h1 class="forgot-title">Forgot Password</h1>
+            <p class="forgot-subtitle">Account Recovery</p>
 
             <div class="reset-steps mb-4">
-                <div class="reset-step completed"><span class="step-dot"></span>ID</div>
+                <div class="reset-step completed"><span class="step-dot"></span>Enter ID</div>
                 <div class="reset-step-divider"></div>
                 <div class="reset-step completed"><span class="step-dot"></span>Verify</div>
                 <div class="reset-step-divider"></div>
@@ -81,31 +81,55 @@ new #[Layout('layouts.guest')] class extends Component {
                 </div>
             @enderror
 
-            <form wire:submit.prevent="resetPassword"> {{-- .prevent para sigurado --}}
-                <div class="form-floating-custom mb-3" style="opacity: 0.7;">
-                    <input type="email" wire:model="email" placeholder="Email" readonly tabindex="-1">
-                    <i class="bi bi-envelope input-icon"></i>
+            <form wire:submit.prevent="resetPassword">
+                <div class="form-floating-custom mb-3" style="opacity: 0.6; cursor: not-allowed;">
+                    <div class="position-relative">
+                        <i class="bi bi-envelope-fill position-absolute"
+                            style="left: 15px; top: 50%; transform: translateY(-50%); color: #888;"></i>
+                        <input type="email" wire:model="email" class="custom-input" placeholder=" " readonly
+                            tabindex="-1">
+                    </div>
                 </div>
 
-                <div class="form-floating-custom mb-2">
-                    <input type="password" wire:model="password" placeholder="New Password" required autofocus>
-                    <i class="bi bi-lock-fill input-icon"></i>
-                </div>
-                <div style="min-height: 20px;">
-                    @error('password')
-                        <span class="text-danger small d-block mb-2" style="font-size: 0.75rem;">{{ $message }}</span>
-                    @enderror
+                <div class="mb-2" x-data="{ show: false }">
+                    <div class="position-relative">
+                        <i class="bi bi-lock-fill position-absolute"
+                            style="left: 15px; top: 50%; transform: translateY(-50%); color: #888; z-index: 5;"></i>
+
+                        <input :type="show ? 'text' : 'password'" wire:model="password"
+                            class="custom-input @error('password') border-danger @enderror" placeholder="New Password"
+                            required autofocus>
+
+                        <i class="bi" :class="show ? 'bi-eye-slash-fill' : 'bi-eye-fill'" @click="show = !show"
+                            style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #888; z-index: 10;">
+                        </i>
+                    </div>
+
+                    <div style="min-height: 20px;">
+                        @error('password')
+                            <span class="text-danger" style="font-size: 0.75rem;">{{ $message }}</span>
+                        @enderror
+                    </div>
                 </div>
 
-                <div class="form-floating-custom mb-4">
-                    <input type="password" wire:model="password_confirmation" placeholder="Confirm New Password"
-                        required>
-                    <i class="bi bi-check-circle-fill input-icon"></i>
+                <div class="mb-4" x-data="{ show: false }">
+                    <div class="position-relative">
+                        <i class="bi bi-shield-check position-absolute"
+                            style="left: 15px; top: 50%; transform: translateY(-50%); color: #888; z-index: 5;"></i>
+
+                        <input :type="show ? 'text' : 'password'" wire:model="password_confirmation"
+                            class="custom-input" placeholder="Confirm New Password" required>
+
+                        <i class="bi" :class="show ? 'bi-eye-slash-fill' : 'bi-eye-fill'" @click="show = !show"
+                            style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #888; z-index: 10;">
+                        </i>
+                    </div>
                 </div>
 
-                <button type="submit" class="btn btn-glow btn-reset w-100" wire:loading.attr="disabled">
+                <button type="submit" class="btn-glow btn-reset w-100 py-2 fw-bold" wire:loading.attr="disabled"
+                    style="background: #28a745; border: none; color: white; border-radius: 8px; transition: 0.3s;">
                     <span wire:loading.remove>
-                        <i class="bi bi-shield-check me-2"></i>Update Password
+                        <i class="bi bi-check2-circle me-2"></i>Update Password
                     </span>
                     <span wire:loading>
                         <span class="spinner-border spinner-border-sm me-2"></span>Processing...
