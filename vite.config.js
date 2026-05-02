@@ -5,10 +5,13 @@ export default defineConfig({
     plugins: [
         laravel({
             input: [
-                "resources/css/app.css",
-                "resources/css/auth.css",
-                "resources/css/admin.css",
-                "resources/css/students.css",
+                "resources/css/admin/admin-app.css",
+                "resources/css/admin/admin-sidebar.css",
+                "resources/css/admin/admin.css",
+                "resources/js/admin.js",
+                "resources/css/students/app.css",
+                "resources/css/students/student-sidebar.css",
+                "resources/css/students/students.css",
                 "resources/js/app.js",
             ],
             refresh: true,

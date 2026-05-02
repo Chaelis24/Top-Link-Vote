@@ -39,6 +39,17 @@ class Student extends Model
         'has_voted' => 'boolean',
     ];
 
+    public function getFormattedYearAttribute()
+    {
+        return match ((string) $this->year_level) {
+            '1' => '1st Year',
+            '2' => '2nd Year',
+            '3' => '3rd Year',
+            '4' => '4th Year',
+            default => $this->year_level ?: 'Year Not Set',
+        };
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
@@ -52,5 +63,9 @@ class Student extends Model
     public function votes(): HasMany
     {
         return $this->hasMany(Vote::class);
+    }
+    public function latestVote()
+    {
+        return $this->hasOne(Vote::class)->latestOfMany();
     }
 }

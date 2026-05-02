@@ -15,7 +15,6 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->string('academic_year');
-            $table->enum('semester', ['1st Semester', '2nd Semester', 'Summer']);
             $table->date('filing_start')->nullable();
             $table->date('filing_end')->nullable();
             $table->date('campaign_start');
@@ -23,9 +22,9 @@ return new class extends Migration
             $table->dateTime('voting_start');
             $table->dateTime('voting_end');
             $table->dateTime('results_date')->nullable();
-            $table->enum('status', ['active', 'pending', 'completed'])->default('active');
-            $table->boolean('is_active')->default(false);
+            $table->enum('status', ['active', 'completed'])->default('active');
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

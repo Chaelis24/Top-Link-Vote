@@ -10,7 +10,6 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->group(function () {
     Volt::route('/election-cycle', 'admin.election-cycle')->name('admin.election-cycle');
     Volt::route('/platforms', 'admin.platforms')->name('admin.platforms');
     Volt::route('/positions', 'admin.positions')->name('admin.positions');
-    Volt::route('/profiles', 'admin.profiles')->name('admin.profiles');
     Volt::route('/students', 'admin.students')->name('admin.students');
     Volt::route('/settings', 'admin.settings')->name('admin.settings');
 });

@@ -25,15 +25,6 @@ class DatabaseSeeder extends Seeder
 
         $admin->roles()->attach($adminRole);
 
-        // $admin->student()->create([
-        //     'student_id' => '001',
-        //     'first_name' => 'System',
-        //     'last_name' => 'Admin',
-        //     'course' => 'IT',
-        //     'year_level' => 4,
-        //     'status' => 'active',
-        // ]);
-
         $studentRole = Role::where('name', 'student')->first();
         $candidateRole = Role::where('name', 'candidate')->first();
 
@@ -45,16 +36,7 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        $erica = User::updateOrCreate(
-            ['email' => 'mira.erica08@gmail.com'],
-            [
-                'name' => 'Erica Opena',
-                'password' => Hash::make('kai'),
-            ]
-        );
-
         $michael->roles()->sync([$studentRole->id, $candidateRole->id]);
-        $erica->roles()->sync($studentRole->id);
 
         $michael->student()->updateOrCreate(
             ['student_id' => '23-0029'],
@@ -66,20 +48,6 @@ class DatabaseSeeder extends Seeder
                 'year_level'  => 3,
                 'birthday'    => '2004-09-24',
                 'gender'      => 'Male',
-                'status'      => 'active',
-            ]
-        );
-
-        $erica->student()->updateOrCreate(
-            ['student_id' => '23-0025'],
-            [
-                'first_name'  => 'Erica',
-                'middle_name' => 'Mira',
-                'last_name'   => 'Opena',
-                'course'      => 'HRMT',
-                'year_level'  => 3,
-                'birthday'    => '2002-06-20',
-                'gender'      => 'Female',
                 'status'      => 'active',
             ]
         );

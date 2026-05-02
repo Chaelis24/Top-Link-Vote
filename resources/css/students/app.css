@@ -1,0 +1,221 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+@import "tailwindcss";
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@source '../**/*.js';
+
+@theme {
+    --font-sans:
+        "Instrument Sans", ui-sans-serif, system-ui, sans-serif,
+        "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol",
+        "Noto Color Emoji";
+}
+
+:root {
+    --primary: #059669;
+    --primary-light: #ecfdf5;
+    --accent: #10b981;
+    --accent-glow: #34d399;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --bg-main: #ffffff;
+    --bg-soft: #f8fafc;
+    --bg-card: #ffffff;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #94a3b8;
+    --glass-bg: rgba(255, 255, 255, 0.8);
+    --glass-border: rgba(16, 185, 129, 0.15);
+    --sidebar-width: 280px;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--font-sans);
+    background: var(--bg-main);
+    color: var(--text-primary);
+    overflow-x: hidden;
+    line-height: 1.6;
+}
+
+/* ===== SCROLLBAR (Emerald Styled) ===== */
+::-webkit-scrollbar {
+    width: 8px;
+}
+::-webkit-scrollbar-track {
+    background: var(--bg-soft);
+}
+::-webkit-scrollbar-thumb {
+    background: #d1fae5;
+    border-radius: 10px;
+    border: 2px solid var(--bg-soft);
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--accent);
+}
+
+/* ===== BACKGROUND ANIMATION (Light Mesh) ===== */
+.bg-animated {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    background-color: var(--bg-main);
+    background-image:
+        radial-gradient(
+            at 0% 0%,
+            rgba(16, 185, 129, 0.03) 0px,
+            transparent 50%
+        ),
+        radial-gradient(
+            at 100% 0%,
+            rgba(52, 211, 153, 0.03) 0px,
+            transparent 50%
+        );
+}
+
+/* ===== GLASSMORPHISM (Light Mode Version) ===== */
+.glass {
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+}
+
+.glass-card {
+    background: var(--bg-card);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    border-radius: 16px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--accent);
+    box-shadow:
+        0 20px 25px -5px rgba(16, 185, 129, 0.1),
+        0 10px 10px -5px rgba(16, 185, 129, 0.04);
+}
+
+/* ===== BUTTONS ===== */
+.btn-glow {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+    border: none;
+    color: #fff;
+    padding: 12px 12px;
+    border-radius: 12px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(5, 150, 105, 0.2);
+}
+
+.btn-glow:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(5, 150, 105, 0.3);
+    filter: brightness(1.1);
+}
+
+.btn-outline-glow {
+    background: transparent;
+    border: 1px solid var(--primary);
+    color: var(--primary);
+    padding: 10px 24px;
+    border-radius: 12px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn-outline-glow:hover {
+    background: var(--primary-light);
+    color: var(--primary);
+}
+
+/* ===== BRANDING ===== */
+.brand-text .top-link {
+    font-size: 1.2rem;
+    font-weight: 900;
+    background: linear-gradient(to right, #059669, #10b981);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.brand-text .college,
+.brand-text .global {
+    color: var(--primary);
+}
+
+/* ===== MAIN CONTENT AREA ===== */
+.main-content {
+    margin-left: var(--sidebar-width);
+    max-width: 1400px;
+    margin-right: auto;
+    margin-left: auto;
+    padding: 24px 24px;
+    min-height: 100vh;
+}
+
+@media (max-width: 992px) {
+    .main-content {
+        margin-left: 0;
+        padding: 20px 20px;
+    }
+}
+
+/* ===== TOP BAR ===== */
+.topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    padding-left: 12px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.topbar h2 span {
+    color: var(--primary);
+    font-weight: 800;
+}
+
+/* ===== ANIMATIONS ===== */
+.fade-in-up {
+    opacity: 0;
+    transform: translateY(20px);
+    animation: fadeInUp 0.5s ease forwards;
+}
+
+@keyframes fadeInUp {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ===== STATUS BADGES ===== */
+.badge-status {
+    padding: 6px 14px;
+    border-radius: 99px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.badge-open {
+    background: var(--primary-light);
+    color: var(--primary);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}

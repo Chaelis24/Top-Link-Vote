@@ -4,13 +4,15 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ElectionCycle extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = [
         'name',
         'academic_year',
-        'semester',
         'filing_start',
         'filing_end',
         'campaign_start',
@@ -19,7 +21,16 @@ class ElectionCycle extends Model
         'voting_end',
         'results_date',
         'status',
-        'is_active',
+    ];
+
+    protected $casts = [
+        'filing_start' => 'date',
+        'filing_end' => 'date',
+        'campaign_start' => 'date',
+        'campaign_end' => 'date',
+        'voting_start' => 'datetime',
+        'voting_end' => 'datetime',
+        'results_date' => 'datetime',
     ];
 
     public function positions(): HasMany

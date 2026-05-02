@@ -13,21 +13,24 @@ return new class extends Migration
     {
         Schema::create('candidates', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->foreignId('student_id')->constrained()->cascadeOnDelete();
             $table->foreignId('position_id')->constrained()->cascadeOnDelete();
             $table->foreignId('election_cycle_id')->constrained()->cascadeOnDelete();
 
             $table->string('party_name')->nullable();
-            $table->string('slogan')->nullable();
-            $table->string('course')->nullable();
+            $table->json('achievements')->nullable();
             $table->string('photo')->nullable();
-            $table->text('bio')->nullable();
-            $table->text('achievements')->nullable();
+
+            $table->json('previous_position')->nullable();
+            $table->json('previous_school_project')->nullable();
+            $table->decimal('average_grade', 5, 2)->nullable();
+
             $table->enum('status', ['pending', 'approved', 'rejected', 'active'])->default('pending');
             $table->timestamp('approved_at')->nullable();
             $table->integer('votes_count')->default(0);
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

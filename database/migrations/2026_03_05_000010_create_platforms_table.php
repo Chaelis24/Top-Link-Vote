@@ -14,13 +14,10 @@ return new class extends Migration
         Schema::create('platforms', function (Blueprint $table) {
             $table->id();
             $table->foreignId('candidate_id')->constrained()->cascadeOnDelete();
-            $table->string('title');
-            $table->text('vision')->nullable();
-            $table->text('mission')->nullable();
-            $table->json('goals')->nullable();
-            $table->json('action_plans')->nullable();
+            $table->string('title')->nullable();
+            $table->string('tagline')->nullable();
+            $table->json('agenda')->nullable();
             $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending');
-            $table->text('admin_notes')->nullable();
             $table->timestamp('submitted_at')->nullable();
             $table->timestamp('approved_at')->nullable();
             $table->timestamps();

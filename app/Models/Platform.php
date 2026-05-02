@@ -10,19 +10,17 @@ class Platform extends Model
     protected $fillable = [
         'candidate_id',
         'title',
-        'vision',
-        'mission',
-        'goals',
-        'action_plans',
+        'tagline',
+        'agenda',
         'status',
-        'admin_notes',
         'submitted_at',
         'approved_at',
     ];
 
     protected $casts = [
-        'goals' => 'array',
-        'action_plans' => 'array',
+        'submitted_at' => 'datetime',
+        'approved_at' => 'datetime',
+        'agenda' => 'array',
     ];
 
     public function candidate(): BelongsTo

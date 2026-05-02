@@ -13,10 +13,7 @@ Route::middleware(['auth', 'role:student'])
         Volt::route('/profile', 'students.profile')
             ->name('student.profile');
 
-        Volt::route('/profile-candidates', 'students.profile-candidates')
-            ->name('student.candidates');
-
-        Volt::route('/platforms', 'students.platforms')
+        Volt::route('/profile-platforms', 'students.profile-platforms')
             ->name('student.platforms');
 
         Volt::route('/cast-vote', 'students.cast-vote')

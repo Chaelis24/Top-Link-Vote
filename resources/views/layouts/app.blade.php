@@ -17,7 +17,7 @@
     {{-- AOS Animations --}}
     <link href="https://unpkg.com/aos@2.3.4/dist/aos.css" rel="stylesheet">
 
-    @vite(['resources/css/app.css', 'resources/css/admin.css', 'resources/css/students.css', 'resources/js/app.js'])
+    @vite(['resources/css/students/app.css', 'resources/css/students/students.css', 'resources/css/students/student-sidebar.css', 'resources/js/app.js'])
 
     {{-- Livewire Styles --}}
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
@@ -26,8 +26,6 @@
 </head>
 
 <body>
-    <div class="bg-animated"></div>
-    <div class="particles" id="particles"></div>
 
     {{ $slot }}
 
@@ -43,6 +41,40 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     @livewireScripts
     @stack('scripts')
+    <script>
+        document.addEventListener("livewire:init", () => {
+            Livewire.on("swal", (data) => {
+                const options = data[0];
+
+                Swal.fire({
+                    title: options.title || 'Notification',
+                    text: options.text || '',
+                    icon: options.icon || 'info',
+                    confirmButtonColor: options.icon === 'error' ? '#ef4444' : '#10b981',
+                    confirmButtonText: options.confirmButtonText || "Understood",
+                });
+            });
+        });
+
+        document.addEventListener('livewire:init', () => {
+            Livewire.on('close-modal', () => {
+                const modals = document.querySelectorAll('.modal.show');
+                modals.forEach(modalElement => {
+                    const modalInstance = bootstrap.Modal.getInstance(modalElement);
+                    if (modalInstance) {
+                        modalInstance.hide();
+                    }
+                });
+
+                const backdrops = document.querySelectorAll('.modal-backdrop');
+                backdrops.forEach(backdrop => backdrop.remove());
+
+                document.body.classList.remove('modal-open');
+                document.body.style.overflow = '';
+                document.body.style.paddingRight = '';
+            });
+        });
+    </script>
 </body>
 
 </html>

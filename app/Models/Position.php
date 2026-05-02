@@ -5,15 +5,16 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Position extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = [
         'election_cycle_id',
         'student_department',
         'name',
-        'slug',
-        'description',
         'max_candidates',
         'max_winners',
         'priority',
@@ -22,7 +23,7 @@ class Position extends Model
 
     public function electionCycle(): BelongsTo
     {
-        return $this->belongsTo(ElectionCycle::class, 'election_cycle_id');
+        return $this->belongsTo(ElectionCycle::class);
     }
 
     public function candidates(): HasMany

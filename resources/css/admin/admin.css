@@ -1,0 +1,401 @@
+/*
+    ========================================
+    ADMIN UNIFIED STYLESHEET
+    ========================================
+*/
+
+/* 1. COLOR SYSTEM & UTILITIES */
+:root {
+    --primary-blue: #1e3a8a;
+    --accent-blue: #3b82f6;
+    --success-green: #10b981;
+    --warning-amber: #f59e0b;
+    --danger-red: #ef4444;
+    --slate-500: #64748b;
+    --slate-800: #1e293b;
+    --border-color: #e2e8f0;
+}
+
+.text-primary {
+    color: var(--primary-blue) !important;
+}
+.text-accent,
+.text-indigo {
+    color: var(--accent-blue) !important;
+}
+.text-purple {
+    color: #8b5cf6 !important;
+}
+
+.bg-primary-soft {
+    background: rgba(30, 58, 138, 0.1);
+}
+.bg-indigo-soft {
+    background: rgba(59, 130, 246, 0.1);
+}
+.bg-success-soft {
+    background: rgba(16, 185, 129, 0.1);
+}
+.bg-warning-soft {
+    background: rgba(245, 158, 11, 0.1);
+}
+.bg-purple-soft {
+    background: rgba(139, 92, 246, 0.1);
+}
+.bg-danger-soft {
+    background: #fef2f2;
+}
+.bg-primary-subtle {
+    background-color: #eff6ff !important;
+}
+
+.uppercase {
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.tiny {
+    font-size: 0.65rem;
+    font-weight: 700;
+}
+
+/* 2. CARDS & CONTAINERS */
+.glass-card,
+.stat-card,
+.position-row {
+    background: #ffffff !important;
+    border-radius: 15px;
+    border: 1px solid var(--border-color);
+    transition:
+        border-color 0.2s ease,
+        background-color 0.2s ease;
+}
+
+.hover-slide:hover,
+.position-row:hover {
+    transform: none !important;
+    border-color: var(--accent-blue) !important;
+    background-color: #f8fafc !important;
+    box-shadow: none !important;
+}
+
+/* 3. STATS SYSTEM */
+.stat-icon-sm {
+    padding: 20px 20px;
+    margin-left: 12px;
+    width: 30px;
+    height: 30px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+}
+
+.stat-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    margin-bottom: 20px;
+}
+
+.stat-value {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--slate-800);
+    line-height: 1.2;
+}
+
+.stat-value-sm {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--primary-blue);
+}
+
+.stat-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: var(--slate-500);
+    text-transform: uppercase;
+    letter-spacing: 0.05rem;
+}
+
+/* 4. FORMS & SEARCH BARS */
+.form-control-modern,
+.form-select-modern,
+.search-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    outline: none;
+    transition: none !important;
+    font-size: 0.9rem;
+}
+
+.form-control-modern:focus,
+.search-input:focus {
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+}
+
+.search-wrap-modern {
+    position: relative;
+}
+
+.search-wrap-modern i {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+}
+
+.search-wrap-modern input {
+    width: 100%;
+    padding: 10px 40px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+}
+
+/* 5. BADGES & AVATARS */
+.badge-custom {
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.badge-approved {
+    background: #ecfdf5;
+    color: #065f46;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 700;
+}
+
+.badge-pending {
+    background: #fffbeb;
+    color: #b45309;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 700;
+}
+
+.badge-danger-soft {
+    background: #fef2f2;
+    color: #991b1b;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 700;
+}
+
+.badge-status-live {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #475569;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.pulse-dot {
+    width: 8px;
+    height: 8px;
+    background: #10b981;
+    border-radius: 50%;
+    animation: pulse-green 2s infinite;
+}
+
+@keyframes pulse-green {
+    0% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+    }
+
+    70% {
+        box-shadow: 0 0 0 8px rgba(16, 185, 129, 0);
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+    }
+}
+
+.profile-avatar-sm {
+    width: 35px;
+    height: 35px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.8rem;
+    background: #eff6ff;
+    color: var(--accent-blue);
+}
+
+.profile-avatar-lg {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(
+        135deg,
+        var(--primary-blue),
+        var(--accent-blue)
+    );
+    color: white;
+    border-radius: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    font-weight: 800;
+    box-shadow: 0 10px 15px -3px rgba(30, 58, 138, 0.2);
+}
+
+/* 6. BUTTONS & ACTIONS */
+.btn-icon {
+    border: 1px solid var(--border-color);
+    background: white;
+    padding: 8px;
+    border-radius: 10px;
+    transition:
+        background-color 0.2s ease,
+        color 0.2s ease !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin: 2px;
+}
+
+.btn-icon:hover {
+    transform: none !important;
+}
+
+.btn-edit {
+    color: var(--accent-blue);
+}
+.btn-edit:hover {
+    background: var(--accent-blue);
+    color: white;
+}
+
+.btn-delete {
+    color: var(--danger-red);
+}
+.btn-delete:hover {
+    background: var(--danger-red);
+    color: white;
+}
+
+.btn-icon-green {
+    color: var(--success-green);
+}
+.btn-icon-green:hover {
+    background: var(--success-green);
+    color: white;
+}
+
+.btn-password-toggle {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    right: 10px;
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    padding: 5px;
+}
+
+/* 7. PROGRESS & TIMELINE */
+.progress-container {
+    height: 12px;
+    background: #f1f5f9;
+    border-radius: 20px;
+    overflow: hidden;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-blue), var(--accent-blue));
+    border-radius: 20px;
+    transition: width 0.5s ease-in-out;
+}
+
+.timeline-box {
+    border-left: 4px solid #dee2e8;
+    transition: all 0.3s ease;
+}
+
+.timeline-box.active {
+    border-left-color: var(--primary-blue);
+    background: #f8fafc;
+}
+
+/* 8. ANIMATIONS */
+.pulse-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    animation: pulse-standard 2s infinite;
+}
+
+@keyframes pulse-standard {
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.2);
+        opacity: 0.5;
+    }
+}
+
+/* 9. TABS & SWITCHES */
+.nav-tabs .nav-link {
+    border: none;
+    color: var(--slate-500);
+    padding: 12px 20px;
+    transition: 0.3s;
+}
+
+.nav-tabs .nav-link.active {
+    color: var(--primary-blue);
+    border-bottom: 3px solid var(--primary-blue);
+    background: none;
+    font-weight: 700;
+}
+
+.form-switch .form-check-input {
+    width: 2.5rem !important;
+    height: 1.25rem !important;
+    background-color: #dee2e6;
+    border-color: rgba(0, 0, 0, 0.25);
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%23fff'/%3e%3c/svg%3e") !important;
+    background-repeat: no-repeat !important;
+    background-position: 0.15rem center !important;
+    background-size: 1rem !important;
+    transition: all 0.2s ease-in-out;
+    cursor: pointer;
+}
+
+.form-switch .form-check-input:checked {
+    background-color: #1e3a8a !important;
+    border-color: #1e3a8a !important;
+    background-position: 1.35rem center !important;
+}
+
+.overflow-x-auto::-webkit-scrollbar {
+    display: none;
+}

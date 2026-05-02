@@ -6,415 +6,446 @@ use Livewire\Attributes\{Layout, Title};
 use Illuminate\Support\Facades\{Auth, Session};
 use App\Models\{Platform, Candidate};
 
-new #[Layout('layouts.app')] #[Title('Platform Management')] class extends Component {
+new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Component {
     use WithPagination;
 
     public string $search = '';
+    public ?Platform $selectedPlatform = null;
 
-    /**
-     * Reset pagination when searching to avoid "no results"
-     * if the user is on a high page number.
-     */
     public function updatingSearch()
     {
         $this->resetPage();
     }
 
+    public function viewPlatform(int $id)
+    {
+        $this->selectedPlatform = Platform::with(['candidate.student', 'candidate.position'])->findOrFail($id);
+        $this->dispatch('open-view-modal');
+    }
+
     public function publishPlatform(int $id)
     {
-        $platform = Platform::findOrFail($id);
+        $platform = Platform::with('candidate')->findOrFail($id);
+
+        if (empty($platform->title) || empty($platform->agenda)) {
+            $this->dispatch('swal', title: 'Action Denied!', text: 'Cannot approve platform with missing details.', icon: 'error');
+            return;
+        }
+
         $platform->update([
             'status' => 'approved',
             'approved_at' => now(),
         ]);
 
-        $this->dispatch('swal', [
-            'title' => 'Platform Published!',
-            'text' => 'The candidate platform is now live.',
-            'icon' => 'success',
+        $platform->candidate->update([
+            'status' => 'approved',
         ]);
+
+        $this->dispatch('swal', title: 'Platform Published!', text: 'The candidate profile and platform are now live.', icon: 'success');
     }
 
-    public function deletePlatform(int $id)
+    public function rejectPlatform(int $id)
     {
-        Platform::findOrFail($id)->delete();
-        $this->dispatch('swal', [
-            'title' => 'Deleted!',
-            'text' => 'Platform record has been removed.',
-            'icon' => 'warning',
+        $platform = Platform::findOrFail($id);
+        $platform->update([
+            'status' => 'rejected',
+            'approved_at' => null,
         ]);
+
+        $this->dispatch('swal', title: 'Platform Rejected', text: 'The platform status has been set to rejected.', icon: 'info');
     }
 
     public function getPlatformsProperty()
     {
         return Platform::with(['candidate.student', 'candidate.position'])
-            ->where(function ($query) {
-                $query->where('title', 'like', '%' . $this->search . '%')->orWhereHas('candidate.student', function ($q) {
-                    $q->where('first_name', 'like', '%' . $this->search . '%')->orWhere('last_name', 'like', '%' . $this->search . '%');
-                });
+            ->whereIn('platforms.id', function ($query) {
+                $query->selectRaw('MAX(id)')->from('platforms')->groupBy('candidate_id');
             })
-            ->orderByRaw("FIELD(status, 'pending') DESC")
-            ->latest()
+            ->join('candidates', 'platforms.candidate_id', '=', 'candidates.id')
+            ->join('positions', 'candidates.position_id', '=', 'positions.id')
+            ->whereNotNull('platforms.title')
+            ->where('platforms.title', '!=', '')
+            ->whereNotNull('platforms.agenda')
+            ->where('platforms.agenda', '!=', '')
+            ->where(function ($query) {
+                $query
+                    ->where('platforms.title', 'like', '%' . $this->search . '%')
+                    ->orWhereHas('candidate.student', function ($q) {
+                        $q->where('first_name', 'like', '%' . $this->search . '%')->orWhere('last_name', 'like', '%' . $this->search . '%');
+                    })
+                    ->orWhereHas('candidate', function ($q) {
+                        $q->where('party_name', 'like', '%' . $this->search . '%');
+                    });
+            })
+            ->select('platforms.*')
+            ->orderByRaw("FIELD(platforms.status, 'pending') DESC")
+            ->latest('platforms.created_at')
             ->paginate(10);
     }
 
-    public function getStatusClass($status)
-    {
-        return match ($status) {
-            'approved' => 'bg-success-subtle text-success border-success-subtle',
-            'pending' => 'bg-warning-subtle text-warning border-warning-subtle',
-            'rejected' => 'bg-danger-subtle text-danger border-danger-subtle',
-            default => 'bg-secondary-subtle text-secondary',
-        };
-    }
     public function logout()
     {
         Auth::guard('web')->logout();
         Session::invalidate();
         Session::regenerateToken();
-        return $this->redirect('/', navigate: true);
+        return redirect()->route('login');
     }
 }; ?>
 
 <div>
-    <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
-    <button class="sidebar-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
-
     @include('layouts.partials.admin-sidebar')
 
     <main class="main-content">
         <div class="topbar">
             <div>
-                <h2>Platform <span>Management</span></h2>
-                <p class="text-white-50 mb-0">Review and moderate candidate manifestos</p>
+                <h2 class="fw-bold text-primary">Platform <span class="text-accent">Management</span></h2>
+                <p class="text-muted mb-0" style="font-size: 0.85rem;">Review candidate profiles and manifestos</p>
             </div>
-            <div class="d-flex align-items-center gap-3">
-                <div class="search-wrap" style="width: 300px;">
-                    <i class="bi bi-search"></i>
-                    <input type="text" wire:model.live.debounce.300ms="search" class="search-glass"
-                        placeholder="Search title or candidate...">
-                </div>
+        </div>
+        <div class="flex items-center w-full md:w-auto mb-3">
+            <div class="search-wrap-modern relative w-full md:w-[300px]">
+                <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-muted"></i>
+                <input type="text" wire:model.live.debounce.300ms="search" placeholder="Search name or ID..."
+                    class="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none"
+                    style="background-color: white; border: 1px solid #e5e7eb;">
             </div>
         </div>
 
-        <div class="glass-card overflow-hidden fade-in-up">
-            <div class="table-responsive">
-                <table class="table table-custom mb-0">
-                    <thead>
+        <div class="glass-card p-0 overflow-hidden border-0 shadow-sm">
+            <!-- Desktop View (Visible on Medium screens up) -->
+            <div class="table-responsive hidden md:block">
+                <table class="table table-hover mb-0">
+                    <thead class="bg-light">
                         <tr>
-                            <th>Candidate</th>
+                            <th class="ps-4">Candidate Name & Party Name</th>
                             <th>Platform Title</th>
                             <th>Status</th>
                             <th>Submitted</th>
-                            <th class="text-end">Actions</th>
+                            <th class="text-end pe-4">Actions</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody class="align-middle">
                         @forelse($this->platforms as $platform)
-                            <tr wire:key="plt-{{ $platform->id }}">
-                                <td>
+                            <tr wire:key="plt-desktop-{{ $platform->id }}">
+                                <td class="ps-4">
                                     <div class="d-flex align-items-center gap-3">
-                                        <div class="avatar-sm rounded-circle d-flex align-items-center justify-content-center fw-bold text-white shadow-sm"
-                                            style="width: 35px; height: 35px; font-size: 0.8rem; background: var(--accent-color, #673ab7);">
-                                            {{ strtoupper(substr($platform->candidate->student->first_name, 0, 1)) }}{{ strtoupper(substr($platform->candidate->student->last_name, 0, 1)) }}
+                                        <div class="profile-avatar-sm shadow-sm"
+                                            style="background: #1e3a8a; color: white;">
+                                            @if ($platform->candidate?->photo)
+                                                <img src="{{ asset('storage/' . $platform->candidate->photo) }}"
+                                                    class="w-100 h-100 object-fit-cover">
+                                            @else
+                                                <span class="fw-bold fs-6 text-uppercase">
+                                                    {{ substr($platform->candidate?->student?->first_name ?? 'U', 0, 1) }}{{ substr($platform->candidate?->student?->last_name ?? 'P', 0, 1) }}
+                                                </span>
+                                            @endif
                                         </div>
                                         <div>
-                                            <div class="fw-bold text-white small">
+                                            <div class="fw-bold text-primary small">
                                                 {{ $platform->candidate->student->first_name }}
-                                                {{ $platform->candidate->student->last_name }}</div>
-                                            <div class="text-white-50" style="font-size: 0.7rem;">
-                                                {{ $platform->candidate->position->name }}</div>
+                                                {{ $platform->candidate->student->last_name }}
+                                            </div>
+                                            <div class="text-muted tiny fw-semibold">
+                                                {{ $platform->candidate->position->name }} | <span
+                                                    class="text-accent">{{ $platform->candidate->party_name ?? 'No Party Name' }}</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </td>
                                 <td>
-                                    <div class="text-white small fw-semibold">{{ $platform->title }}</div>
-                                    <div class="text-white-50 tiny text-truncate" style="max-width: 250px;">
-                                        {{ $platform->vision }}</div>
+                                    <div class="text-dark small fw-bold mb-1">
+                                        {{ $platform->title ?? 'No Platform Title' }}
+
+                                        @if (empty($platform->title) || empty($platform->agenda))
+                                            <i class="bi bi-exclamation-triangle-fill text-danger ms-1"
+                                                title="Incomplete Platform Data"></i>
+                                        @endif
+                                    </div>
+                                    <div class="text-muted tiny text-truncate" style="max-width: 250px;">
+                                        {{ is_array($platform->agenda) ? implode(', ', $platform->agenda) : $platform->agenda ?? 'Please provide agenda details.' }}
+                                    </div>
                                 </td>
                                 <td>
-                                    <span
-                                        class="badge border {{ $this->getStatusClass($platform->status) }} py-1 px-2 status-badge">
-                                        {{ $platform->status }}
-                                    </span>
+                                    @php
+                                        $badgeClass = match ($platform->status) {
+                                            'approved' => 'badge-approved',
+                                            'rejected' => 'badge-rejected',
+                                            default => 'badge-pending',
+                                        };
+                                    @endphp
+                                    <span class="{{ $badgeClass }}">{{ ucfirst($platform->status) }}</span>
                                 </td>
-                                <td class="text-white-50 small">
+                                <td class="text-muted small">
                                     {{ $platform->created_at->format('M d, Y') }}
                                 </td>
-                                <td class="text-end">
+                                <td class="text-end pe-4">
                                     <div class="d-flex justify-content-end gap-2">
-                                        <button class="btn btn-outline-glow btn-sm" title="View Details"
-                                            data-bs-toggle="modal" data-bs-target="#viewPlatform-{{ $platform->id }}">
+                                        <button wire:click="viewPlatform({{ $platform->id }})" class="btn"
+                                            title="Review Profile"
+                                            style="width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; border: none; border-radius: 8px; background-color: rgba(13, 110, 253, 0.1); color: #0d6efd;">
                                             <i class="bi bi-eye"></i>
                                         </button>
 
-                                        @if ($platform->status === 'pending')
+                                        @if ($platform->status !== 'approved')
                                             <button wire:click="publishPlatform({{ $platform->id }})"
-                                                wire:confirm="Are you sure you want to approve and publish this platform?"
-                                                class="btn btn-icon-approve btn-sm" title="Approve">
-                                                <i class="bi bi-check-lg" wire:loading.remove
-                                                    wire:target="publishPlatform({{ $platform->id }})"></i>
-                                                <span class="spinner-border spinner-border-sm" wire:loading
-                                                    wire:target="publishPlatform({{ $platform->id }})"></span>
+                                                wire:confirm="Approve this manifesto?" class="btn" title="Approve"
+                                                style="width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; border: none; border-radius: 8px; background-color: rgba(25, 135, 84, 0.1); color: #198754;">
+                                                <i class="bi bi-check-lg"></i>
                                             </button>
                                         @endif
 
-                                        <button
-                                            wire:confirm="Are you sure you want to delete this platform permanently?"
-                                            wire:click="deletePlatform({{ $platform->id }})"
-                                            class="btn btn-icon-danger btn-sm" title="Delete">
-                                            <i class="bi bi-trash" wire:loading.remove
-                                                wire:target="deletePlatform({{ $platform->id }})"></i>
-                                            <span class="spinner-border spinner-border-sm" wire:loading
-                                                wire:target="deletePlatform({{ $platform->id }})"></span>
-                                        </button>
+                                        @if ($platform->status !== 'rejected')
+                                            <button wire:click="rejectPlatform({{ $platform->id }})"
+                                                wire:confirm="Reject this platform?" class="btn" title="Reject"
+                                                style="width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; border: none; border-radius: 8px; background-color: rgba(220, 53, 69, 0.1); color: #dc3545;">
+                                                <i class="bi bi-x-lg"></i>
+                                            </button>
+                                        @endif
                                     </div>
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="text-center py-5 text-white-50 small">No platforms found.</td>
+                                <td colspan="5" class="text-center py-5 text-muted small">No records found.</td>
                             </tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
 
-            <div class="p-3 border-top border-white-10">
+            <!-- Mobile View (Visible on small screens only) -->
+            <div class="block md:hidden">
+                @forelse($this->platforms as $platform)
+                    @php
+                        $badgeClass = match ($platform->status) {
+                            'approved' => 'badge-approved',
+                            'rejected' => 'badge-rejected',
+                            default => 'badge-pending',
+                        };
+                    @endphp
+                    <div wire:key="plt-mobile-{{ $platform->id }}"
+                        class="p-4 border-bottom flex flex-col gap-3 bg-white">
+                        <div class="flex items-start justify-between">
+                            <div class="flex items-center gap-3">
+                                <!-- Profile Avatar -->
+                                <div class="profile-avatar-sm shadow-sm flex-shrink-0"
+                                    style="background: #1e3a8a; color: white; width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                                    @if ($platform->candidate?->photo)
+                                        <img src="{{ asset('storage/' . $platform->candidate->photo) }}"
+                                            class="w-full h-full object-cover">
+                                    @else
+                                        <span class="fw-bold text-uppercase" style="font-size: 0.8rem;">
+                                            {{ substr($platform->candidate?->student?->first_name ?? 'U', 0, 1) }}{{ substr($platform->candidate?->student?->last_name ?? 'P', 0, 1) }}
+                                        </span>
+                                    @endif
+                                </div>
+                                <!-- Candidate Info -->
+                                <div>
+                                    <div class="fw-bold text-primary small">
+                                        {{ $platform->candidate->student->first_name }}
+                                        {{ $platform->candidate->student->last_name }}
+                                    </div>
+                                    <div class="text-muted tiny fw-semibold">
+                                        {{ $platform->candidate->position->name }} | <span
+                                            class="text-accent">{{ $platform->candidate->party_name ?? 'No Party Name' }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Status -->
+                            <span class="{{ $badgeClass }}"
+                                style="font-size: 0.7rem;">{{ ucfirst($platform->status) }}</span>
+                        </div>
+
+                        <!-- Platform Title and Agenda Box -->
+                        <div class="p-3 rounded-lg" style="background-color: #f8f9fa; border: 1px solid #edf2f7;">
+                            <div class="text-dark small fw-bold mb-1">
+                                {{ $platform->title ?? 'No Platform Title' }}
+                                @if (empty($platform->title) || empty($platform->agenda))
+                                    <i class="bi bi-exclamation-triangle-fill text-danger ms-1"></i>
+                                @endif
+                            </div>
+                            <div class="text-muted tiny">
+                                {{ is_array($platform->agenda) ? implode(', ', $platform->agenda) : $platform->agenda ?? 'No agenda details.' }}
+                            </div>
+                        </div>
+
+                        <!-- Footer: Date and Actions -->
+                        <div class="flex items-center justify-between mt-1">
+                            <div class="text-muted" style="font-size: 0.7rem;">
+                                <i class="bi bi-calendar3 me-1"></i> {{ $platform->created_at->format('M d, Y') }}
+                            </div>
+                            <div class="flex gap-2">
+                                <button wire:click="viewPlatform({{ $platform->id }})" class="btn p-0"
+                                    style="width: 32px; height: 32px; border-radius: 6px; background-color: rgba(13, 110, 253, 0.1); color: #0d6efd; display: flex; align-items: center; justify-content: center; border: none;">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+
+                                @if ($platform->status !== 'approved')
+                                    <button wire:click="publishPlatform({{ $platform->id }})"
+                                        wire:confirm="Approve this?" class="btn p-0"
+                                        style="width: 32px; height: 32px; border-radius: 6px; background-color: rgba(25, 135, 84, 0.1); color: #198754; display: flex; align-items: center; justify-content: center; border: none;">
+                                        <i class="bi bi-check-lg"></i>
+                                    </button>
+                                @endif
+
+                                @if ($platform->status !== 'rejected')
+                                    <button wire:click="rejectPlatform({{ $platform->id }})"
+                                        wire:confirm="Reject this?" class="btn p-0"
+                                        style="width: 32px; height: 32px; border-radius: 6px; background-color: rgba(220, 53, 69, 0.1); color: #dc3545; display: flex; align-items: center; justify-content: center; border: none;">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                @empty
+                    <div class="p-5 text-center text-muted small">No records found.</div>
+                @endforelse
+            </div>
+
+            <div class="p-3 bg-light border-top">
                 {{ $this->platforms->links() }}
             </div>
         </div>
     </main>
 
-    @foreach ($this->platforms as $platform)
-        <div class="modal fade" id="viewPlatform-{{ $platform->id }}" tabindex="-1" wire:ignore.self>
-            <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
-                <div class="modal-content bg-dark text-white border-white-10 shadow-lg"
-                    style="backdrop-filter: blur(15px); background: rgba(26, 34, 44, 0.95) !important;">
-                    <div class="modal-header border-white-10">
-                        <h5 class="modal-title fw-bold">Platform Review</h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+    <div class="modal fade" id="viewPlatformModal" tabindex="-1" wire:ignore.self>
+        <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable px-2">
+            <!-- px-2 para may konting margin sa sides sa mobile -->
+            <div class="modal-content border-0 shadow-lg">
+                @if ($selectedPlatform)
+                    <div class="modal-header bg-primary text-white p-2 p-md-3"> <!-- Pinaliit padding -->
+                        <h6 class="modal-title fw-bold small mb-0"><i class="bi bi-shield-check me-2"></i>Full
+                            Candidate Review</h6>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                            style="font-size: 0.8rem;"></button>
                     </div>
-                    <div class="modal-body custom-scrollbar">
-                        <div class="mb-4">
-                            <h4 class="text-accent mb-1">{{ $platform->title }}</h4>
-                            <p class="text-white-50 small">Candidate: {{ $platform->candidate->student->first_name }}
-                                {{ $platform->candidate->student->last_name }}</p>
-                        </div>
-                        <div class="row g-4">
-                            <div class="col-md-6">
-                                <div class="p-3 rounded-3 h-100"
-                                    style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05);">
-                                    <h6 class="tiny fw-bold text-accent text-uppercase mb-3">
-                                        <i class="bi bi-eye-fill me-2"></i>Vision
-                                    </h6>
-                                    <p class="small text-white-50 fst-italic mb-0" style="line-height: 1.6;">
-                                        "{{ $platform->vision }}"
-                                    </p>
-                                </div>
+
+                    <div class="modal-body p-0">
+                        <!-- Compact Header -->
+                        <div
+                            class="p-3 p-md-4 bg-white border-bottom d-flex flex-column flex-md-row align-items-center gap-2 gap-md-4 text-center text-md-start">
+                            <!-- Mas maliit na avatar sa mobile -->
+                            <div style="width: 65px; height: 65px; border-radius: 12px; overflow: hidden;"
+                                class="shadow-sm border d-flex align-items-center justify-content-center bg-primary text-white flex-shrink-0">
+                                @if ($selectedPlatform->candidate->photo)
+                                    <img src="{{ asset('storage/' . $selectedPlatform->candidate->photo) }}"
+                                        class="w-100 h-100 object-fit-cover">
+                                @else
+                                    <span class="fw-bold fs-4 text-uppercase">
+                                        {{ substr($selectedPlatform->candidate->student->first_name, 0, 1) }}{{ substr($selectedPlatform->candidate->student->last_name, 0, 1) }}
+                                    </span>
+                                @endif
                             </div>
-
-                            <div class="col-md-6">
-                                <div class="p-3 rounded-3 h-100"
-                                    style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05);">
-                                    <h6 class="tiny fw-bold text-accent text-uppercase mb-3">
-                                        <i class="bi bi-rocket-takeoff-fill me-2"></i>Mission
-                                    </h6>
-                                    <p class="small text-white-50 mb-0"
-                                        style="white-space: pre-wrap; line-height: 1.6;">{{ $platform->mission }}</p>
-                                </div>
-                            </div>
-
-                            <div class="col-md-12">
-                                <div class="p-3 rounded-3 shadow-sm"
-                                    style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05);">
-                                    <h6 class="tiny fw-bold text-accent text-uppercase mb-3">
-                                        <i class="bi bi-target me-2"></i>Primary Goals
-                                    </h6>
-
-                                    @if (!empty($platform->goals) && count($platform->goals) > 0)
-                                        <div class="row row-cols-1 row-cols-md-2 g-2">
-                                            @foreach ($platform->goals as $goal)
-                                                <div class="col">
-                                                    <div class="d-flex align-items-start gap-2 small text-white-50">
-                                                        <i class="bi bi-check2-circle text-accent mt-1"></i>
-                                                        <span>{{ $goal }}</span>
-                                                    </div>
-                                                </div>
-                                            @endforeach
-                                        </div>
-                                    @else
-                                        <p class="small text-white-50 fst-italic mb-0">No specific goals provided.</p>
-                                    @endif
-                                </div>
-                            </div>
-
-                            <div class="col-md-12">
-                                <div class="p-3 rounded-3 shadow-sm"
-                                    style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05);">
-                                    <h6 class="tiny fw-bold text-accent text-uppercase mb-3">
-                                        <i class="bi bi-list-task me-2"></i>Action Plans & Roadmap
-                                    </h6>
-
-                                    @if (!empty($platform->action_plans) && count($platform->action_plans) > 0)
-                                        <div class="timeline-simple">
-                                            @foreach ($platform->action_plans as $index => $action_plan)
-                                                <div class="d-flex gap-3 mb-3">
-                                                    <div class="flex-shrink-0">
-                                                        <span
-                                                            class="badge rounded-circle bg-accent bg-opacity-25 text-accent d-flex align-items-center justify-content-center"
-                                                            style="width: 24px; height: 24px; font-size: 0.7rem;">
-                                                            {{ $index + 1 }}
-                                                        </span>
-                                                    </div>
-                                                    <div class="small text-white-50 pt-1">
-                                                        {{ $action_plan }}
-                                                    </div>
-                                                </div>
-                                            @endforeach
-                                        </div>
-                                    @else
-                                        <p class="small text-white-50 fst-italic mb-0">No specific action plans
-                                            provided.</p>
-                                    @endif
+                            <div>
+                                <h5 class="fw-bold text-dark mb-1" style="font-size: 1.1rem;">
+                                    {{ $selectedPlatform->candidate->student->first_name }}
+                                    {{ $selectedPlatform->candidate->student->last_name }}
+                                </h5>
+                                <div
+                                    class="d-flex flex-wrap justify-content-center justify-content-md-start gap-1 align-items-center">
+                                    <span
+                                        class="badge bg-primary-subtle text-primary border border-primary-subtle px-2 py-1"
+                                        style="font-size: 0.7rem;">{{ $selectedPlatform->candidate->position->name }}</span>
+                                    <span class="text-muted fw-bold" style="font-size: 0.7rem;">Party:
+                                        {{ $selectedPlatform->candidate->party_name ?? 'No Party' }}</span>
                                 </div>
                             </div>
                         </div>
+
+                        <div class="p-3 p-md-4">
+                            <div class="row g-3"> <!-- g-3 instead of g-4 para mas dikit unti -->
+                                <!-- Academic Column -->
+                                <div class="col-md-5">
+                                    <h6 class="fw-bold text-primary mb-2 text-uppercase"
+                                        style="font-size: 0.7rem; letter-spacing: 0.5px;">Academic & Profile</h6>
+                                    <div class="bg-light p-2 p-md-3 rounded-3 mb-2">
+                                        <small class="d-block text-muted" style="font-size: 0.65rem;">GWA / Average
+                                            Grade</small>
+                                        <span
+                                            class="fw-bold text-dark small">{{ $selectedPlatform->candidate->average_grade ?? 'N/A' }}</span>
+                                    </div>
+                                    <div class="mb-2">
+                                        <small class="d-block text-muted fw-bold"
+                                            style="font-size: 0.65rem;">Achievements</small>
+                                        <p class="text-dark mb-0" style="font-size: 0.75rem; line-height: 1.4;">
+                                            {{ $selectedPlatform->candidate->achievements ?: 'None listed.' }}
+                                        </p>
+                                    </div>
+                                    <div class="mb-0">
+                                        <small class="d-block text-muted fw-bold" style="font-size: 0.65rem;">Past
+                                            Positions</small>
+                                        <ul class="ps-3 mb-0" style="font-size: 0.75rem;">
+                                            @php
+                                                $roles = is_array($selectedPlatform->candidate->previous_position)
+                                                    ? $selectedPlatform->candidate->previous_position
+                                                    : explode(
+                                                        ',',
+                                                        $selectedPlatform->candidate->previous_position ?? '',
+                                                    );
+                                                $roles = array_filter(array_map('trim', $roles));
+                                            @endphp
+                                            @forelse($roles as $role)
+                                                <li>{{ is_array($role) ? implode(', ', $role) : $role }}</li>
+                                            @empty
+                                                <li>None</li>
+                                            @endforelse
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                <!-- Agenda Column -->
+                                <div class="col-md-7 border-start-0 border-md-start">
+                                    <div class="ps-md-4">
+                                        <h6 class="fw-bold text-accent mb-2 text-uppercase"
+                                            style="font-size: 0.7rem; letter-spacing: 0.5px;">Agenda</h6>
+                                        <div class="mb-2">
+                                            <small class="d-block text-muted" style="font-size: 0.65rem;">Platform
+                                                Title</small>
+                                            <p class="fw-bold text-primary mb-0" style="font-size: 0.85rem;">
+                                                {{ $selectedPlatform->title ?? 'No Title' }}</p>
+                                        </div>
+                                        <div class="mb-2">
+                                            <small class="d-block text-muted" style="font-size: 0.65rem;">Campaign
+                                                Tagline</small>
+                                            <p class="text-dark fst-italic mb-0" style="font-size: 0.75rem;">
+                                                "{{ $selectedPlatform->tagline ?? 'No Tagline' }}"</p>
+                                        </div>
+                                        <div class="bg-primary-subtle p-2 p-md-3 rounded-3"
+                                            style="max-height: 180px; overflow-y: auto;">
+                                            <small class="d-block text-primary fw-bold mb-1"
+                                                style="font-size: 0.65rem;">Agenda Details</small>
+                                            <p class="text-dark mb-0"
+                                                style="white-space: pre-line; font-size: 0.75rem; line-height: 1.4;">
+                                                {{ is_array($selectedPlatform->agenda) ? implode("\n", $selectedPlatform->agenda) : $selectedPlatform->agenda ?? 'No Agenda' }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="modal-footer border-white-10">
-                        <button type="button" class="btn btn-outline-danger" data-bs-dismiss="modal">Close</button>
-                        @if ($platform->status === 'pending')
-                            <button wire:click="publishPlatform({{ $platform->id }})" class="btn btn-success"
-                                data-bs-dismiss="modal">Approve & Publish</button>
+
+                    <div class="modal-footer bg-light p-2 flex-row justify-content-end">
+                        <button type="button" class="btn btn-danger btn-sm px-3" data-bs-dismiss="modal"
+                            style="height: 32px; font-size: 0.75rem;">Close</button>
+                        @if ($selectedPlatform->status === 'pending')
+                            <button wire:click="publishPlatform({{ $selectedPlatform->id }})" class="btn btn-sm px-3"
+                                data-bs-dismiss="modal"
+                                style="height: 32px; font-size: 0.75rem; background-color: #10b981; color: white;">
+                                Confirm Approval
+                            </button>
                         @endif
                     </div>
-                </div>
+                @endif
             </div>
         </div>
-    @endforeach
+    </div>
 
-    <style>
-        /* Table Glass Styling */
-        .table-custom {
-            --bs-table-bg: transparent;
-            --bs-table-hover-bg: rgba(255, 255, 255, 0.03);
-        }
-
-        .table-custom thead th {
-            background: rgba(0, 0, 0, 0.2);
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            padding: 1.2rem 1rem;
-            border: none;
-        }
-
-        .table-custom tbody tr {
-            transition: all 0.2s ease;
-        }
-
-        .table-custom tbody tr:hover {
-            background: rgba(255, 255, 255, 0.05) !important;
-        }
-
-        .table-custom tbody td {
-            padding: 1.1rem 1rem;
-            vertical-align: middle;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        /* Status Badge */
-        .status-badge {
-            font-size: 0.65rem;
-            text-transform: uppercase;
-        }
-
-        /* ACTION BUTTONS */
-        .btn-sm {
-            width: 35px;
-            height: 35px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 10px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        /* View Button (Cyan/Glass) */
-        .btn-icon-glass {
-            background: rgba(255, 255, 255, 0.05);
-            color: #0dcaf0;
-            border: 1px solid rgba(13, 202, 240, 0.3);
-        }
-
-        .btn-icon-glass:hover {
-            background: #0dcaf0;
-            color: #000;
-            box-shadow: 0 0 15px rgba(13, 202, 240, 0.5);
-        }
-
-        /* Approve Button (Green) */
-        .btn-icon-approve {
-            background: rgba(40, 167, 69, 0.1);
-            color: #28a745;
-            border: 1px solid rgba(40, 167, 69, 0.4);
-        }
-
-        .btn-icon-approve:hover {
-            background: #28a745;
-            color: #fff;
-            box-shadow: 0 0 15px rgba(40, 167, 69, 0.5);
-        }
-
-        /* Delete Button (Red) */
-        .btn-icon-danger {
-            background: rgba(220, 53, 69, 0.1);
-            color: #dc3545;
-            border: 1px solid rgba(220, 53, 69, 0.4);
-        }
-
-        .btn-icon-danger:hover {
-            background: #dc3545;
-            color: #fff;
-            box-shadow: 0 0 15px rgba(220, 53, 69, 0.5);
-        }
-
-        /* Pagination Styles */
-        .pagination {
-            gap: 5px;
-            margin-bottom: 0;
-        }
-
-        .page-link {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: #fff;
-            border-radius: 8px !important;
-        }
-
-        .page-link:hover {
-            background: rgba(255, 255, 255, 0.15);
-            color: #fff;
-        }
-
-        .page-item.active .page-link {
-            background: var(--accent-color, #673ab7);
-            border-color: var(--accent-color, #673ab7);
-        }
-    </style>
-</div>
-
-<script>
-    window.addEventListener('swal', event => {
-        let data = event.detail[0] || event.detail;
-        Swal.fire({
-            title: data.title,
-            text: data.text,
-            icon: data.icon,
-            background: "#1a222c",
-            color: "#fff",
-            confirmButtonColor: "var(--accent-color, #673ab7)"
+    <script>
+        window.addEventListener('open-view-modal', event => {
+            var myModal = new bootstrap.Modal(document.getElementById('viewPlatformModal'));
+            myModal.show();
         });
-    });
-</script>
+    </script>
+</div>

@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('middle_name', 100)->nullable();
             $table->string('last_name', 100);
             $table->string('suffix', 10)->nullable();
-            $table->enum('course', ['IT', 'HRMT', 'HST', 'ECT']);
+            $table->string('course');
             $table->unsignedTinyInteger('year_level');
             $table->enum('status', ['active', 'inactive', 'suspended'])->default('active');
             $table->string('phone', 20)->nullable();
