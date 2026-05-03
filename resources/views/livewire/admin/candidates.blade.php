@@ -268,9 +268,9 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
 <div>
     @include('layouts.partials.admin-sidebar')
 
-    <main class="main-content" style="padding: 24px 12px !important">
+    <main class="main-content">
         <div class="topbar">
-            <div>
+            <div class="topbar-info">
                 <h2 class="fw-bold text-primary">Manage <span class="text-accent">Candidates Profile</span></h2>
                 <p class="text-muted mb-0" style="font-size: 0.85rem;">Unified candidate records and electoral profiles
                 </p>

@@ -223,7 +223,7 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
 
     <main class="main-content">
         <div class="topbar" wire:key="cycle-topbar">
-            <div>
+            <div class="topbar-info">
                 <h2 class="fw-bold text-primary">Election <span class="text-accent">Cycle</span></h2>
                 <p class="text-muted mb-0 small">Configure election dates and live system controls</p>
             </div>
@@ -393,9 +393,7 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
             </div>
 
             <div class="col-lg-4">
-                <!-- Pinaliit ang padding sa mobile (p-3 p-md-4) -->
                 <div class="glass-card p-3 p-md-4 border-0 shadow-sm bg-white h-100">
-                    <!-- Mas maliit na margin bottom (mb-3) -->
                     <h6 class="fw-bold text-primary mb-3 mb-md-4 uppercase small">
                         <i class="bi bi-sliders me-2"></i>Live Controls
                     </h6>
@@ -404,9 +402,7 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                         <div
                             class="control-item d-flex justify-content-between align-items-center mb-2 mb-md-3 p-2 rounded-3 hover-bg-light border shadow-xs">
                             <div class="pe-2">
-                                <!-- Pinaliit ang label sa mobile (text-[13px]) -->
                                 <div class="fw-bold text-dark text-[13px] md:text-sm">{{ $setting['label'] }}</div>
-                                <!-- Pinaliit ang description text (text-[10px]) -->
                                 <div class="text-muted text-[10px] md:text-xs leading-tight">
                                     @if ($setting['key'] == 'allowVoting')
                                         <span :class="now < dates.vS ? 'text-danger fw-bold' : 'text-muted'">

@@ -97,7 +97,7 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
 
     <main class="main-content">
         <div class="topbar">
-            <div>
+            <div class="topbar-info">
                 <h2 class="fw-bold text-primary">Platform <span class="text-accent">Management</span></h2>
                 <p class="text-muted mb-0" style="font-size: 0.85rem;">Review candidate profiles and manifestos</p>
             </div>

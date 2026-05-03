@@ -15,7 +15,6 @@ new #[Layout('layouts.guest')] class extends Component {
 
         if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
             $seconds = RateLimiter::availableIn($throttleKey);
-
             $this->addError('form.student_id', "Too many login attempts. Please try again in $seconds seconds.");
             return;
         }
@@ -27,7 +26,14 @@ new #[Layout('layouts.guest')] class extends Component {
 
             RateLimiter::clear($throttleKey);
 
+            auth()->logoutOtherDevices($this->form->password);
+
             $user = auth()->user();
+
+            DB::table('sessions')
+                ->where('user_id', $user->id)
+                ->where('id', '!=', session()->getId())
+                ->delete();
 
             if ($user->roles()->where('name', 'admin')->exists()) {
                 $this->redirectIntended(route('admin.dashboard'));
@@ -37,10 +43,8 @@ new #[Layout('layouts.guest')] class extends Component {
             $this->redirectIntended(route('student.dashboard'));
         } catch (\Illuminate\Validation\ValidationException $e) {
             RateLimiter::hit($throttleKey, 60);
-
             $this->form->password = '';
             $this->dispatch('auth-failed');
-
             throw $e;
         }
     }

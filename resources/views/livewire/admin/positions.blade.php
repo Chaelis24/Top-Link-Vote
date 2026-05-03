@@ -116,7 +116,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
 
     <main class="main-content">
         <div class="topbar">
-            <div>
+            <div class="topbar-info">
                 <h2 class="fw-bold text-primary">Manage <span class="text-accent">Positions</span></h2>
                 <p class="text-muted mb-0" style="font-size: 0.85rem;">Define the organizational structure for the
                     election</p>

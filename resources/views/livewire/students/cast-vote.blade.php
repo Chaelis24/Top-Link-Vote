@@ -203,7 +203,7 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
     @include('layouts.partials.student-sidebar')
     <main class="main-content">
         <div class="topbar">
-            <div>
+            <div class="topbar-info">
                 <h2 class="mb-0 text-dark">Digital <span style="color: #10b981">Ballot</span></h2>
                 <p class="text-secondary mb-0 small">Secure Electronic Voting System</p>
             </div>

@@ -149,14 +149,11 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
     }
 }; ?>
 <div>
-    <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
-    <button class="mobile-toggle" onclick="toggleSidebar()"><i class="bi bi-list"></i></button>
-
     @include('layouts.partials.student-sidebar')
 
     <main class="main-content">
         <div class="topbar" wire:key="persistent-topbar-header">
-            <div>
+            <div class="topbar-info">
                 <h2 class="text-dark">My <span class="text-primary">Profile</span></h2>
                 <p class="text-secondary mb-0">View your student information and voting status</p>
             </div>

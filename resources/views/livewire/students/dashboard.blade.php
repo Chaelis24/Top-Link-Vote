@@ -73,7 +73,7 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
     @include('layouts.partials.student-sidebar')
     <main class="main-content">
         <div class="topbar" wire:key="persistent-topbar-header">
-            <div>
+            <div class="topbar-info">
                 <h2 class="mb-0">Student <span class="text-primary">Dashboard</span></h2>
                 <p class="text-secondary mb-0" style="font-size: 0.85rem; font-weight: 500;">
                     Welcome back, <span class="text-primary">{{ $student->first_name ?? 'Student' }}

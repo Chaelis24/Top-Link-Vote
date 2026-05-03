@@ -314,7 +314,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
 
     <main class="main-content">
         <div class="topbar">
-            <div>
+            <div class="topbar-info">
                 <h2 class="fw-bold text-primary">Manage <span class="text-accent">Students</span></h2>
                 <p class="text-muted mb-0 small">Student list management</p>
             </div>

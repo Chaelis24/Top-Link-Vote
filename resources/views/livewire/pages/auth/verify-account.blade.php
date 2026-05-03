@@ -1,11 +1,11 @@
 <?php
 
 use Livewire\Volt\Component;
-use Livewire\Attributes\{Layout, Validate};
-use App\Models\{Student, User};
 use Illuminate\Support\Facades\{Hash, Auth, Cache, Mail};
 use Illuminate\Validation\ValidationException;
+use Livewire\Attributes\{Layout, Validate};
 use App\Mail\OtpVerificationMail;
+use App\Models\{Student, User};
 
 new #[Layout('layouts.guest')] class extends Component {
     public string $student_id = '';
@@ -78,7 +78,7 @@ new #[Layout('layouts.guest')] class extends Component {
 
         Auth::login($user);
 
-        $this->redirectIntended('/', navigate: true);
+        $this->redirectIntended(route('student.dashboard'));
     }
 };
 

@@ -110,7 +110,7 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
     setInterval(() => updateCountdown(), 60000)">
 
         <div class="topbar">
-            <div>
+            <div class="topbar-info">
                 <h2 class="fw-bold text-primary">Admin <span class="text-accent">Dashboard</span></h2>
                 <p class="text-muted mb-0" style="font-size: 0.85rem;">Election Management & Real-time Analytics</p>
             </div>

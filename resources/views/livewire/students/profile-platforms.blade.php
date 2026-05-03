@@ -254,7 +254,7 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
     @include('layouts.partials.student-sidebar')
     <main class="main-content">
         <div class="topbar">
-            <div>
+            <div class="topbar-info">
                 <h2 class="text-dark">Candidate <span class="text-primary">Profiles & Platforms</span></h2>
                 <p class="text-secondary mb-0">Learn about candidate advocacy before casting your vote</p>
             </div>
@@ -712,7 +712,7 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
                                     <i class="bi bi-lock-fill"></i> Locked
                                 </button>
                             @else
-                                <button type="submit" class="btn btn-glow btn-sm px-4 rounded-3 fw-bold">
+                                <button type="submit" class="btn btn-glow px-4 rounded-3 fw-bold">
                                     <span wire:loading.remove>Submit for Review</span>
                                     <span wire:loading>...</span>
                                 </button>
