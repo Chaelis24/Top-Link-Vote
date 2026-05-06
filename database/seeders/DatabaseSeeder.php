@@ -28,6 +28,10 @@ class DatabaseSeeder extends Seeder
         $studentRole = Role::where('name', 'student')->first();
         $candidateRole = Role::where('name', 'candidate')->first();
 
+        if (!$candidateRole) {
+            $this->command->error("Role 'candidate' not found!");
+        }
+
         $michael = User::updateOrCreate(
             ['email' => 'michaelfarinas112@gmail.com'],
             [
@@ -44,8 +48,11 @@ class DatabaseSeeder extends Seeder
                 'first_name'  => 'Michael',
                 'middle_name' => 'Buena',
                 'last_name'   => 'Farinas',
+                'suffix'      => 'Jr',
                 'course'      => 'IT',
                 'year_level'  => 3,
+                'phone'       => '09515430735',
+                'address'     => 'Cabanatuan City',
                 'birthday'    => '2004-09-24',
                 'gender'      => 'Male',
                 'status'      => 'active',

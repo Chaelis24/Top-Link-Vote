@@ -11,6 +11,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
 
     public $csvFile;
     public $photo;
+    public $editingCandidateId;
 
     #[Url(history: true)]
     public string $search = '';
@@ -20,8 +21,6 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
 
     #[Url(history: true)]
     public string $departmentFilter = 'All Departments';
-
-    public $editingCandidateId;
 
     public const DEPARTMENTS = ['IT', 'HRMT', 'ECT', 'HST'];
 
@@ -99,7 +98,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
             'platform_title' => $platform->title ?? '',
             'tagline' => $platform->tagline ?? '',
             'agenda' => is_array($platform?->agenda) ? implode("\n", $platform->agenda) : $platform->agenda ?? '',
-            'photo_url' => $candidate->photo ?? ($candidate->student->photo ?? ''),
+            'existing_photo' => $candidate->photo,
         ];
         $this->dispatch('open-modal', id: 'editCandidateModal');
     }
@@ -132,7 +131,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
             ];
 
             if ($this->photo) {
-                $path = $this->photo->store('candidates-photos', 'public');
+                $path = $this->photo->store('candidates-pictures', 'public');
                 $candidateData['photo'] = $path;
             }
 
@@ -157,10 +156,19 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
 
             DB::commit();
             $this->dispatch('close-modal', id: 'editCandidateModal');
-            $this->dispatch('swal', ['title' => 'Updated!', 'text' => 'Candidate profile saved.', 'icon' => 'success']);
+
+            $this->dispatch('swal', [
+                'title' => 'Updated!',
+                'text' => 'Candidate profile saved.',
+                'icon' => 'success',
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            $this->dispatch('notify', message: 'Error: ' . $e->getMessage(), type: 'error');
+            $this->dispatch('swal', [
+                'title' => 'Update Failed',
+                'text' => 'An error occurred while saving: ' . $e->getMessage(),
+                'icon' => 'error',
+            ]);
         }
     }
 
@@ -180,8 +188,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
 
             $path = $this->csvFile->getRealPath();
             $file = fopen($path, 'r');
-            fgetcsv($file); // Skip header
-
+            fgetcsv($file);
             DB::beginTransaction();
             $importedCount = 0;
 
@@ -196,8 +203,6 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                 $student = Student::where('student_id', $studentId)->first();
 
                 if ($student && $student->user_id) {
-                    // 1. Strict Position Creation/Retrieval
-                    // Ginagawa lang nito ang position base sa sakto na pangalan sa CSV para sa cycle na ito
                     $pos = Position::firstOrCreate(
                         [
                             'name' => $positionName,
@@ -240,18 +245,37 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
             fclose($file);
             DB::commit();
             $this->reset('csvFile');
-
-            $this->dispatch('swal', ['title' => 'Success', 'text' => "Imported $importedCount candidates.", 'icon' => 'success']);
+            $this->dispatch('swal', [
+                'title' => 'Success',
+                'text' => "Imported $importedCount candidates.",
+                'icon' => 'success',
+            ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            $this->dispatch('notify', message: 'Error: ' . $e->getMessage(), type: 'error');
+            $this->dispatch('swal', [
+                'title' => 'Import Failed',
+                'text' => 'Process halted due to an error: ' . $e->getMessage(),
+                'icon' => 'error',
+            ]);
         }
     }
 
     public function deleteCandidate($id)
     {
-        Candidate::destroy($id);
-        $this->dispatch('swal', ['title' => 'Deleted', 'text' => 'Candidate removed.', 'icon' => 'warning']);
+        try {
+            Candidate::destroy($id);
+            $this->dispatch('swal', [
+                'title' => 'Deleted',
+                'text' => 'The candidate has been removed from the records.',
+                'icon' => 'info',
+            ]);
+        } catch (\Exception $e) {
+            $this->dispatch('swal', [
+                'title' => 'Delete Error',
+                'text' => 'Could not delete candidate: ' . $e->getMessage(),
+                'icon' => 'error',
+            ]);
+        }
     }
 
     public function getAvatarColor()
@@ -261,8 +285,10 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
 
     public function logout()
     {
-        Auth::logout();
-        return redirect('/login');
+        Auth::guard('web')->logout();
+        Session::invalidate();
+        Session::regenerateToken();
+        return redirect()->route('login');
     }
 }; ?>
 <div>
@@ -319,7 +345,6 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
 
         <div class="glass-card p-3 p-md-4 mb-3 border-0 shadow-sm">
             <div class="row g-2 g-md-3 align-items-center">
-                <!-- Search: col-md-4 -->
                 <div class="col-12 col-md-4">
                     <div class="search-wrap-modern">
                         <i class="bi bi-search search-icon"></i>
@@ -327,7 +352,6 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                             placeholder="Search name or ID...">
                     </div>
                 </div>
-                <!-- Department: col-md-4 para pantay sila ng laki ng search at position -->
                 <div class="col-6 col-md-4">
                     <select wire:model.live="departmentFilter" class="form-select-modern w-100">
                         <option value="All Departments">All Departments</option>
@@ -336,7 +360,6 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                         @endforeach
                     </select>
                 </div>
-                <!-- Position: col-md-4 -->
                 <div class="col-6 col-md-4">
                     <select wire:model.live="positionFilter" class="form-select-modern w-100">
                         <option value="All Positions">All Positions</option>
@@ -349,7 +372,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
         </div>
 
         <div class="glass-card p-0 overflow-hidden border-0 shadow-sm">
-            <div class="table-responsive d-none d-md-block"> <!-- Nakatago sa mobile, labas sa desktop -->
+            <div class="table-responsive d-none d-md-block">
                 <table class="table table-hover mb-0">
                     <thead class="bg-light">
                         <tr>
@@ -391,24 +414,48 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                                         {{ $candidate->party_name ?? 'No Party Name' }}</div>
                                 </td>
                                 <td>
-                                    @php $hasPlatform = $candidate->platforms->first()?->platform_title; @endphp
-                                    @if ($hasPlatform)
-                                        <span class="badge-approved text-nowrap"><i
-                                                class="bi bi-check2-circle me-1"></i>Complete</span>
-                                    @else
-                                        <span class="badge-pending text-nowrap"><i
-                                                class="bi bi-exclamation-triangle me-1"></i>Missing Bio</span>
-                                    @endif
+                                    <div
+                                        title="{{ json_encode([
+                                            'Photo' => $candidate->photo ? 'OK' : 'Missing',
+                                            'Grade' => $candidate->average_grade ? 'OK' : 'Missing',
+                                            'Platform' => $candidate->platforms()->first() ? 'Exists' : 'No Record',
+                                        ]) }}">
+                                        @if ($candidate->isProfileComplete())
+                                            <span class="badge-approved text-nowrap"><i
+                                                    class="bi bi-check2-circle me-1"></i>Complete</span>
+                                        @else
+                                            <span class="badge-pending text-nowrap"><i
+                                                    class="bi bi-exclamation-triangle me-1"></i>Missing Bio</span>
+                                        @endif
+                                    </div>
                                 </td>
                                 <td class="text-center pe-4 text-nowrap">
-                                    <button class="btn-icon btn-edit" wire:click="editCandidate({{ $candidate->id }})">
-                                        <i class="bi bi-pencil-square"></i>
-                                    </button>
-                                    <button class="btn-icon btn-delete"
-                                        wire:click="deleteCandidate({{ $candidate->id }})"
-                                        wire:confirm="Delete permanently?">
-                                        <i class="bi bi-trash"></i>
-                                    </button>
+                                    <div class="d-flex align-items-center justify-content-center gap-2">
+                                        <button type="button" class="btn-icon btn-edit"
+                                            wire:click="editCandidate({{ $candidate->id }})"
+                                            style="background: rgba(13, 110, 253, 0.1); color: #0d6efd; border: none; width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                            <i class="bi bi-pencil-square" style="font-size: 1.1rem;"></i>
+                                        </button>
+                                        <button type="button" class="btn-icon btn-delete"
+                                            x-on:click="
+                                            Swal.fire({
+                                                title: 'Delete Candidate?',
+                                                text: 'This action is permanent. All data associated with this candidate will be removed.',
+                                                icon: 'warning',
+                                                showCancelButton: true,
+                                                confirmButtonColor: '#dc3545',
+                                                cancelButtonColor: '#6c757d',
+                                                confirmButtonText: 'Yes, delete permanently',
+                                                cancelButtonText: 'Cancel'
+                                            }).then((result) => {
+                                                if (result.isConfirmed) {
+                                                    $wire.deleteCandidate({{ $candidate->id }})
+                                                }
+                                            })"
+                                            style="background: rgba(220, 53, 69, 0.1); color: #dc3545; border: none; width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                            <i class="bi bi-trash" style="font-size: 1.1rem;"></i>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         @empty
@@ -419,13 +466,10 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                     </tbody>
                 </table>
             </div>
-
-            <!-- MOBILE VIEW: Lalabas lang sa mobile (d-md-none) -->
             <div class="d-md-none">
                 @forelse($candidates as $candidate)
                     <div class="p-3 border-bottom position-relative">
                         <div class="d-flex align-items-start gap-3">
-                            <!-- Avatar -->
                             <div class="d-flex align-items-center justify-content-center fw-bold text-white shadow-sm flex-shrink-0"
                                 style="background: {{ $this->getAvatarColor($candidate->id) }}; width: 45px; height: 45px; border-radius: 12px; overflow: hidden;">
                                 @if ($candidate->photo)
@@ -438,8 +482,6 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                                     {{ strtoupper(substr($candidate->student?->first_name ?? 'A', 0, 1)) }}{{ strtoupper(substr($candidate->student?->last_name ?? '', 0, 1)) }}
                                 @endif
                             </div>
-
-                            <!-- Info -->
                             <div class="flex-grow-1">
                                 <div class="text-primary fw-bold mb-0" style="font-size: 0.95rem;">
                                     {{ $candidate->student->first_name }} {{ $candidate->student->last_name }}
@@ -460,17 +502,39 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                                     @endif
                                 </div>
                             </div>
-
-                            <!-- Actions in Mobile -->
-                            <div class="d-flex flex-column gap-2">
-                                <button class="btn btn-sm btn-outline-primary border-0 p-1"
-                                    wire:click="editCandidate({{ $candidate->id }})">
-                                    <i class="bi bi-pencil-square fs-5"></i>
+                            <div class="d-flex align-items-center gap-3">
+                                <button type="button"
+                                    class="btn btn-sm d-flex align-items-center justify-content-center"
+                                    wire:click="editCandidate({{ $candidate->id }})"
+                                    style="background: rgba(13, 110, 253, 0.1); color: #0d6efd; border: none; width: 40px; height: 40px; border-radius: 10px;"
+                                    title="Edit">
+                                    <i class="bi bi-pencil-square" style="font-size: 1.2rem;"></i>
                                 </button>
-                                <button class="btn btn-sm btn-outline-danger border-0 p-1"
-                                    wire:click="deleteCandidate({{ $candidate->id }})"
-                                    wire:confirm="Delete permanently?">
-                                    <i class="bi bi-trash fs-5"></i>
+                                <button type="button"
+                                    class="btn btn-sm d-flex align-items-center justify-content-center"
+                                    x-on:click="
+                                    Swal.fire({
+                                        title: 'Delete this candidate?',
+                                        text: 'This is permanent.',
+                                        icon: 'warning',
+                                        showCancelButton: true,
+                                        confirmButtonColor: '#dc3545',
+                                        cancelButtonColor: '#6c757d',
+                                        confirmButtonText: 'Delete',
+                                        cancelButtonText: 'No',
+                                        customClass: {
+                                            popup: 'rounded-4',
+                                            confirmButton: 'rounded-3',
+                                            cancelButton: 'rounded-3'
+                                        }
+                                    }).then((result) => {
+                                        if (result.isConfirmed) {
+                                            $wire.deleteCandidate({{ $candidate->id }})
+                                        }
+                                    })"
+                                    style="background: rgba(220, 53, 69, 0.1); color: #dc3545; border: none; width: 40px; height: 40px; border-radius: 10px;"
+                                    title="Delete">
+                                    <i class="bi bi-trash" style="font-size: 1.2rem;"></i>
                                 </button>
                             </div>
                         </div>
@@ -485,8 +549,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
     </main>
 
     <div class="modal fade" id="editCandidateModal" tabindex="-1" wire:ignore.self>
-        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"
-            style="max-width: 95%; width: 800px;">
+        <div class="modal-dialog modal-lg modal-dialog-centered" style="max-width: 95%; width: 800px;">
             <div class="modal-content border-0 shadow-lg" style="border-radius: 15px;">
                 <div class="modal-header bg-primary text-white p-3 p-md-4">
                     <h5 class="modal-title fw-bold fs-6 fs-md-5">
@@ -511,6 +574,35 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                         <div class="tab-content p-3 p-md-4">
                             <div class="tab-pane fade show active" id="tab-basic">
                                 <div class="row g-2 g-md-3">
+                                    <div class="col-12">
+                                        <label class="form-label small fw-bold text-muted mb-1">CANDIDATE PHOTO</label>
+                                        @if ($photo || (isset($editForm['existing_photo']) && $editForm['existing_photo']))
+                                            <div class="mt-2 mb-2">
+                                                <img src="{{ $photo ? $photo->temporaryUrl() : asset('storage/' . $editForm['existing_photo']) }}"
+                                                    class="rounded border shadow-sm"
+                                                    style="width: 50px; height: 50px; object-fit: cover;">
+                                            </div>
+                                        @endif
+                                        <div class="input-group">
+                                            <label class="input-group-text bg-white border-end-0" for="photoInput"
+                                                style="cursor: pointer;">
+                                                <i class="bi bi-image text-primary"></i>
+                                            </label>
+
+                                            <input type="text" readonly
+                                                class="form-control bg-white border-start-0 small"
+                                                placeholder="{{ $photo ? $photo->getClientOriginalName() : (isset($editForm['existing_photo']) ? basename($editForm['existing_photo']) : 'No file selected') }}"
+                                                style="cursor: default;">
+
+                                            <button class="btn btn-outline-primary btn-sm px-3" type="button"
+                                                @click="$refs.photoInput.click()">
+                                                Browse
+                                            </button>
+                                        </div>
+                                        <input type="file" x-ref="photoInput" wire:model="photo" class="d-none"
+                                            id="photoInput" accept="image/*">
+
+                                    </div>
                                     <div class="col-12 col-md-6">
                                         <label class="form-label small fw-bold text-muted mb-1">FIRST NAME</label>
                                         <input type="text" wire:model="editForm.first_name"
@@ -535,30 +627,19 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                                         <label class="form-label small fw-bold text-muted mb-1">ACHIEVEMENTS</label>
                                         <textarea wire:model="editForm.achievements" class="form-control-modern" rows="3"></textarea>
                                     </div>
-                                    <div class="col-12">
-                                        <label class="form-label small fw-bold text-muted mb-1">CANDIDATE PHOTO</label>
-                                        <input type="file" wire:model="photo" class="form-control-modern"
-                                            accept="image/*">
-                                        <div wire:loading wire:target="photo" class="text-primary small mt-1">
-                                            Uploading...</div>
-                                        @if ($photo)
-                                            <img src="{{ $photo->temporaryUrl() }}" class="mt-2 rounded shadow-sm"
-                                                style="width: 70px; height: 70px; object-fit: cover; border: 2px solid #eee;">
-                                        @endif
-                                    </div>
                                 </div>
                             </div>
 
                             <div class="tab-pane fade" id="tab-vision">
                                 <div class="row g-2 g-md-3">
                                     <div class="col-12">
-                                        <label class="form-label small fw-bold text-primary mb-1">PLATFORM
+                                        <label class="form-label small fw-bold text-muted mb-1">PLATFORM
                                             TITLE</label>
                                         <input type="text" wire:model="editForm.platform_title"
-                                            class="form-control-modern fw-bold">
+                                            class="form-control-modern">
                                     </div>
                                     <div class="col-12">
-                                        <label class="form-label small fw-bold text-accent mb-1">CAMPAIGN
+                                        <label class="form-label small fw-bold text-muted mb-1">CAMPAIGN
                                             TAGLINE</label>
                                         <input type="text" wire:model="editForm.tagline"
                                             class="form-control-modern fst-italic">
@@ -572,10 +653,22 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                         </div>
                     </div>
 
-                    <div class="modal-footer bg-light p-3 d-flex justify-content-between align-items-center">
-                        <button type="button" class="btn btn-danger border px-3"
-                            data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn-glow px-4 py-2">Save All Changes</button>
+                    <div class="modal-footer border-0 p-4 pt-2 bg-white justify-content-between align-items-center"
+                        style="border-bottom-left-radius: 15px; border-bottom-right-radius: 15px;">
+
+                        <button type="button"
+                            class="btn btn-secondary d-flex align-items-center justify-content-center fw-semibold px-4"
+                            data-bs-dismiss="modal"
+                            style="border-radius: 10px; font-size: 0.85rem; height: 45px; border: none;">
+                            Cancel
+                        </button>
+
+                        <button type="submit" class="btn-glow d-flex align-items-center justify-content-center px-4"
+                            style="border-radius: 10px; font-size: 0.85rem; height: 45px; font-weight: 600; min-width: 160px;">
+                            <span wire:loading wire:target="updateCandidate"
+                                class="spinner-border spinner-border-sm me-2"></span>
+                            Save Changes
+                        </button>
                     </div>
                 </form>
             </div>

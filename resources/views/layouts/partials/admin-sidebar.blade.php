@@ -82,9 +82,9 @@
                         </div>
                     </div>
                     <div class="admin-user-details">
-                        <p class="admin-user-name text-truncate" style="max-width: 100px;">
+                        <p class="admin-user-name text-truncate" style="max-width: 130px;font-size: 0.85rem;">
                             {{ auth()->user()->name ?? 'Admin' }}</p>
-                        <p style="margin:0; font-size: 0.65rem; color: #1e3a8a; font-weight: 800;">ADMINISTRATOR</p>
+                        <p style="margin:0; font-size: 0.65rem; color: #1e3a8a; font-weight: 800;">View Profile</p>
                     </div>
                 </div>
                 <i class="bi bi-chevron-up ms-auto transition-transform" :class="{ 'rotate-180': adminOpen }"

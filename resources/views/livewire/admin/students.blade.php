@@ -1,12 +1,12 @@
 <?php
 
 use Livewire\Volt\Component;
+use Illuminate\Support\Facades\{Auth, Session, DB, Hash};
 use Livewire\Attributes\{Layout, Title, Url};
+use App\Models\{User, Student, Role, Vote};
 use Livewire\WithFileUploads;
 use Livewire\WithPagination;
-use Illuminate\Support\Facades\{Auth, Session, DB, Hash};
 use Illuminate\Support\Str;
-use App\Models\{User, Student, Role, Vote};
 
 new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Component {
     use WithFileUploads, WithPagination;
@@ -114,6 +114,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                     'first_name' => trim($row[1]),
                     'middle_name' => trim($row[2] ?? ''),
                     'last_name' => trim($row[3]),
+                    'suffix' => trim($row[4] ?? ''),
                     'course' => trim($row[5]),
                     'year_level' => (int) $row[6],
                     'phone' => trim($row[8]),
@@ -126,7 +127,11 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
             $this->pendingRows = $rowsToImport;
             $this->dispatch('confirm-csv-import', count: count($rowsToImport));
         } catch (\Exception $e) {
-            $this->dispatch('notify', message: $e->getMessage(), type: 'error');
+            $this->dispatch('swal', [
+                'title' => 'File Error',
+                'text' => $e->getMessage(),
+                'icon' => 'error',
+            ]);
         }
     }
 
@@ -136,13 +141,10 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
         try {
             $studentRole = Role::where('name', 'student')->first();
             $now = now();
-
             $defaultPassword = Hash::make('student123');
 
             $usersToInsert = [];
-            $studentEntries = [];
-
-            foreach ($this->pendingRows as $index => $item) {
+            foreach ($this->pendingRows as $item) {
                 $usersToInsert[] = [
                     'name' => $item['first_name'] . ' ' . $item['last_name'],
                     'email' => $item['email'],
@@ -164,9 +166,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
 
             foreach ($this->pendingRows as $item) {
                 $userId = $newUsers[$item['email']];
-
                 $studentData = $item;
-
                 unset($studentData['email']);
 
                 $finalStudents[] = array_merge($studentData, [
@@ -178,10 +178,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                 ]);
 
                 if ($studentRole) {
-                    $rolesToAttach[] = [
-                        'user_id' => $userId,
-                        'role_id' => $studentRole->id,
-                    ];
+                    $rolesToAttach[] = ['user_id' => $userId, 'role_id' => $studentRole->id];
                 }
             }
 
@@ -194,21 +191,17 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
             }
 
             DB::commit();
+            $count = count($this->pendingRows);
             $this->reset(['csvFile', 'pendingRows']);
 
             $this->dispatch('swal', [
                 'title' => 'Import Complete!',
-                'text' => 'Successfully imported ' . count($this->pendingRows) . ' records.',
+                'text' => "Successfully imported $count records.",
                 'icon' => 'success',
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-
-            if ($e->getCode() == 23000 || str_contains($e->getMessage(), 'Duplicate entry')) {
-                $errorText = 'Import failed: One or more email addresses are already in use. Please check your data and try again.';
-            } else {
-                $errorText = 'An unexpected error occurred: ' . $e->getMessage();
-            }
+            $errorText = $e->getCode() == 23000 || str_contains($e->getMessage(), 'Duplicate entry') ? 'Import failed: One or more email addresses are already in use.' : 'An unexpected error occurred: ' . $e->getMessage();
 
             $this->dispatch('swal', [
                 'title' => 'Import Error',
@@ -251,38 +244,53 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
             'editForm.birthday' => 'nullable|date',
         ]);
 
-        $student = Student::findOrFail($this->editingStudentId);
+        try {
+            $student = Student::findOrFail($this->editingStudentId);
+            $student->update([
+                'first_name' => $this->editForm['first_name'],
+                'last_name' => $this->editForm['last_name'],
+                'course' => $this->editForm['course'],
+                'year_level' => $this->editForm['year_level'],
+                'status' => $this->editForm['status'],
+                'phone' => $this->editForm['phone'],
+                'address' => $this->editForm['address'],
+                'birthday' => $this->editForm['birthday'],
+                'gender' => $this->editForm['gender'],
+            ]);
 
-        $student->update([
-            'first_name' => $this->editForm['first_name'],
-            'last_name' => $this->editForm['last_name'],
-            'course' => $this->editForm['course'],
-            'year_level' => $this->editForm['year_level'],
-            'status' => $this->editForm['status'],
-            'phone' => $this->editForm['phone'],
-            'address' => $this->editForm['address'],
-            'birthday' => $this->editForm['birthday'],
-            'gender' => $this->editForm['gender'],
-        ]);
-
-        $this->dispatch('swal', [
-            'title' => 'Success!',
-            'text' => 'Student record has been updated successfully.',
-            'icon' => 'success',
-        ]);
-        $this->dispatch('close-modal', id: 'editStudentModal');
+            $this->dispatch('close-modal', id: 'editStudentModal');
+            $this->dispatch('swal', [
+                'title' => 'Success!',
+                'text' => 'Student record has been updated successfully.',
+                'icon' => 'success',
+            ]);
+        } catch (\Exception $e) {
+            $this->dispatch('swal', [
+                'title' => 'Update Failed',
+                'text' => 'An error occurred: ' . $e->getMessage(),
+                'icon' => 'error',
+            ]);
+        }
     }
 
     public function deleteStudent($id)
     {
-        $student = Student::findOrFail($id);
-        $student->update(['status' => 'inactive']);
+        try {
+            $student = Student::findOrFail($id);
+            $student->update(['status' => 'inactive']);
 
-        $this->dispatch('swal', [
-            'title' => 'Deleted!',
-            'text' => 'The student has been removed from the system.',
-            'icon' => 'warning',
-        ]);
+            $this->dispatch('swal', [
+                'title' => 'Student Deactivated',
+                'text' => 'The student has been set to inactive.',
+                'icon' => 'warning',
+            ]);
+        } catch (\Exception $e) {
+            $this->dispatch('swal', [
+                'title' => 'Error',
+                'text' => 'Could not delete record: ' . $e->getMessage(),
+                'icon' => 'error',
+            ]);
+        }
     }
 
     public function exportStudents()
@@ -305,6 +313,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
     {
         Auth::logout();
         Session::invalidate();
+        Session::regenerateToken();
         return redirect()->route('login');
     }
 }; ?>
@@ -326,6 +335,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                     <i class="bi bi-upload"></i>
                     <span class="hidden md:block ms-1">Import CSV</span>
                 </button>
+                <input type="file" x-ref="csvInput" class="hidden" wire:model="csvFile" accept=".csv">
             </div>
         </div>
 
@@ -360,7 +370,6 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
             <div class="d-flex flex-nowrap align-items-center gap-2 overflow-x-auto pb-2 pb-md-0"
                 style="scrollbar-width: none; -ms-overflow-style: none;">
 
-                <!-- Search Bar: Binigyan ng min-width para hindi masyadong mapres sa mobile -->
                 <div style="min-width: 180px; flex: 1;">
                     <div class="search-wrap-modern">
                         <i class="bi bi-search"></i>
@@ -368,8 +377,6 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                             class="form-control-sm">
                     </div>
                 </div>
-
-                <!-- Dropdowns: Binigyan ng min-width para readable pa rin ang options -->
                 <div style="min-width: 110px;">
                     <select wire:model.live="course" class="form-select-modern py-2">
                         <option value="All Courses">All Courses</option>
@@ -394,14 +401,42 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                         <option value="All Status">All Status</option>
                         <option>Voted</option>
                         <option>Not Voted</option>
-                        <option>Disabled</option>
+                        <option>Deativated</option>
                     </select>
                 </div>
 
-                <!-- Export Button: Ginawang icon + text (icon lang sa ultra small kung kailangan) -->
                 <div style="min-width: 90px;">
-                    <button class="btn btn-outline-primary btn-sm w-100 py-2 flex-shrink-0" wire:click="exportStudents">
-                        <i class="bi bi-download md:me-1"></i> <span class="hidden md:inline">Export</span>
+                    <button type="button" class="btn btn-outline-primary btn-sm w-100 py-2 flex-shrink-0"
+                        x-on:click="
+                        Swal.fire({
+                            title: 'Export Data?',
+                            text: 'Do you want to download the student list as CSV?',
+                            icon: 'question',
+                            showCancelButton: true,
+                            confirmButtonColor: '#0d6efd',
+                            cancelButtonColor: '#6c757d',
+                            confirmButtonText: 'Yes, download it!',
+                            cancelButtonText: 'Cancel'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                $wire.exportStudents()
+
+                                // Optional: Toast success
+                                const Toast = Swal.mixin({
+                                    toast: true,
+                                    position: 'top-end',
+                                    showConfirmButton: false,
+                                    timer: 3000
+                                });
+                                Toast.fire({
+                                    icon: 'success',
+                                    title: 'Preparing download...'
+                                });
+                            }
+                        })
+                    ">
+                        <i class="bi bi-download md:me-1"></i>
+                        <span class="hidden md:inline">Export</span>
                     </button>
                 </div>
             </div>
@@ -456,9 +491,24 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                                             style="background: rgba(99, 102, 241, 0.1); color: #6366f1; border: none; width: 34px; height: 34px; border-radius: 8px;">
                                             <i class="bi bi-pencil-square"></i>
                                         </button>
-                                        <button class="btn-icon" wire:click="deleteStudent({{ $student->id }})"
-                                            wire:confirm="Deactivate?"
-                                            style="background: rgba(244, 63, 94, 0.1); color: #f43f5e; border: none; width: 34px; height: 34px; border-radius: 8px;">
+                                        <button type="button" class="btn-icon"
+                                            x-on:click="
+                                                Swal.fire({
+                                                    title: 'Deactivate Student?',
+                                                    text: 'This will set the student status to inactive.',
+                                                    icon: 'warning',
+                                                    showCancelButton: true,
+                                                    confirmButtonColor: '#f43f5e',
+                                                    cancelButtonColor: '#6c757d',
+                                                    confirmButtonText: 'Yes, deactivate it!',
+                                                    cancelButtonText: 'Cancel'
+                                                }).then((result) => {
+                                                    if (result.isConfirmed) {
+                                                        $wire.deleteStudent({{ $student->id }})
+                                                    }
+                                                })
+                                            "
+                                            style="background: rgba(244, 63, 94, 0.1); color: #f43f5e; border: none; width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
                                             <i class="bi bi-person-x"></i>
                                         </button>
                                     </div>
@@ -473,7 +523,6 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                 </table>
             </div>
 
-            <!-- Mobile Card View (Lilitaw lang sa mobile) -->
             <div class="md:hidden">
                 @forelse($students as $student)
                     <div wire:key="student-mobile-{{ $student->id }}" class="p-3 border-bottom">
@@ -485,8 +534,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                                 <div class="small text-muted">{{ $student->course }} - {{ $student->formatted_year }}
                                 </div>
                             </div>
-                            <div>
-                                <!-- Status Badge -->
+                            <div>=
                                 @if ($student->has_voted)
                                     <span class="badge-approved py-1 px-2" style="font-size: 0.7rem;">Voted</span>
                                 @elseif($student->status === 'active')
@@ -580,21 +628,16 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
     </div>
 
     <div class="modal fade" id="editStudentModal" tabindex="-1" wire:ignore.self>
-        <!-- px-2 para hindi dikit sa gilid ng screen sa mobile -->
         <div class="modal-dialog modal-lg modal-dialog-centered px-2">
             <div class="modal-content border-0 shadow-lg">
-                <!-- Pinaliit na padding (p-2 p-md-3) -->
                 <div class="modal-header bg-primary text-white p-2 p-md-3">
                     <h6 class="modal-title fw-bold small mb-0">Edit Student Profile</h6>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
                         style="font-size: 0.75rem;"></button>
                 </div>
                 <form wire:submit="updateStudent">
-                    <!-- Mas compact na padding sa body (p-3 p-md-4) -->
                     <div class="modal-body p-3 p-md-4">
-                        <div class="row g-2 g-md-3"> <!-- Mas dikit na fields (g-2) sa mobile -->
-
-                            <!-- First Name & Last Name -->
+                        <div class="row g-2 g-md-3">
                             <div class="col-6 col-md-6">
                                 <label class="form-label mb-1 text-muted fw-bold"
                                     style="font-size: 0.65rem; letter-spacing: 0.5px;">FIRST NAME</label>
@@ -607,8 +650,6 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                                 <input type="text" wire:model="editForm.last_name"
                                     class="form-control-modern py-1 py-md-2 text-sm" style="font-size: 0.85rem;">
                             </div>
-
-                            <!-- Course, Year, Status -->
                             <div class="col-4 col-md-4">
                                 <label class="form-label mb-1 text-muted fw-bold"
                                     style="font-size: 0.65rem;">COURSE</label>
@@ -625,7 +666,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                                     style="font-size: 0.65rem;">YEAR</label>
                                 <select wire:model="editForm.year_level" class="form-select-modern py-1 py-md-2"
                                     style="font-size: 0.8rem;">
-                                    <option value="1">1st Yr</option> <!-- Pinaliit ang text -->
+                                    <option value="1">1st Yr</option>
                                     <option value="2">2nd Yr</option>
                                     <option value="3">3rd Yr</option>
                                 </select>
@@ -639,8 +680,6 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                                     <option value="inactive">Inactv</option>
                                 </select>
                             </div>
-
-                            <!-- Phone & Gender -->
                             <div class="col-7 col-md-6">
                                 <label class="form-label mb-1 text-muted fw-bold" style="font-size: 0.65rem;">PHONE
                                     NUMBER</label>
@@ -658,16 +697,12 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                                     <option value="Female">Female</option>
                                 </select>
                             </div>
-
-                            <!-- Birthday -->
                             <div class="col-12 col-md-6">
                                 <label class="form-label mb-1 text-muted fw-bold"
                                     style="font-size: 0.65rem;">BIRTHDAY</label>
                                 <input type="date" wire:model="editForm.birthday"
                                     class="form-control-modern py-1 py-md-2" style="font-size: 0.85rem;">
                             </div>
-
-                            <!-- Address -->
                             <div class="col-12">
                                 <label class="form-label mb-1 text-muted fw-bold"
                                     style="font-size: 0.65rem;">ADDRESS</label>
@@ -676,11 +711,11 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                             </div>
                         </div>
                     </div>
-
-                    <!-- Footer: Pinaliit ang buttons -->
                     <div class="modal-footer bg-light p-2 p-md-3">
-                        <button type="button" class="btn btn-link text-muted text-decoration-none small"
-                            data-bs-dismiss="modal" style="font-size: 0.75rem;">Cancel</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"
+                            style="font-size: 0.75rem;">
+                            Cancel
+                        </button>
                         <button type="submit" class="btn-glow px-3 py-2"
                             style="font-size: 0.75rem; border-radius: 6px;">Update Profile</button>
                     </div>

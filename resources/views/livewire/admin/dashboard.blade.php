@@ -1,7 +1,7 @@
 <?php
 
 use Livewire\Volt\Component;
-use Livewire\Attributes\{Layout, Title};
+use Livewire\Attributes\{Layout, Title, On};
 use Illuminate\Support\Facades\{Auth, Session};
 use App\Models\{Vote, Candidate, Student, ElectionCycle};
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -54,7 +54,7 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
         }
 
         $totalStudents = Student::count();
-        $totalVotes = Vote::count();
+        $totalVotes = Vote::distinct('student_id')->count('student_id');
 
         return [
             'totalVotes' => $totalVotes,
@@ -66,6 +66,14 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
             'timerLabel' => $timerLabel,
             'endTime' => $activeCycle?->voting_end?->toIso8601String(),
         ];
+    }
+
+    #[On('echo:election-results,VoteUpdated')]
+    public function refreshAdminStats()
+    {
+        $data = $this->getDashboardData();
+
+        $this->dispatch('update-admin-charts', tally: $data['tallyByDept'], totalVotes: $data['totalVotes'], turnout: (float) str_replace('%', '', $data['turnout']));
     }
 
     public function with(): array
@@ -115,72 +123,125 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
                 <p class="text-muted mb-0" style="font-size: 0.85rem;">Election Management & Real-time Analytics</p>
             </div>
             <div class="d-flex align-items-center gap-3">
-                <button wire:click="downloadReport" wire:loading.attr="disabled" class="btn-glow"
+                <button type="button" class="btn-glow d-flex align-items-center justify-content-center"
+                    wire:loading.attr="disabled"
+                    x-on:click="
+                        Swal.fire({
+                            title: 'Generate Report?',
+                            text: 'This will compile all election data into a downloadable file.',
+                            icon: 'info',
+                            showCancelButton: true,
+                            confirmButtonColor: '#4f46e5',
+                            cancelButtonColor: '#6c757d',
+                            confirmButtonText: 'Yes, Generate',
+                            cancelButtonText: 'Cancel'
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                $wire.downloadReport()
+                            }
+                        })
+                    "
                     title="Download Election Report">
-                    <span wire:loading>
+                    <span wire:loading wire:target="downloadReport" class="me-2">
                         <i class="spinner-border spinner-border-sm"></i>
                     </span>
-                    <span wire:loading.remove>
+                    <span wire:loading.remove wire:target="downloadReport" class="me-2">
                         <i class="bi bi-file-earmark-pdf"></i>
-                        <span class="d-none d-md-inline ms-1">Download Election Report</span>
                     </span>
+                    <span>Election Report</span>
                 </button>
             </div>
         </div>
 
-        <!-- Stats Cards Section -->
         <div class="row g-2 g-lg-3 mb-4">
             <div class="col-6 col-lg-3">
-                <div class="stat-card p-2 p-md-3 shadow-sm h-100">
-                    <div class="stat-icon bg-primary-soft text-primary small"
-                        style="width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; border-radius: 8px;">
+                <div class="stat-card p-2 p-md-3 shadow-sm h-100" x-data="{
+                    current: 0,
+                    target: {{ $totalVotes }},
+                    animate() {
+                        let start = null;
+                        const duration = 800;
+                        const step = (timestamp) => {
+                            if (!start) start = timestamp;
+                            const progress = Math.min((timestamp - start) / duration, 1);
+                            this.current = Math.floor(progress * this.target);
+                            if (progress < 1) window.requestAnimationFrame(step);
+                        };
+                        window.requestAnimationFrame(step);
+                    }
+                }" x-init="animate();"
+                    @update-admin-charts.window="target = $event.detail.totalVotes; animate();">
+
+                    <div class="stat-icon bg-primary-soft text-primary small">
                         <i class="bi bi-box-seam"></i>
                     </div>
-                    <div class="stat-value mt-1 fs-5 fw-bold text-dark">{{ number_format($totalVotes) }}</div>
-                    <div class="stat-label small text-muted text-truncate" style="font-size: 0.75rem;">Total Votes Cast
-                    </div>
+                    <div class="stat-value mt-1 fs-5 fw-bold text-dark" x-text="current">0</div>
+                    <div class="stat-label small text-muted text-truncate">Total Voters</div>
                 </div>
             </div>
 
             <div class="col-6 col-lg-3">
-                <div class="stat-card p-2 p-md-3 shadow-sm h-100">
+                <div class="stat-card p-2 p-md-3 shadow-sm h-100" x-data="{ current: 0, target: {{ $candidatesCount }} }" x-init="let start = null;
+                const step = (ts) => {
+                    if (!start) start = ts;
+                    let progress = Math.min((ts - start) / 1000, 1);
+                    current = Math.floor(progress * target);
+                    if (progress < 1) window.requestAnimationFrame(step);
+                };
+                window.requestAnimationFrame(step);">
                     <div class="stat-icon bg-indigo-soft text-accent small"
                         style="width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; border-radius: 8px;">
                         <i class="bi bi-people"></i>
                     </div>
-                    <div class="stat-value mt-1 fs-5 fw-bold text-dark">{{ $candidatesCount }}</div>
+                    <div class="stat-value mt-1 fs-5 fw-bold text-dark" x-text="current">0</div>
                     <div class="stat-label small text-muted text-truncate" style="font-size: 0.75rem;">Total Candidates
                     </div>
                 </div>
             </div>
 
             <div class="col-6 col-lg-3">
-                <div class="stat-card p-2 p-md-3 shadow-sm h-100">
-                    <div class="stat-icon bg-success-soft text-success small"
-                        style="width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; border-radius: 8px;">
+                <div class="stat-card p-2 p-md-3 shadow-sm h-100" x-data="{
+                    current: 0,
+                    target: {{ (float) str_replace('%', '', $turnout) }},
+                    animate() {
+                        let start = null;
+                        const step = (ts) => {
+                            if (!start) start = ts;
+                            let progress = Math.min((ts - start) / 800, 1);
+                            this.current = (progress * this.target).toFixed(1);
+                            if (progress < 1) window.requestAnimationFrame(step);
+                        };
+                        window.requestAnimationFrame(step);
+                    }
+                }" x-init="animate()"
+                    @update-admin-charts.window="target = $event.detail.turnout; animate();">
+                    <div class="stat-icon bg-success-soft text-success small">
                         <i class="bi bi-graph-up-arrow"></i>
                     </div>
-                    <div class="stat-value mt-1 fs-5 fw-bold text-success" style="color: #10b981 !important;">
-                        {{ $turnout }}
+                    <div class="stat-value mt-1 fs-5 fw-bold text-success">
+                        <span x-text="current">0</span>%
                     </div>
-                    <div class="stat-label small text-muted text-truncate" style="font-size: 0.75rem;">Voter Turnout
-                    </div>
+                    <div class="stat-label small text-muted text-truncate">Voter Turnout</div>
                 </div>
             </div>
 
             <div class="col-6 col-lg-3">
                 <div class="stat-card p-2 p-md-3 shadow-sm h-100" x-data="{
-                    target: '{{ $targetDate }}',
+                    targetDate: '{{ $targetDate }}',
                     displayValue: '0',
                     updateTimer() {
-                        if (!this.target) return;
-                        let diff = new Date(this.target) - new Date();
+                        if (!this.targetDate) return;
+                        let diff = new Date(this.targetDate) - new Date();
                         if (diff > 0) {
                             let d = Math.floor(diff / (1000 * 60 * 60 * 24));
                             let h = Math.floor((diff / (1000 * 60 * 60)) % 24);
-                            this.displayValue = (d >= 1) ? Math.ceil(diff / (1000 * 60 * 60 * 24)) + 'd' : h + 'h';
+
+                            let dayStr = String(d).padStart(2, '0') + 'd';
+                            let hourStr = String(h).padStart(2, '0') + 'h';
+
+                            this.displayValue = `${dayStr} ${hourStr}`;
                         } else {
-                            this.displayValue = '0';
+                            this.displayValue = 'Closed';
                         }
                     }
                 }" x-init="updateTimer();
@@ -190,13 +251,12 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
                         style="width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; border-radius: 8px;">
                         <i class="bi bi-calendar-event"></i>
                     </div>
-
                     <div class="stat-value mt-1 fs-5 fw-bold text-warning" style="color: #f59e0b !important;">
-                        <span x-text="displayValue">0</span>
+                        <span x-text="displayValue">00d 00h</span>
                     </div>
-
                     <div class="stat-label small text-muted text-truncate" style="font-size: 0.75rem;">
-                        {{ $timerLabel }}</div>
+                        {{ $timerLabel }}
+                    </div>
                 </div>
             </div>
         </div>
@@ -211,7 +271,7 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
                                 <p class="text-muted small mb-0">Live vote distribution</p>
                             </div>
                             <span class="badge-status-live">
-                                <span class="pulse-dot"></span> LIVE
+                                <span class="pulse-dot"></span> Live Vote Tallying
                             </span>
                         </div>
                         <div style="height: 300px;" wire:ignore>
@@ -225,69 +285,95 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
 
     @script
         <script>
-            const renderCharts = () => {
-                const tallyData = @json($tallyByDept);
+            let charts = {};
+
+            const renderCharts = (newTallyData = null) => {
+                const tallyData = newTallyData ? newTallyData : @json($this->getDashboardData()['tallyByDept']);
                 const departments = @json($departments);
 
                 departments.forEach(dept => {
                     const ctx = document.getElementById(`chart-${dept}`);
                     if (!ctx) return;
-                    const existingChart = Chart.getChart(ctx);
-                    if (existingChart) existingChart.destroy();
 
                     const data = tallyData[dept];
-                    new Chart(ctx, {
-                        type: 'bar',
-                        data: {
-                            labels: data.map(item => `${item.label} (${item.position})`),
-                            datasets: [{
-                                data: data.map(item => item.votes),
-                                backgroundColor: '#3b82f6',
-                                borderRadius: 6,
-                                barThickness: 25
-                            }]
-                        },
-                        options: {
-                            indexAxis: 'y',
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: {
-                                legend: {
-                                    display: false
-                                },
-                                tooltip: {
-                                    backgroundColor: '#1e293b',
-                                    padding: 12
-                                }
+                    const labels = data.map(item => item.label.split(' ')[0]);
+                    const fullLabels = data.map(item => `${item.label} (${item.position})`);
+                    const votes = data.map(item => item.votes);
+
+                    if (charts[dept]) {
+                        charts[dept].data.labels = labels;
+                        charts[dept].data.datasets[0].data = votes;
+                        charts[dept].update();
+                    } else {
+                        charts[dept] = new Chart(ctx, {
+                            type: 'bar',
+                            data: {
+                                labels: labels,
+                                datasets: [{
+                                    label: 'Votes',
+                                    data: votes,
+                                    backgroundColor: '#3b82f6',
+                                    borderRadius: 6,
+                                    barThickness: 35
+                                }]
                             },
-                            scales: {
-                                x: {
-                                    grid: {
-                                        color: '#f1f5f9'
-                                    },
-                                    ticks: {
-                                        color: '#94a3b8'
-                                    }
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                animation: {
+                                    duration: 1500,
+                                    easing: 'easeOutQuart'
                                 },
-                                y: {
-                                    grid: {
+                                plugins: {
+                                    legend: {
                                         display: false
                                     },
-                                    ticks: {
-                                        color: '#475569',
-                                        font: {
-                                            weight: '600',
-                                            size: 11
+                                    tooltip: {
+                                        callbacks: {
+                                            title: (items) => fullLabels[items[0].dataIndex]
+                                        }
+                                    }
+                                },
+                                scales: {
+                                    x: {
+                                        grid: {
+                                            display: false
+                                        },
+                                        ticks: {
+                                            font: {
+                                                size: 10
+                                            }
+                                        }
+                                    },
+                                    y: {
+                                        beginAtZero: true,
+                                        grid: {
+                                            color: '#f1f5f9'
+                                        },
+                                        ticks: {
+                                            stepSize: 1,
+                                            precision: 0
                                         }
                                     }
                                 }
                             }
-                        }
-                    });
+                        });
+                    }
                 });
             };
+
             renderCharts();
-            document.addEventListener('livewire:navigated', renderCharts);
+
+            $wire.on('update-admin-charts', (payload) => {
+                const eventData = Array.isArray(payload) ? payload[0] : payload;
+                renderCharts(eventData.tally);
+            });
+
+            document.addEventListener('livewire:navigated', () => {
+                Object.values(charts).forEach(chart => chart.destroy());
+                charts = {};
+                renderCharts();
+            });
         </script>
     @endscript
 </div>

@@ -51,7 +51,7 @@ body {
     max-width: 1400px;
     margin-right: auto;
     margin-left: auto;
-    padding: 24px 12px;
+    padding: 16px 16px;
     min-height: 100vh;
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -59,9 +59,12 @@ body {
 @media (max-width: 768px) {
     .main-content {
         margin-left: 0;
-        width: 100%;
-        padding: 20px 20px;
+        padding: 12px;
     }
+}
+
+[x-cloak] {
+    display: none !important;
 }
 
 /* ===== TOP BAR ===== */
@@ -73,22 +76,6 @@ body {
     padding: 0 12px 20px 12px;
     border-bottom: 1px solid rgba(0, 0, 0, 0.05);
     gap: 10px;
-}
-
-@media (max-width: 768px) {
-    .topbar-info {
-        flex: 1;
-        min-width: 0;
-        margin-left: 28px;
-    }
-
-    .topbar-info h2,
-    .topbar-info p {
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        max-width: 100%;
-    }
 }
 
 .topbar h2 span {

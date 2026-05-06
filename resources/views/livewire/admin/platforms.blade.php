@@ -12,49 +12,6 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
     public string $search = '';
     public ?Platform $selectedPlatform = null;
 
-    public function updatingSearch()
-    {
-        $this->resetPage();
-    }
-
-    public function viewPlatform(int $id)
-    {
-        $this->selectedPlatform = Platform::with(['candidate.student', 'candidate.position'])->findOrFail($id);
-        $this->dispatch('open-view-modal');
-    }
-
-    public function publishPlatform(int $id)
-    {
-        $platform = Platform::with('candidate')->findOrFail($id);
-
-        if (empty($platform->title) || empty($platform->agenda)) {
-            $this->dispatch('swal', title: 'Action Denied!', text: 'Cannot approve platform with missing details.', icon: 'error');
-            return;
-        }
-
-        $platform->update([
-            'status' => 'approved',
-            'approved_at' => now(),
-        ]);
-
-        $platform->candidate->update([
-            'status' => 'approved',
-        ]);
-
-        $this->dispatch('swal', title: 'Platform Published!', text: 'The candidate profile and platform are now live.', icon: 'success');
-    }
-
-    public function rejectPlatform(int $id)
-    {
-        $platform = Platform::findOrFail($id);
-        $platform->update([
-            'status' => 'rejected',
-            'approved_at' => null,
-        ]);
-
-        $this->dispatch('swal', title: 'Platform Rejected', text: 'The platform status has been set to rejected.', icon: 'info');
-    }
-
     public function getPlatformsProperty()
     {
         return Platform::with(['candidate.student', 'candidate.position'])
@@ -81,6 +38,61 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
             ->orderByRaw("FIELD(platforms.status, 'pending') DESC")
             ->latest('platforms.created_at')
             ->paginate(10);
+    }
+
+    public function publishPlatform(int $id)
+    {
+        $platform = Platform::with('candidate')->findOrFail($id);
+
+        if (empty($platform->title) || empty($platform->agenda)) {
+            $this->dispatch('swal', [
+                'title' => 'Action Denied!',
+                'text' => 'Cannot approve platform with missing details.',
+                'icon' => 'error',
+            ]);
+            return;
+        }
+
+        $platform->update([
+            'status' => 'approved',
+            'approved_at' => now(),
+        ]);
+
+        $platform->candidate->update([
+            'status' => 'approved',
+        ]);
+
+        $this->dispatch('swal', [
+            'title' => 'Platform Published!',
+            'text' => 'The candidate profile and platform are now live.',
+            'icon' => 'success',
+        ]);
+    }
+
+    public function rejectPlatform(int $id)
+    {
+        $platform = Platform::findOrFail($id);
+        $platform->update([
+            'status' => 'rejected',
+            'approved_at' => null,
+        ]);
+
+        $this->dispatch('swal', [
+            'title' => 'Platform Rejected',
+            'text' => 'The platform status has been set to rejected.',
+            'icon' => 'info',
+        ]);
+    }
+
+    public function viewPlatform(int $id)
+    {
+        $this->selectedPlatform = Platform::with(['candidate.student', 'candidate.position'])->findOrFail($id);
+        $this->dispatch('open-modal', id: 'viewPlatformModal');
+    }
+
+    public function updatingSearch()
+    {
+        $this->resetPage();
     }
 
     public function logout()
@@ -112,7 +124,6 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
         </div>
 
         <div class="glass-card p-0 overflow-hidden border-0 shadow-sm">
-            <!-- Desktop View (Visible on Medium screens up) -->
             <div class="table-responsive hidden md:block">
                 <table class="table table-hover mb-0">
                     <thead class="bg-light">
@@ -129,11 +140,10 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                             <tr wire:key="plt-desktop-{{ $platform->id }}">
                                 <td class="ps-4">
                                     <div class="d-flex align-items-center gap-3">
-                                        <div class="profile-avatar-sm shadow-sm"
-                                            style="background: #1e3a8a; color: white;">
+                                        <div class="profile-avatar-sm shadow-sm" style="color: white;">
                                             @if ($platform->candidate?->photo)
                                                 <img src="{{ asset('storage/' . $platform->candidate->photo) }}"
-                                                    class="w-100 h-100 object-fit-cover">
+                                                    class="w-100 h-100 object-fit-cover rounded-circle">
                                             @else
                                                 <span class="fw-bold fs-6 text-uppercase">
                                                     {{ substr($platform->candidate?->student?->first_name ?? 'U', 0, 1) }}{{ substr($platform->candidate?->student?->last_name ?? 'P', 0, 1) }}
@@ -187,16 +197,46 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                                         </button>
 
                                         @if ($platform->status !== 'approved')
-                                            <button wire:click="publishPlatform({{ $platform->id }})"
-                                                wire:confirm="Approve this manifesto?" class="btn" title="Approve"
+                                            <button type="button"
+                                                x-on:click="
+                                                    Swal.fire({
+                                                        title: 'Approve this manifesto?',
+                                                        text: 'This will publish the candidate profile live.',
+                                                        icon: 'question',
+                                                        showCancelButton: true,
+                                                        confirmButtonColor: '#198754',
+                                                        cancelButtonColor: '#6c757d',
+                                                        confirmButtonText: 'Yes, Approve it!'
+                                                    }).then((result) => {
+                                                        if (result.isConfirmed) {
+                                                            $wire.publishPlatform({{ $platform->id }})
+                                                        }
+                                                    })
+                                                "
+                                                class="btn" title="Approve"
                                                 style="width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; border: none; border-radius: 8px; background-color: rgba(25, 135, 84, 0.1); color: #198754;">
                                                 <i class="bi bi-check-lg"></i>
                                             </button>
                                         @endif
 
                                         @if ($platform->status !== 'rejected')
-                                            <button wire:click="rejectPlatform({{ $platform->id }})"
-                                                wire:confirm="Reject this platform?" class="btn" title="Reject"
+                                            <button type="button"
+                                                x-on:click="
+                                                    Swal.fire({
+                                                        title: 'Reject this platform?',
+                                                        text: 'This will mark the platform as rejected.',
+                                                        icon: 'warning',
+                                                        showCancelButton: true,
+                                                        confirmButtonColor: '#dc3545',
+                                                        cancelButtonColor: '#6c757d',
+                                                        confirmButtonText: 'Yes, Reject it!'
+                                                    }).then((result) => {
+                                                        if (result.isConfirmed) {
+                                                            $wire.rejectPlatform({{ $platform->id }})
+                                                        }
+                                                    })
+                                                "
+                                                class="btn" title="Reject"
                                                 style="width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; border: none; border-radius: 8px; background-color: rgba(220, 53, 69, 0.1); color: #dc3545;">
                                                 <i class="bi bi-x-lg"></i>
                                             </button>
@@ -213,7 +253,6 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                 </table>
             </div>
 
-            <!-- Mobile View (Visible on small screens only) -->
             <div class="block md:hidden">
                 @forelse($this->platforms as $platform)
                     @php

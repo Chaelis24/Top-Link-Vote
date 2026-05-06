@@ -139,30 +139,38 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
             'results_date' => 'required|date|after:end_date',
         ]);
 
-        DB::transaction(function () {
-            ElectionCycle::where('status', 'active')->update(['status' => 'completed']);
+        try {
+            DB::transaction(function () {
+                ElectionCycle::where('status', 'active')->update(['status' => 'completed']);
 
-            ElectionCycle::create([
-                'name' => $this->cycle_name,
-                'academic_year' => $this->academic_year,
-                'filing_start' => $this->filing_start,
-                'filing_end' => $this->filing_end,
-                'campaign_start' => $this->campaign_start,
-                'campaign_end' => $this->campaign_end,
-                'voting_start' => $this->start_date,
-                'voting_end' => $this->end_date,
-                'results_date' => $this->results_date,
-                'status' => 'active',
+                ElectionCycle::create([
+                    'name' => $this->cycle_name,
+                    'academic_year' => $this->academic_year,
+                    'filing_start' => $this->filing_start,
+                    'filing_end' => $this->filing_end,
+                    'campaign_start' => $this->campaign_start,
+                    'campaign_end' => $this->campaign_end,
+                    'voting_start' => $this->start_date,
+                    'voting_end' => $this->end_date,
+                    'results_date' => $this->results_date,
+                    'status' => 'active',
+                ]);
+            });
+
+            $this->dispatch('swal', [
+                'title' => 'Cycle Initialized!',
+                'text' => 'New election cycle is now active.',
+                'icon' => 'success',
             ]);
-        });
 
-        $this->dispatch('swal', [
-            'title' => 'Cycle Initialized!',
-            'text' => 'New election cycle is now active.',
-            'icon' => 'success',
-        ]);
-
-        return $this->redirect('/admin/election-cycle', navigate: true);
+            return $this->redirect('/admin/election-cycle', navigate: true);
+        } catch (\Exception $e) {
+            $this->dispatch('swal', [
+                'title' => 'Initialization Failed',
+                'text' => 'Could not start new cycle: ' . $e->getMessage(),
+                'icon' => 'error',
+            ]);
+        }
     }
 
     public function updateDates()
@@ -170,43 +178,104 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
         $this->validate([
             'filing_start' => 'required|date',
             'filing_end' => 'required|date',
+            'campaign_start' => 'required|date',
+            'campaign_end' => 'required|date',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after:start_date',
         ]);
 
-        $active = $this->active;
-        if ($active) {
-            $active->update([
-                'filing_start' => $this->filing_start,
-                'filing_end' => $this->filing_end,
-                'voting_start' => $this->start_date,
-                'voting_end' => $this->end_date,
+        try {
+            $active = $this->active;
+            if ($active) {
+                $active->update([
+                    'filing_start' => $this->filing_start,
+                    'filing_end' => $this->filing_end,
+                    'campaign_start' => $this->campaign_start,
+                    'campaign_end' => $this->campaign_end,
+                    'voting_start' => $this->start_date,
+                    'voting_end' => $this->end_date,
+                ]);
+
+                $this->dispatch('swal', [
+                    'title' => 'Dates Updated!',
+                    'text' => 'Election cycle schedule has been successfully updated.',
+                    'icon' => 'success',
+                ]);
+
+                return $this->redirect('/admin/election-cycle', navigate: true);
+            }
+        } catch (\Exception $e) {
+            $this->dispatch('swal', [
+                'title' => 'Update Error',
+                'text' => 'An error occurred while updating dates: ' . $e->getMessage(),
+                'icon' => 'error',
             ]);
         }
+    }
 
-        $this->dispatch('swal', [
-            'title' => 'Date Updated!',
-            'text' => 'Election cycle date is now updated.',
-            'icon' => 'success',
-        ]);
+    public function endPhase($phase)
+    {
+        try {
+            $active = $this->active;
+            if (!$active) {
+                return;
+            }
 
-        return $this->redirect('/admin/election-cycle', navigate: true);
+            $now = now();
+
+            switch ($phase) {
+                case 'filing':
+                    $active->update([
+                        'filing_start' => $now->copy()->subMinute(),
+                        'filing_end' => $now,
+                    ]);
+                    break;
+                case 'campaign':
+                    $active->update([
+                        'campaign_start' => $now->copy()->subMinute(),
+                        'campaign_end' => $now,
+                    ]);
+                    break;
+            }
+
+            $this->dispatch('swal', [
+                'title' => 'Phase Updated',
+                'text' => 'The ' . ucfirst($phase) . ' phase has been successfully ended.',
+                'icon' => 'success',
+            ]);
+
+            return $this->redirect('/admin/election-cycle', navigate: true);
+        } catch (\Exception $e) {
+            $this->dispatch('swal', [
+                'title' => 'Operation Failed',
+                'text' => 'Could not end the phase: ' . $e->getMessage(),
+                'icon' => 'error',
+            ]);
+        }
     }
 
     public function endElection()
     {
-        $active = $this->active;
-        if ($active) {
-            $active->update(['status' => 'completed']);
+        try {
+            $active = $this->active;
+            if ($active) {
+                $active->update(['status' => 'completed']);
+            }
+
+            $this->dispatch('swal', [
+                'title' => 'Election Completed!',
+                'text' => 'The election cycle has been successfully closed.',
+                'icon' => 'success',
+            ]);
+
+            return $this->redirect('/admin/election-cycle', navigate: true);
+        } catch (\Exception $e) {
+            $this->dispatch('swal', [
+                'title' => 'Closure Error',
+                'text' => 'Could not end the election cycle: ' . $e->getMessage(),
+                'icon' => 'error',
+            ]);
         }
-
-        $this->dispatch('swal', [
-            'title' => 'Election Ended Successfully!',
-            'text' => 'Election cycle is now ended.',
-            'icon' => 'success',
-        ]);
-
-        return $this->redirect('/admin/election-cycle', navigate: true);
     }
 
     public function logout()
@@ -217,7 +286,6 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
         return redirect()->route('login');
     }
 }; ?>
-
 <div>
     @include('layouts.partials.admin-sidebar')
 
@@ -261,7 +329,6 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
             pad(n) { return String(n).padStart(2, '0') },
             init() { setInterval(() => { this.now = new Date().getTime() }, 1000) }
         }">
-
             <div class="col-lg-8">
                 <div
                     class="glass-card p-3 p-md-4 border-0 shadow-sm bg-white overflow-hidden position-relative mb-3 mb-md-4">
@@ -281,7 +348,7 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                             <span x-show="dates.vE" class="pulse-dot" style="width: 6px; height: 6px;"
                                 :style="'background: ' + (now < dates.vE ? '#10b981' : '#ef4444')"></span>
                             <span class="fw-bold"
-                                x-text="!dates.vE ? 'No Cycle' : (now < dates.vE ? 'Active' : 'Closed')"></span>
+                                x-text="!dates.vE ? 'No Cycle Active' : (now < dates.vE ? 'Election Active' : 'Closed')"></span>
                         </span>
                     </div>
 
@@ -321,27 +388,32 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                             @endphp
 
                             @foreach ($phases as $phase)
-                                <div class="p-2 p-md-3 border rounded-3 timeline-box shadow-sm"
+                                <div class="p-2 p-md-3 border rounded-3 timeline-box shadow-sm position-relative"
                                     :class="now >= dates.{{ $phase['start'] }} && (!dates.{{ $phase['end'] ?? 'null' }} ||
-                                        now < dates.{{ $phase['end'] ?? 'null' }}) ? 'active' : ''">
+                                        now < dates.{{ $phase['end'] ?? 'null' }}) ? 'active border-primary' : ''">
+
                                     <div class="d-flex justify-content-between align-items-center">
                                         <div class="flex-grow-1 overflow-hidden">
                                             <h6 class="fw-bold mb-0 uppercase text-[10px] md:text-xs text-muted">
-                                                {{ $phase['title'] }}</h6>
+                                                {{ $phase['title'] }}
+                                            </h6>
 
                                             @if ($phase['end'])
                                                 <template x-if="now < dates.{{ $phase['start'] }}">
                                                     <div class="fw-bold text-primary mt-1 text-[11px] md:text-sm">Starts
-                                                        in: <span
+                                                        in:
+                                                        <span
                                                             x-text="pad(getRemaining(dates.{{ $phase['start'] }}).d) + 'd ' + pad(getRemaining(dates.{{ $phase['start'] }}).h) + 'h'"></span>
                                                     </div>
                                                 </template>
                                                 <template
                                                     x-if="now >= dates.{{ $phase['start'] }} && now < dates.{{ $phase['end'] }}">
-                                                    <div
-                                                        class="fw-bold {{ $phase['color'] }} mt-1 text-[11px] md:text-sm">
-                                                        Ends in: <span
-                                                            x-text="pad(getRemaining(dates.{{ $phase['end'] }}).d) + 'd ' + pad(getRemaining(dates.{{ $phase['end'] }}).h) + 'h ' + pad(getRemaining(dates.{{ $phase['end'] }}).m) + 'm'"></span>
+                                                    <div class="d-flex align-items-center gap-2 mt-1">
+                                                        <div
+                                                            class="fw-bold {{ $phase['color'] }} text-[11px] md:text-sm">
+                                                            Ends in: <span
+                                                                x-text="pad(getRemaining(dates.{{ $phase['end'] }}).d) + 'd ' + pad(getRemaining(dates.{{ $phase['end'] }}).h) + 'h'"></span>
+                                                        </div>
                                                     </div>
                                                 </template>
                                                 <template x-if="now >= dates.{{ $phase['end'] }}">
@@ -350,10 +422,36 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                                                         <i class="bi bi-check-circle-fill me-1 text-success"></i>Closed
                                                     </div>
                                                 </template>
+                                                @if ($phase['id'] === 'f' || $phase['id'] === 'c')
+                                                    <template x-if="now < dates.{{ $phase['end'] }}">
+                                                        <div class="mt-2">
+                                                            <button type="button"
+                                                                @click.prevent="
+                                                                    Swal.fire({
+                                                                        title: 'End {{ $phase['id'] === 'f' ? 'Filing' : 'Campaign' }} Phase?',
+                                                                        text: 'Do you want to end this phase now?',
+                                                                        icon: 'warning',
+                                                                        showCancelButton: true,
+                                                                        confirmButtonColor: '#d33',
+                                                                        confirmButtonText: 'Yes, End it!'
+                                                                    }).then((result) => {
+                                                                        if (result.isConfirmed) {
+                                                                            $wire.endPhase('{{ $phase['id'] === 'f' ? 'filing' : 'campaign' }}')
+                                                                        }
+                                                                    })
+                                                                "
+                                                                class="btn btn-danger btn-xs py-1 px-2 fw-bold shadow-sm"
+                                                                style="font-size: 10px; border-radius: 5px;">
+                                                                END {{ $phase['id'] === 'f' ? 'FILING' : 'CAMPAIGN' }}
+                                                            </button>
+                                                        </div>
+                                                    </template>
+                                                @endif
                                             @else
                                                 <template x-if="now < dates.rD">
                                                     <div class="fw-bold text-primary mt-1 text-[11px] md:text-sm">
-                                                        Scheduled: <span
+                                                        Scheduled:
+                                                        <span
                                                             x-text="pad(getRemaining(dates.rD).d) + 'd ' + pad(getRemaining(dates.rD).h) + 'h'"></span>
                                                     </div>
                                                 </template>
@@ -364,13 +462,14 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                                                 </template>
                                             @endif
                                         </div>
+
                                         <span class="badge rounded-pill" style="font-size: 0.65rem;"
                                             :class="now < dates.{{ $phase['start'] }} ? 'bg-secondary' : (
                                                 {{ $phase['end'] ? 'now < dates.' . $phase['end'] : 'true' }} ?
                                                 '{{ $phase['id'] == 'r' ? 'bg-primary' : ($phase['id'] == 'v' ? 'bg-success' : 'bg-warning') }}' :
                                                 'bg-success')">
                                             <span
-                                                x-text="now < dates.{{ $phase['start'] }} ? 'Upcoming' : ({{ $phase['end'] ? 'now < dates.' . $phase['end'] : 'true' }} ? '{{ $phase['id'] == 'r' ? 'Released' : 'Ongoing' }}' : 'Done')"></span>
+                                                x-text="now < dates.{{ $phase['start'] }} ? 'Upcoming' : ({{ $phase['end'] ? 'now < dates.' . $phase['end'] : 'true' }} ? '{{ $phase['id'] == 'r' ? 'Released' : 'Ongoing' }}' : 'Completed')"></span>
                                         </span>
                                     </div>
 
@@ -382,7 +481,6 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                                     @endif
                                 </div>
                             @endforeach
-
                         </div>
                     @else
                         <div class="text-center py-5">
@@ -397,102 +495,106 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                     <h6 class="fw-bold text-primary mb-3 mb-md-4 uppercase small">
                         <i class="bi bi-sliders me-2"></i>Live Controls
                     </h6>
+                    <div wire:poll.10s>
+                        @foreach ([['key' => 'allowVoting', 'label' => 'Allow Voting', 'desc' => 'Open the voting portal for students'], ['key' => 'showResults', 'label' => 'Show Election Results', 'desc' => 'Display the tally to the student dashboard'], ['key' => 'showProfiles', 'label' => 'Show Candidate Profiles', 'desc' => 'Display bios and platforms'], ['key' => 'lockChanges', 'label' => 'Lock Profile Editing', 'desc' => 'Prevent candidates from updating their info'], ['key' => 'maintenanceMode', 'label' => 'Emergency Pause', 'desc' => 'Instantly freeze all site activity']] as $setting)
+                            <div
+                                class="control-item d-flex justify-content-between align-items-center mb-2 mb-md-3 p-2 rounded-3 hover-bg-light border shadow-xs">
+                                <div class="pe-2">
+                                    <div class="fw-bold text-dark text-[13px] md:text-sm">{{ $setting['label'] }}</div>
+                                    <div class="text-muted text-[10px] md:text-xs leading-tight">
+                                        @if ($setting['key'] == 'allowVoting')
+                                            <span :class="now < dates.vS ? 'text-danger fw-bold' : 'text-muted'">
+                                                <i class="bi bi-clock me-1"></i>
+                                                <span
+                                                    x-text="now < dates.vS ? 'Auto-scheduled' : '{{ $setting['desc'] }}'"></span>
+                                            </span>
+                                        @else
+                                            {{ $setting['desc'] }}
+                                        @endif
+                                    </div>
+                                </div>
+                                <div class="form-check form-switch mb-0">
+                                    <input class="form-check-input" type="checkbox" role="switch"
+                                        style="cursor: pointer;" :checked="$wire.get('{{ $setting['key'] }}')"
+                                        @click.prevent="
+                                    const key = '{{ $setting['key'] }}';
+                                    const label = '{{ $setting['label'] }}';
+                                    const isCurrentlyOn = $wire.get(key);
 
-                    @foreach ([['key' => 'allowVoting', 'label' => 'Allow Voting', 'desc' => 'Open the voting portal for students'], ['key' => 'showResults', 'label' => 'Show Election Results', 'desc' => 'Display the tally to the student dashboard'], ['key' => 'showProfiles', 'label' => 'Show Candidate Profiles', 'desc' => 'Display bios and platforms'], ['key' => 'lockChanges', 'label' => 'Lock Profile Editing', 'desc' => 'Prevent candidates from updating their info'], ['key' => 'maintenanceMode', 'label' => 'Emergency Pause', 'desc' => 'Instantly freeze all site activity']] as $setting)
-                        <div
-                            class="control-item d-flex justify-content-between align-items-center mb-2 mb-md-3 p-2 rounded-3 hover-bg-light border shadow-xs">
-                            <div class="pe-2">
-                                <div class="fw-bold text-dark text-[13px] md:text-sm">{{ $setting['label'] }}</div>
-                                <div class="text-muted text-[10px] md:text-xs leading-tight">
-                                    @if ($setting['key'] == 'allowVoting')
-                                        <span :class="now < dates.vS ? 'text-danger fw-bold' : 'text-muted'">
-                                            <i class="bi bi-clock me-1"></i>
-                                            <span
-                                                x-text="now < dates.vS ? 'Auto-scheduled' : '{{ $setting['desc'] }}'"></span>
-                                        </span>
-                                    @else
-                                        {{ $setting['desc'] }}
-                                    @endif
+                                        if (key === 'allowVoting' && !isCurrentlyOn) {
+                                            const isNotYetVotingPeriod = @js(!$this->active || now()->lt($this->active->voting_start));
+                                            if (isNotYetVotingPeriod) {
+                                                return Swal.fire({
+                                                    title: 'Access Restricted',
+                                                    text: 'Voting cannot be enabled yet.',
+                                                    icon: 'error'
+                                                });
+                                            }
+                                        }
+
+                                        Swal.fire({
+                                            title: 'Confirm Action',
+                                            text: `Are you sure you want to ${isCurrentlyOn ? 'disable' : 'enable'} ${label}?`,
+                                            icon: 'warning',
+                                            showCancelButton: true,
+                                            confirmButtonColor: '#3085d6',
+                                            confirmButtonText: 'Yes, proceed!'
+                                        }).then((result) => {
+                                            if (result.isConfirmed) {
+                                                // This calls your PHP toggleSetting() method
+                                                $wire.toggleSetting(key);
+                                            }
+                                        });
+                                ">
                                 </div>
                             </div>
-                            <div class="form-check form-switch mb-0">
-                                <input class="form-check-input" type="checkbox" role="switch" style="cursor: pointer;"
-                                    @click.prevent="
-                            const isVotingSetting = '{{ $setting['key'] }}' === 'allowVoting';
-                            const isNotYetVotingPeriod = {{ !$this->active || now()->lt($this->active->voting_start) ? 'true' : 'false' }};
-                            const isTurningOn = !{{ $this->{$setting['key']} ? 'true' : 'false' }};
+                        @endforeach
 
-                            if (isVotingSetting && isNotYetVotingPeriod && isTurningOn) {
+                        <div class="mt-3 mt-md-4 pt-3 border-top d-flex flex-column gap-2">
+                            <button class="btn btn-outline-primary btn-sm w-100 py-2 fw-bold text-[12px] md:text-sm"
+                                @click.prevent="
                                 Swal.fire({
-                                    title: 'Access Restricted',
-                                    text: 'Voting cannot be enabled during the Filing or Campaign periods. Please wait for the scheduled start date.',
-                                    icon: 'error',
-                                    confirmButtonColor: '#3085d6'
-                                });
-                            } else {
-                                Swal.fire({
-                                    title: 'Confirm Action',
-                                    text: 'Are you sure you want to toggle {{ $setting['label'] }}?',
-                                    icon: 'warning',
+                                    title: 'Update Schedule?',
+                                    text: 'Changing the dates may affect the current election flow.',
+                                    icon: 'info',
                                     showCancelButton: true,
                                     confirmButtonColor: '#3085d6',
-                                    cancelButtonColor: '#d33',
-                                    confirmButtonText: 'Yes, proceed!'
+                                    cancelButtonColor: '#6c757d',
+                                    confirmButtonText: 'Yes, Open Editor'
                                 }).then((result) => {
                                     if (result.isConfirmed) {
-                                        $wire.toggleSetting('{{ $setting['key'] }}')
+                                        // Manually trigger the Bootstrap Modal
+                                        new bootstrap.Modal(document.getElementById('updateDatesModal')).show();
                                     }
-                                });
-                            }
-                        "
-                                    {{ $this->{$setting['key']} ? 'checked' : '' }}>
-                            </div>
+                                })
+                            ">
+                                <i class="bi bi-calendar-check me-2"></i>Update Cycle Dates
+                            </button>
+                            <button class="btn btn-outline-danger btn-sm w-100 py-2 fw-bold text-[12px] md:text-sm"
+                                @click.prevent="
+                                Swal.fire({
+                                    title: 'Final Warning',
+                                    text: 'This will end the current election cycle. This action cannot be undone!',
+                                    icon: 'warning',
+                                    showCancelButton: true,
+                                    cancelButtonColor: '#6c757d',
+                                    confirmButtonColor: '#3085d6',
+                                    confirmButtonText: 'Yes, End it now'
+                                }).then((result) => {
+                                    if (result.isConfirmed) {
+                                        $wire.endElection()
+                                    }
+                                })
+                                ">
+                                <i class="bi bi-stop-circle me-2"></i>End Election
+                            </button>
                         </div>
-                    @endforeach
-
-                    <!-- Action Buttons: Mas compact na spacing -->
-                    <div class="mt-3 mt-md-4 pt-3 border-top d-flex flex-column gap-2">
-                        <button class="btn btn-outline-primary btn-sm w-100 py-2 fw-bold text-[12px] md:text-sm"
-                            @click.prevent="
-                    Swal.fire({
-                        title: 'Update Election Dates?',
-                        text: 'Make sure the dates are correct before saving the changes.',
-                        icon: 'warning',
-                        showCancelButton: true,
-                        confirmButtonColor: '#0d6efd',
-                        cancelButtonColor: '#d33',
-                        confirmButtonText: 'Yes, Update now'
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            $wire.updateDates()
-                        }
-                    })
-                ">
-                            <i class="bi bi-calendar-check me-2"></i>Update Cycle Dates
-                        </button>
-                        <button class="btn btn-outline-danger btn-sm w-100 py-2 fw-bold text-[12px] md:text-sm"
-                            @click.prevent="
-                    Swal.fire({
-                        title: 'Final Warning',
-                        text: 'This will end the current election cycle. This action cannot be undone!',
-                        icon: 'warning',
-                        showCancelButton: true,
-                        cancelButtonColor: '#d33',
-                        confirmButtonColor: '#3085d6',
-                        confirmButtonText: 'Yes, End it now'
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            $wire.endElection()
-                        }
-                    })
-                ">
-                            <i class="bi bi-stop-circle me-2"></i>End Election
-                        </button>
                     </div>
                 </div>
             </div>
         </div>
     </main>
+
     <div class="modal fade" id="newCycleModal" tabindex="-1" wire:ignore.self>
         <div class="modal-dialog modal-dialog-centered modal-lg px-2">
             <div class="modal-content border-0 shadow-lg">
@@ -507,8 +609,9 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                             <div class="col-md-8">
                                 <label class="fw-bold text-muted uppercase"
                                     style="font-size: 0.65rem; letter-spacing: 0.5px;">Cycle Name</label>
-                                <input type="text" wire:model="cycle_name" class="form-control-modern py-1 py-md-2"
-                                    placeholder="e.g. CSG General Election" style="font-size: 0.85rem;">
+                                <input type="text" wire:model="cycle_name"
+                                    class="form-control-modern py-1 py-md-2" placeholder="e.g. CSC General Election"
+                                    style="font-size: 0.85rem;">
                                 @error('cycle_name')
                                     <small class="text-danger" style="font-size: 0.7rem;">{{ $message }}</small>
                                 @enderror
@@ -597,6 +700,111 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                                 })
                             ">
                             Initialize Cycle
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div wire:ignore.self class="modal fade" id="updateDatesModal" tabindex="-1"
+        aria-labelledby="updateDatesModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg px-2">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 15px;">
+                <div class="modal-header bg-primary text-white p-3 p-md-4">
+                    <h5 class="modal-title fw-bold" id="updateDatesModalLabel">
+                        <i class="bi bi-calendar-event-fill me-2"></i>Adjust Election Timeline
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
+                </div>
+                <form wire:submit.prevent="updateDates">
+                    <div class="modal-body p-4">
+                        <div class="row g-4">
+                            <div class="col-12">
+                                <label
+                                    class="form-label fw-bold small text-muted text-uppercase d-flex align-items-center">
+                                    <i class="bi bi-1-circle-fill me-2 text-primary"></i> Phase 1: Filing Period
+                                </label>
+                                <div class="input-group shadow-sm">
+                                    <span class="input-group-text bg-white border-end-0 text-muted">
+                                        <i class="bi bi-pencil-square"></i>
+                                    </span>
+                                    <input type="date" wire:model="filing_start"
+                                        class="form-control border-start-0 @error('filing_start') is-invalid @enderror"
+                                        title="Start Date">
+                                    <span
+                                        class="input-group-text bg-white border-start-0 border-end-0 text-muted">to</span>
+                                    <input type="date" wire:model="filing_end"
+                                        class="form-control border-start-0 @error('filing_end') is-invalid @enderror"
+                                        title="End Date">
+                                </div>
+                                @error('filing_start')
+                                    <span class="text-danger small mt-1 d-block">{{ $message }}</span>
+                                @enderror
+                            </div>
+                            <div class="col-12">
+                                <label
+                                    class="form-label fw-bold small text-muted text-uppercase d-flex align-items-center">
+                                    <i class="bi bi-2-circle-fill me-2 text-primary"></i> Phase 2: Campaign Period
+                                </label>
+                                <div class="input-group shadow-sm">
+                                    <span class="input-group-text bg-white border-end-0 text-muted">
+                                        <i class="bi bi-megaphone"></i>
+                                    </span>
+                                    <input type="date" wire:model="campaign_start"
+                                        class="form-control border-start-0 @error('campaign_start') is-invalid @enderror"
+                                        title="Start Date">
+                                    <span
+                                        class="input-group-text bg-white border-start-0 border-end-0 text-muted">to</span>
+                                    <input type="date" wire:model="campaign_end"
+                                        class="form-control border-start-0 @error('campaign_end') is-invalid @enderror"
+                                        title="End Date">
+                                </div>
+                            </div>
+                            <div class="col-12 border-top pt-4 mt-2">
+                                <label
+                                    class="form-label fw-bold small text-primary text-uppercase d-flex align-items-center">
+                                    <i class="bi bi-3-circle-fill me-2"></i> Phase 3: Voting Period (Live)
+                                </label>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="small text-muted fw-semibold mb-1">Starts:</label>
+                                        <div class="input-group shadow-sm">
+                                            <span class="input-group-text bg-white text-success"><i
+                                                    class="bi bi-play-fill"></i></span>
+                                            <input type="datetime-local" wire:model="start_date"
+                                                class="form-control @error('start_date') is-invalid @enderror">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="small text-muted fw-semibold mb-1">Ends:</label>
+                                        <div class="input-group shadow-sm">
+                                            <span class="input-group-text bg-white text-danger"><i
+                                                    class="bi bi-stop-fill"></i></span>
+                                            <input type="datetime-local" wire:model="end_date"
+                                                class="form-control @error('end_date') is-invalid @enderror">
+                                        </div>
+                                    </div>
+                                </div>
+                                @error('end_date')
+                                    <span class="text-danger small mt-2 d-block">{{ $message }}</span>
+                                @enderror
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light border-0 p-3"
+                        style="border-bottom-left-radius: 15px; border-bottom-right-radius: 15px;">
+                        <button type="button" class="btn btn-secondary px-4 border"
+                            data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit"
+                            class="btn btn-primary px-4 fw-bold shadow-sm d-flex align-items-center">
+                            <span wire:loading.remove wire:target="updateDates">
+                                <i class="bi bi-check-circle me-2"></i>Save Timeline
+                            </span>
+                            <span wire:loading wire:target="updateDates">
+                                <span class="spinner-border spinner-border-sm me-2"></span>Saving...
+                            </span>
                         </button>
                     </div>
                 </form>

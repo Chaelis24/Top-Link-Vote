@@ -75,6 +75,21 @@
             });
         });
     </script>
+    @auth
+        <script type="module">
+            Echo.private(`user.{{ auth()->id() }}`)
+                .listen('.account.duplicate-login', (e) => {
+                    Swal.fire({
+                        title: "Security Alert",
+                        text: "Someone else just logged into your account. You will be logged out.",
+                        icon: "warning",
+                        confirmButtonText: "OK",
+                    }).then(() => {
+                        window.location.reload();
+                    });
+                });
+        </script>
+    @endauth
 </body>
 
 </html>

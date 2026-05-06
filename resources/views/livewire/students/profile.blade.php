@@ -93,7 +93,7 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
             ];
 
             if ($this->photo && !is_string($this->photo)) {
-                $data['photo'] = $this->photo->store('profile-photos', 'public');
+                $data['photo'] = $this->photo->store('student-profile', 'public');
                 $this->profile_photo_path = $data['photo'];
 
                 $this->reset('photo');
@@ -153,7 +153,7 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
 
     <main class="main-content">
         <div class="topbar" wire:key="persistent-topbar-header">
-            <div class="topbar-info">
+            <div>
                 <h2 class="text-dark">My <span class="text-primary">Profile</span></h2>
                 <p class="text-secondary mb-0">View your student information and voting status</p>
             </div>
@@ -161,7 +161,6 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
 
         <div class="glass-card profile-header m-2 m-md-4 fade-in-up delay-1 border-0 shadow-sm overflow-hidden">
             <div class="row align-items-center g-0">
-                <!-- Avatar Section: p-3 sa mobile, p-4 sa desktop -->
                 <div class="col-md-auto text-center text-md-start p-3 p-md-4">
                     <div class="position-relative d-inline-block">
                         @if ($photo)
@@ -180,7 +179,6 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                     </div>
                 </div>
 
-                <!-- Details Section: text-center sa mobile, text-start sa desktop -->
                 <div class="col-md px-3 px-md-0 py-2 py-md-4 text-center text-md-start">
                     <h4 class="fw-bold mb-1 text-dark text-truncate">
                         {{ $first_name ?: 'Student' }}
@@ -192,7 +190,7 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                         <i class="bi bi-mortarboard-fill me-1 text-primary"></i>
                         <span class="d-inline-block">{{ $course ?: 'N/A' }}</span>
                         <span class="mx-1 d-none d-md-inline">|</span>
-                        <br class="d-block d-md-none"> <!-- Breakline sa mobile -->
+                        <br class="d-block d-md-none">
                         <span class="text-muted">Student ID: {{ $student_id ?? 'N/A' }}</span>
                     </p>
 
@@ -211,7 +209,6 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                                 '4' => '4th Year',
                                 default => $year_level ?: 'Year Not Set',
                             };
-                            // Panatilihin ang logic para sa formatted course kung gagamitin sa future
                             $formattedCourse = match (strtolower((string) $course)) {
                                 'it' => 'Information Technology',
                                 'hst' => 'Hospitality Service Technology',
@@ -228,7 +225,6 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                     </div>
                 </div>
 
-                <!-- Button Section: Full width sa mobile (w-100), auto sa desktop -->
                 <div class="col-md-auto p-3 p-md-4 text-center position-relative" style="z-index: 1060;">
                     <button class="btn btn-outline-glow btn-sm w-100 w-md-auto px-3" type="button"
                         data-bs-toggle="modal" data-bs-target="#editProfileModal">
@@ -304,7 +300,6 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                 </div>
             </div>
 
-            {{-- Academic Information --}}
             <div class="col-lg-6">
                 <div class="glass-card info-card h-100 p-4 border-0 shadow-sm">
                     <h5 class="fw-bold mb-4 text-dark">
@@ -349,7 +344,6 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                 </div>
             </div>
 
-            {{-- Voting Status --}}
             <div class="col-lg-4">
                 <div class="glass-card vote-status-card h-100 p-4 text-center border-0 shadow-sm">
                     <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3 bg-emerald-light text-primary"
@@ -375,7 +369,6 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                 </div>
             </div>
 
-            {{-- Activity Timeline --}}
             <div class="col-lg-8">
                 <div class="glass-card p-4 h-100 border-0 shadow-sm">
                     <h5 class="fw-bold mb-4 text-dark">

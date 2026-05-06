@@ -63,7 +63,6 @@ new #[Layout('layouts.admin')] #[Title('Settings')] class extends Component {
         Auth::guard('web')->logout();
         Session::invalidate();
         Session::regenerateToken();
-
         return redirect()->route('login');
     }
 }; ?>
