@@ -1,98 +1,79 @@
-Access the application at: [http://localhost:8000](http://localhost:8000)
-
----
-
-## 🛠 Tech Stack
-
-- **Backend:** Laravel 13
-- **Frontend:** Vite, Blade / Livewire
-- **Real-time:** Laravel Reverb (WebSockets)
-- **Database:** MariaDB / MySQL
-- **Email:** SMTP (Gmail Integration)
-
-## 📄 License
-
-TheHere is the professional English version of your `README.md`. You can copy and paste this directly into your file:
-
-`````markdown
 # Top Link-Vote
 
-<p align="center"><a href="[https://laravel.com](https://laravel.com)" target="_blank"><img src="[https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg](https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg)" width="400" alt="Laravel Logo"></a></p>
+A comprehensive web-based election management and real-time voting system. This platform streamlines the school election process—from the Registrar's master list import to automated tallying and PDF reporting—ensuring a secure, transparent, and efficient voting experience.
 
-A web application for link sharing and real-time voting, built with the Laravel framework.
+## 🚀 Features
 
----
+### Student & Candidate Functions
 
-## 🚀 Quick Setup Guide
+- **🔐 Account Security** – Secure Login/Logout, Email Verification, and Password Reset.
+- **👤 Profile Management** – Edit student profiles and manage personal settings.
+- **📢 Candidate Showcasing** – Candidates can manage their own profiles, platforms, and agendas.
+- **🗳️ Secure Voting** – Cast votes with system checks for eligibility, voting windows, and "one-vote-per-student" enforcement.
+- **📊 Live Dashboard** – Access a personalized dashboard to view candidate profiles and election status.
 
-Follow these steps to get the project running on your local machine:
+### Admin & Registrar Functions
 
-### 1. Clone the Repository
+- **📥 Master List Integration** – Import student data directly from Registrar CSV files.
+- **⚙️ Election Lifecycle Management** – Create and manage election cycles, including filing, campaigning, and voting periods.
+- **👥 Candidate & Position Control** – Approve or reject candidate applications and define organizational positions.
+- **🛠️ System Governance** – Global system settings management, including the ability to enable/disable voting.
+- **📑 Automated Reporting** – Real-time vote tallying with the ability to generate and download official PDF election reports.
+- **📜 Activity Logging** – Comprehensive audit trails tracking all user actions for transparency.
 
-````bash
-git clone <repository-url>
+## 🧱 Tech Stack
+
+- **Frontend:** Tailwind CSS, Bootstrap 5, HTML5, CSS3, JavaScript (Vite)
+- **Backend:** PHP 8.2+, Laravel 13 (Eloquent ORM)
+- **Real-time:** Laravel Reverb (WebSockets)
+- **Database:** MySQL / MariaDB (Complex Relational Schema)
+- **Security:** CSRF Protection, Middleware Authorization, and Bcrypt Password Hashing
+
+## 🗂️ Project Structure
+
+```text
+📁 Top-Link-Vote
+├── app/                # Models (User, Student, Candidate, etc.) & Controllers
+├── database/           # Migrations (Schema for Users, Roles, Votes, etc)
+├── resources/          # Views (Blade templates for Admin & Student portals)
+├── routes/             # Web routes protected by Role Middleware
+├── storage/            # Local storage for Photos and Generated PDF Reports
+└── public/             # Compiled assets and entry point
+```
+
+⚙️ Installation Steps
+
+1. Clone & Install
+
+git clone [https://github.com/Chaelis24/Top-Link-Vote.git](https://github.com/Chaelis24/Top-Link-Vote.git)
 cd Top-Link-Vote
-
-### 1. Clone the Repository
-```bash
 composer install
+npm install
 
-### 3. Setup Environment File
-Create your .env file from the template:
+2. Environment Configuration
 
-```bash
 cp .env.example .env
-Note: Open the .env file and update DB_DATABASE, DB_USERNAME, and DB_PASSWORD to match your local MySQL configuration.
-
-### 4. Generate Application Key
-
-```bash
 php artisan key:generate
 
-### 5. Run Database Migrations
-Ensure you have created a database named top_link_vote in your MySQL server before running this command:
+Update your .env with your database credentials (DB_DATABASE=top_link_vote).
 
-```bash
-php artisan migrate
+3. Database & Assets
 
-### 6. Link Storage
-Create a symbolic link from public/storage to storage/app/public to handle file uploads:
-
-```bash
+php artisan migrate --seed
 php artisan storage:link
+npm run build
 
-### 7. Compile Assets & Real-time Server
-Install Node dependencies and start the development server:
+4. Run the System
 
-```bash
-npm install
-npm run dev
-If you are using real-time features (Reverb), run the following in a separate terminal:
+# Terminal 1: App Server
 
-```bash
+php artisan serve
+
+# Terminal 2: Real-time Server
+
 php artisan reverb:start
 
-### 8. Start the Application
-```bash
-php artisan serve
-Access the application at: http://localhost:8000
+🔑 System Access
+Admin Access: Login via the main portal (requires Admin role assigned in USER_ROLES).
 
-🛠 Tech Stack
-Backend: Laravel 11
-
-Frontend: Vite, Blade / Livewire
-
-Real-time: Laravel Reverb (WebSockets)
-
-Database: MariaDB / MySQL
-
-Email: SMTP (Gmail Integration)
-
-📄 License
-The Laravel framework is open-sourced software licensed under the MIT license.
-````
-`````
-
-```
-
-```
+Student Access: Registration is validated against the imported Registrar Master List.
