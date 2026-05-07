@@ -277,56 +277,6 @@
     }
 
     .admin-footer-sec {
-        width: 50px !important;
-        height: 100% !important;
-        display: flex !important;
-        justify-content: center !important;
-        align-items: center !important;
-        border: none !important;
-        background: transparent !important;
-    }
-
-    .admin-footer-sec > div {
-        width: 100% !important;
-        height: 100% !important;
-        display: flex !important;
-        justify-content: center !important;
-        align-items: center !important;
-    }
-
-    .user-avatar {
-        width: 32px !important;
-        height: 32px !important;
-        border-radius: 50% !important;
-        object-fit: cover;
-        display: block !important;
-    }
-
-    .admin-dropdown-box {
-        position: fixed !important;
-        bottom: 70px !important;
-        right: 10px !important;
-        left: auto !important;
-        width: 160px !important;
-        background: white !important;
-        border-radius: 12px !important;
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
-        border: 1px solid #e2e8f0 !important;
-        z-index: 9999 !important;
-    }
-
-    .admin-user-details,
-    .bi-chevron-up {
         display: none !important;
-    }
-
-    .admin-footer-sec {
-        width: 50px !important;
-    }
-
-    .admin-dropdown-box .dropdown-item {
-        padding: 10px 16px !important;
-        display: flex !important;
-        align-items: center !important;
     }
 }

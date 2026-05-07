@@ -61,6 +61,14 @@ body {
         margin-left: 0;
         padding: 12px;
     }
+    .admin-mobile-top-profile {
+        display: flex !important;
+        align-items: center;
+    }
+}
+
+.admin-mobile-top-profile img {
+    aspect-ratio: 1 / 1;
 }
 
 [x-cloak] {

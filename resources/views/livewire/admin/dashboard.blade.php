@@ -142,14 +142,53 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
                         })
                     "
                     title="Download Election Report">
-                    <span wire:loading wire:target="downloadReport" class="me-2">
+
+                    <span wire:loading wire:target="downloadReport">
                         <i class="spinner-border spinner-border-sm"></i>
                     </span>
-                    <span wire:loading.remove wire:target="downloadReport" class="me-2">
+
+                    <span wire:loading.remove wire:target="downloadReport" class="me-md-2">
                         <i class="bi bi-file-earmark-pdf"></i>
                     </span>
-                    <span>Election Report</span>
+
+                    <span class="d-none d-md-inline">Election Report</span>
                 </button>
+            </div>
+            <div class="admin-mobile-top-profile d-md-none" x-data="{ adminOpen: false }"
+                style="position: relative; margin-left: 8px;">
+                <div @click="adminOpen = !adminOpen"
+                    style="cursor: pointer; position: relative; width: 50px; height: 50px;">
+                    <img src="https://ui-avatars.com/api/?name={{ urlencode(auth()->user()->name ?? 'Admin') }}&background=1e3a8a&color=fff&font-size=0.35"
+                        style="width: 100%; height: 100%; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.15); object-fit: cover;"
+                        alt="Admin">
+
+                    <div
+                        style="position: absolute; bottom: 1px; right: 1px; width: 10px; height: 10px; border-radius: 50%; border: 2px solid white; background: #10B981;">
+                    </div>
+                </div>
+
+                <div x-show="adminOpen" @click.away="adminOpen = false" x-cloak
+                    x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 scale-95"
+                    x-transition:enter-end="opacity-100 scale-100"
+                    style="position: absolute; right: 0; top: 48px; background: white; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); min-width: 180px; z-index: 9999; border: 1px solid rgba(0,0,0,0.05); overflow: hidden;">
+
+                    <div style="padding: 12px; background: #f8fafc; border-bottom: 1px solid #f1f5f9;">
+                        <p style="margin:0; font-size: 0.8rem; font-weight: 700; color: #1e3a8a;">
+                            {{ auth()->user()->name ?? 'Admin' }}</p>
+                        <p style="margin:0; font-size: 0.65rem; color: #64748b;">Administrator</p>
+                    </div>
+
+                    <a href="/admin/settings" wire:navigate class="d-flex align-items-center gap-2"
+                        style="text-decoration: none; color: #475569; padding: 12px 15px; font-size: 0.85rem; transition: background 0.2s;">
+                        <i class="bi bi-gear"></i> Settings
+                    </a>
+
+                    <button wire:click="logout"
+                        class="w-100 text-start border-0 bg-transparent d-flex align-items-center gap-2 text-danger"
+                        style="padding: 12px 15px; font-size: 0.85rem; border-top: 1px solid #f1f5f9 !important;">
+                        <i class="bi bi-box-arrow-right"></i> Logout
+                    </button>
+                </div>
             </div>
         </div>
 

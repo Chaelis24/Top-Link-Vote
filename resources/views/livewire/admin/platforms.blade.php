@@ -192,7 +192,7 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                                     <div class="d-flex justify-content-end gap-2">
                                         <button wire:click="viewPlatform({{ $platform->id }})" class="btn"
                                             title="Review Profile"
-                                            style="width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; border: none; border-radius: 8px; background-color: rgba(13, 110, 253, 0.1); color: #0d6efd;">
+                                            style="width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: none; border-radius: 8px; background-color: rgba(13, 110, 253, 0.1); color: #0d6efd;">
                                             <i class="bi bi-eye"></i>
                                         </button>
 
@@ -214,11 +214,10 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                                                     })
                                                 "
                                                 class="btn" title="Approve"
-                                                style="width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; border: none; border-radius: 8px; background-color: rgba(25, 135, 84, 0.1); color: #198754;">
+                                                style="width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: none; border-radius: 8px; background-color: rgba(25, 135, 84, 0.1); color: #198754;">
                                                 <i class="bi bi-check-lg"></i>
                                             </button>
                                         @endif
-
                                         @if ($platform->status !== 'rejected')
                                             <button type="button"
                                                 x-on:click="
@@ -237,7 +236,7 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                                                     })
                                                 "
                                                 class="btn" title="Reject"
-                                                style="width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; border: none; border-radius: 8px; background-color: rgba(220, 53, 69, 0.1); color: #dc3545;">
+                                                style="width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: none; border-radius: 8px; background-color: rgba(220, 53, 69, 0.1); color: #dc3545;">
                                                 <i class="bi bi-x-lg"></i>
                                             </button>
                                         @endif
@@ -350,10 +349,9 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
 
     <div class="modal fade" id="viewPlatformModal" tabindex="-1" wire:ignore.self>
         <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable px-2">
-            <!-- px-2 para may konting margin sa sides sa mobile -->
             <div class="modal-content border-0 shadow-lg">
                 @if ($selectedPlatform)
-                    <div class="modal-header bg-primary text-white p-2 p-md-3"> <!-- Pinaliit padding -->
+                    <div class="modal-header bg-primary text-white p-2 p-md-3">
                         <h6 class="modal-title fw-bold small mb-0"><i class="bi bi-shield-check me-2"></i>Full
                             Candidate Review</h6>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
@@ -361,10 +359,8 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                     </div>
 
                     <div class="modal-body p-0">
-                        <!-- Compact Header -->
                         <div
                             class="p-3 p-md-4 bg-white border-bottom d-flex flex-column flex-md-row align-items-center gap-2 gap-md-4 text-center text-md-start">
-                            <!-- Mas maliit na avatar sa mobile -->
                             <div style="width: 65px; height: 65px; border-radius: 12px; overflow: hidden;"
                                 class="shadow-sm border d-flex align-items-center justify-content-center bg-primary text-white flex-shrink-0">
                                 @if ($selectedPlatform->candidate->photo)
@@ -393,28 +389,28 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                         </div>
 
                         <div class="p-3 p-md-4">
-                            <div class="row g-3"> <!-- g-3 instead of g-4 para mas dikit unti -->
-                                <!-- Academic Column -->
+                            <div class="row g-3">
                                 <div class="col-md-5">
                                     <h6 class="fw-bold text-primary mb-2 text-uppercase"
-                                        style="font-size: 0.7rem; letter-spacing: 0.5px;">Academic & Profile</h6>
+                                        style="font-size: 0.7rem; letter-spacing: 0.5px;">Introductory Profile</h6>
                                     <div class="bg-light p-2 p-md-3 rounded-3 mb-2">
-                                        <small class="d-block text-muted" style="font-size: 0.65rem;">GWA / Average
+                                        <small class="d-block fw-bold text-primary" style="font-size: 0.65rem;">GWA /
+                                            Average
                                             Grade</small>
                                         <span
-                                            class="fw-bold text-dark small">{{ $selectedPlatform->candidate->average_grade ?? 'N/A' }}</span>
+                                            class="fw-bold text-muted small">{{ $selectedPlatform->candidate->average_grade ?? 'N/A' }}</span>
                                     </div>
                                     <div class="mb-2">
-                                        <small class="d-block text-muted fw-bold"
-                                            style="font-size: 0.65rem;">Achievements</small>
-                                        <p class="text-dark mb-0" style="font-size: 0.75rem; line-height: 1.4;">
+                                        <small class="d-block text-primary fw-bold"
+                                            style="font-size: 0.85rem;">Achievements</small>
+                                        <p class="text-dark mb-0" style="font-size: 0.80rem; line-height: 1.4;">
                                             {{ $selectedPlatform->candidate->achievements ?: 'None listed.' }}
                                         </p>
                                     </div>
                                     <div class="mb-0">
-                                        <small class="d-block text-muted fw-bold" style="font-size: 0.65rem;">Past
+                                        <small class="d-block text-primary fw-bold" style="font-size: 0.85rem;">Past
                                             Positions</small>
-                                        <ul class="ps-3 mb-0" style="font-size: 0.75rem;">
+                                        <ul class="ps-3 mb-0" style="font-size: 0.80rem;">
                                             @php
                                                 $roles = is_array($selectedPlatform->candidate->previous_position)
                                                     ? $selectedPlatform->candidate->previous_position
@@ -433,29 +429,28 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                                     </div>
                                 </div>
 
-                                <!-- Agenda Column -->
                                 <div class="col-md-7 border-start-0 border-md-start">
                                     <div class="ps-md-4">
-                                        <h6 class="fw-bold text-accent mb-2 text-uppercase"
-                                            style="font-size: 0.7rem; letter-spacing: 0.5px;">Agenda</h6>
                                         <div class="mb-2">
-                                            <small class="d-block text-muted" style="font-size: 0.65rem;">Platform
+                                            <small class="d-block text-muted fw-bold"
+                                                style="font-size: 0.85rem;">Platform
                                                 Title</small>
-                                            <p class="fw-bold text-primary mb-0" style="font-size: 0.85rem;">
+                                            <p class="fw-bold text-primary mb-2" style="font-size: 0.80rem;">
                                                 {{ $selectedPlatform->title ?? 'No Title' }}</p>
                                         </div>
                                         <div class="mb-2">
-                                            <small class="d-block text-muted" style="font-size: 0.65rem;">Campaign
+                                            <small class="d-block text-muted fw-bold"
+                                                style="font-size: 0.85rem;">Campaign
                                                 Tagline</small>
-                                            <p class="text-dark fst-italic mb-0" style="font-size: 0.75rem;">
+                                            <p class="text-dark fst-italic mb-2" style="font-size: 0.80rem;">
                                                 "{{ $selectedPlatform->tagline ?? 'No Tagline' }}"</p>
                                         </div>
                                         <div class="bg-primary-subtle p-2 p-md-3 rounded-3"
                                             style="max-height: 180px; overflow-y: auto;">
                                             <small class="d-block text-primary fw-bold mb-1"
-                                                style="font-size: 0.65rem;">Agenda Details</small>
+                                                style="font-size: 0.85rem;">Agenda Details</small>
                                             <p class="text-dark mb-0"
-                                                style="white-space: pre-line; font-size: 0.75rem; line-height: 1.4;">
+                                                style="white-space: pre-line; font-size: 0.80rem; line-height: 1.4;">
                                                 {{ is_array($selectedPlatform->agenda) ? implode("\n", $selectedPlatform->agenda) : $selectedPlatform->agenda ?? 'No Agenda' }}
                                             </p>
                                         </div>
@@ -466,12 +461,12 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                     </div>
 
                     <div class="modal-footer bg-light p-2 flex-row justify-content-end">
-                        <button type="button" class="btn btn-danger btn-sm px-3" data-bs-dismiss="modal"
+                        <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal"
                             style="height: 32px; font-size: 0.75rem;">Close</button>
                         @if ($selectedPlatform->status === 'pending')
-                            <button wire:click="publishPlatform({{ $selectedPlatform->id }})" class="btn btn-sm px-3"
-                                data-bs-dismiss="modal"
-                                style="height: 32px; font-size: 0.75rem; background-color: #10b981; color: white;">
+                            <button wire:click="publishPlatform({{ $selectedPlatform->id }})"
+                                class="btn btn-primary btn-sm px-3" data-bs-dismiss="modal"
+                                style="height: 32px; font-size: 0.75rem; color: white;">
                                 Confirm Approval
                             </button>
                         @endif

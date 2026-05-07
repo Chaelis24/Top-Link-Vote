@@ -6,6 +6,7 @@ use Livewire\Attributes\{Layout, Title};
 use Illuminate\Support\Facades\{Hash, Auth, Session};
 use Illuminate\Validation\Rules\Password;
 use Carbon\Carbon;
+use App\Models\Setting;
 
 new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
     use WithFileUploads;
@@ -39,6 +40,8 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
     public $new_password = '';
     public $new_password_confirmation = '';
 
+    public bool $isVotingOpen = false;
+
     /**
      * Mount logic to populate the form
      */
@@ -46,6 +49,9 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
     {
         $user = Auth::user()?->load('student');
         $profile = $user?->student;
+
+        $settings = Setting::pluck('value', 'key')->toArray();
+        $this->isVotingOpen = (bool) ($settings['allowVoting'] ?? false);
 
         $this->name = $user?->name ?? '';
         $this->email = $user?->email ?? '';
@@ -357,7 +363,7 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                         <p class="text-secondary mb-0 small">
                             You cast your vote on {{ \Carbon\Carbon::parse($voted_at)->format('M d, Y') }}.
                         </p>
-                    @else
+                    @elseif ($isVotingOpen)
                         <span
                             class="badge bg-primary-light text-primary border border-primary-subtle px-3 py-2 mb-3 rounded-pill">Eligible</span>
                         <p class="text-secondary mb-0 small">You are eligible to vote in this election.</p>
@@ -365,6 +371,14 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                             class="btn btn-glow btn-sm mt-4 w-100">
                             <i class="bi bi-check2-square me-1"></i>Cast Vote Now
                         </a>
+                    @else
+                        <span class="badge bg-dark-subtle text-muted border px-3 py-2 mb-3 rounded-pill">
+                            <i class="bi bi-lock-fill me-1"></i>Locked
+                        </span>
+                        <p class="text-secondary mb-0 small">Voting is currently closed or has not yet started.</p>
+                        <button class="btn btn-secondary btn-sm mt-4 w-100" disabled>
+                            Voting Unavailable
+                        </button>
                     @endif
                 </div>
             </div>

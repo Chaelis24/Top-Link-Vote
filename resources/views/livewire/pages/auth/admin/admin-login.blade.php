@@ -31,6 +31,17 @@ new #[Layout('layouts.guest')] class extends Component {
             throw $e;
         }
     }
+    public function sendPasswordResetLink(): void
+    {
+        $this->validate(['form.email' => 'required|email']);
+        $status = Password::broker()->sendResetLink(['email' => $this->form->email]);
+
+        if ($status === Password::RESET_LINK_SENT) {
+            session()->flash('status', __($status));
+        } else {
+            $this->addError('form.email', __($status));
+        }
+    }
 }; ?>
 <div class="min-h-screen w-full flex items-center justify-center bg-[#f8fafc] p-4 m-0 font-['Raleway']">
     <div
@@ -101,6 +112,10 @@ new #[Layout('layouts.guest')] class extends Component {
                             class="rounded border-gray-300 text-[#1e3a8a] shadow-sm focus:ring-[#1e3a8a]">
                         <span class="ms-2">Maintain Session</span>
                     </label>
+                    <a href="{{ route('admin.forgot-password') }}" wire:navigate
+                        class="text-gray-500 hover:text-[#1e3a8a]">
+                        Forgot Password?
+                    </a>
                 </div>
 
                 <button type="submit"

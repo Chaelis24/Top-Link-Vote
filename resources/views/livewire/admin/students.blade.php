@@ -458,10 +458,15 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                     <tbody class="align-middle">
                         @forelse($students as $student)
                             <tr wire:key="student-desktop-{{ $student->id }}">
-                                <td class="ps-4 fw-bold">{{ $student->student_id }}</td>
-                                <td>{{ $student->first_name }} {{ $student->last_name }}</td>
+                                <td class="ps-3">{{ $student->student_id }}</td>
+                                <td>
+                                    {{ $student->first_name }}
+                                    {{ $student->middle_name ? $student->middle_name . ' ' : '' }}
+                                    {{ $student->last_name }}
+                                    {{ $student->suffix ? ', ' . $student->suffix : '' }}
+                                </td>
                                 <td>{{ $student->course }} - {{ $student->formatted_year }}</td>
-                                <td class="small fw-bold">{{ $student->user->email ?? 'N/A' }}</td>
+                                <td>{{ $student->user->email ?? 'N/A' }}</td>
                                 <td>
                                     @if ($student->has_voted)
                                         <span class="badge-approved py-1 px-2">
@@ -473,7 +478,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                                         </span>
                                     @elseif($student->status === 'inactive' || $student->status === 'suspended')
                                         <span class="badge-danger-soft py-1 px-2">
-                                            <i class="bi bi-slash-circle me-1"></i> Disabled
+                                            <i class="bi bi-slash-circle me-1"></i> Deactivated
                                         </span>
                                     @else
                                         <span class="badge-danger-soft py-1 px-2">
@@ -483,15 +488,15 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                                 </td>
                                 <td class="text-center pe-4">
                                     <div class="d-flex gap-2 justify-content-center">
-                                        <button class="btn-icon" wire:click="viewStudent({{ $student->id }})"
-                                            style="background: rgba(59, 130, 246, 0.1); color: #3b82f6; border: none; width: 34px; height: 34px; border-radius: 8px;">
+                                        <button wire:click="viewStudent({{ $student->id }})"
+                                            class="flex items-center justify-center w-[32px] h-[32px] rounded-lg border-none bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 transition-colors">
                                             <i class="bi bi-eye"></i>
                                         </button>
-                                        <button class="btn-icon" wire:click="editStudent({{ $student->id }})"
-                                            style="background: rgba(99, 102, 241, 0.1); color: #6366f1; border: none; width: 34px; height: 34px; border-radius: 8px;">
+                                        <button wire:click="editStudent({{ $student->id }})"
+                                            class="flex items-center justify-center w-[32px] h-[32px] rounded-lg border-none bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20 transition-colors">
                                             <i class="bi bi-pencil-square"></i>
                                         </button>
-                                        <button type="button" class="btn-icon"
+                                        <button type="button"
                                             x-on:click="
                                                 Swal.fire({
                                                     title: 'Deactivate Student?',
@@ -508,7 +513,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                                                     }
                                                 })
                                             "
-                                            style="background: rgba(244, 63, 94, 0.1); color: #f43f5e; border: none; width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                                            class="flex items-center justify-center w-[32px] h-[32px] rounded-lg border-none bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 transition-colors">
                                             <i class="bi bi-person-x"></i>
                                         </button>
                                     </div>

@@ -26,6 +26,6 @@ class VoteConfirmed extends Mailable
     public function build()
     {
         return $this->subject('Vote Confirmed - ' . $this->cycle->name)
-            ->view('emails.vote-confirmed');
+            ->view('emails.students.vote-confirmed');
     }
 }

@@ -8,13 +8,13 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class ResetPasswordMail extends Mailable
+class AdminPasswordReset extends Mailable
 {
     use Queueable, SerializesModels;
 
     public function __construct(
         public $url,
-        public $student
+        public $user
     ) {}
 
     public function envelope(): Envelope
@@ -27,7 +27,7 @@ class ResetPasswordMail extends Mailable
     public function content(): Content
     {
         return new Content(
-            view: 'emails.students.password-reset',
+            view: 'emails.admin.password-reset',
         );
     }
 }

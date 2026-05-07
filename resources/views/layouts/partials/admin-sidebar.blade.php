@@ -67,6 +67,13 @@
                         <span>Election Cycle</span>
                     </a>
                 </li>
+                <li class="admin-nav-item">
+                    <a href="{{ url('admin/audit-trail') }}" wire:navigate
+                        class="admin-nav-link {{ request()->is('admin/audit-trail*') ? 'active' : '' }}">
+                        <i class="bi bi-clock-history"></i>
+                        <span>User Activities</span>
+                    </a>
+                </li>
             </ul>
         </nav>
 

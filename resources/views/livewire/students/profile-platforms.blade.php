@@ -5,7 +5,7 @@ use Livewire\WithFileUploads;
 use Livewire\Attributes\{Layout, Title, Computed, Url};
 use Illuminate\Support\Facades\{Auth, Session, Storage, Log};
 use Illuminate\Support\Str;
-use App\Models\{Candidate, Position, ElectionCycle, Platform, Setting};
+use App\Models\{Candidate, Position, ElectionCycle, Platform, Setting, ActivityLog};
 
 new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Component {
     use WithFileUploads;
@@ -172,7 +172,12 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
         $achievementsArray = array_values(array_filter(array_map('trim', explode("\n", str_replace("\r", '', $tempAchievements)))));
 
         try {
-            $candidate = Auth::user()->candidate;
+            $candidate = Auth::user()->candidate->load(['student', 'platforms']);
+            $oldData = [
+                'candidate' => $candidate->toArray(),
+                'student' => $candidate->student->toArray(),
+                'platform' => $candidate->platforms ? $candidate->platforms->toArray() : null,
+            ];
 
             if ($this->candidate_photo) {
                 if ($candidate->photo) {
@@ -204,6 +209,23 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
                     'submitted_at' => now(),
                 ],
             );
+
+            ActivityLog::create([
+                'user_id' => Auth::id(),
+                'student_id' => $candidate->student_id,
+                'action' => 'Update Platform',
+                'description' => "Updated profile and platform for candidate: {$candidate->student->first_name} {$candidate->student->last_name}",
+                'ip_address' => request()->ip(),
+                'user_agent' => request()->userAgent(),
+                'properties' => json_encode([
+                    'old' => $oldData,
+                    'new' => [
+                        'candidate' => $candidate->refresh()->toArray(),
+                        'student' => $candidate->student->toArray(),
+                        'platform' => $candidate->platforms()->first() ? $candidate->platforms()->first()->refresh()->toArray() : null,
+                    ],
+                ]),
+            ]);
 
             $this->dispatch('swal', [
                 'title' => 'Submission Successful!',
@@ -294,7 +316,6 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
                         <div
                             class="position-relative bg-white rounded-5 shadow-sm border transition-all hover-translate-y hover-shadow-lg p-2 p-md-4 h-100 d-flex flex-column align-items-center text-center group-card {{ !$isApproved ? 'opacity-75' : '' }}">
 
-                            <!-- Badge and Info Icon -->
                             <div
                                 class="position-absolute top-0 start-0 w-100 p-2 p-md-3 d-flex justify-content-between align-items-center">
                                 <span
@@ -418,15 +439,12 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
             <div class="modal fade" id="unifiedModal{{ $candidate->id }}" tabindex="-1" wire:ignore.self>
                 <div class="modal-dialog modal-dialog-centered modal-lg mx-3 mx-md-auto">
                     <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-
-                        <!-- Modal Header with Navigation Tabs -->
                         <div class="modal-header border-0 bg-emerald-light p-3 pb-0 flex-column align-items-start">
                             <div class="d-flex justify-content-between w-100">
                                 <h6 class="fw-black text-primary mb-0">Candidate Details</h6>
                                 <button type="button" class="btn-close" style="font-size: 0.7rem;"
                                     data-bs-dismiss="modal"></button>
                             </div>
-
                             <ul class="nav nav-tabs border-0 mt-2 w-100" role="tablist">
                                 <li class="nav-item flex-fill text-center">
                                     <button class="nav-link active fw-bold border-0 bg-transparent w-100 py-2 small"
@@ -449,11 +467,8 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
 
                         <div class="modal-body p-3">
                             <div class="tab-content">
-
-                                <!-- Introductory Profile Panel -->
                                 <div class="tab-pane fade show active" id="profile-panel-{{ $candidate->id }}">
                                     <div class="row g-3">
-                                        <!-- Left Column: Avatar & Basic Info -->
                                         <div class="col-12 col-md-4 text-center border-md-end">
                                             <p class="text-primary fw-bold text-uppercase mb-2"
                                                 style="font-size: 0.80rem; letter-spacing: 1px;">
@@ -489,8 +504,6 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
                                                 {{ $candidate->student?->year_level }}
                                             </p>
                                         </div>
-
-                                        <!-- Right Column: Achievements & Stats -->
                                         <div class="col-12 col-md-8 px-md-3">
                                             <h6 class="text-uppercase small fw-black text-primary mb-2"
                                                 style="font-size: 0.80rem;">Achievements</h6>
@@ -526,8 +539,6 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
                                         </div>
                                     </div>
                                 </div>
-
-                                <!-- Platform Panel -->
                                 <div class="tab-pane fade" id="platform-panel-{{ $candidate->id }}">
                                     <div class="bg-light p-2 rounded-3 mb-2">
                                         <h6 class="fw-black text-dark mb-1" style="font-size: 0.80rem;">
@@ -570,8 +581,6 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
         <div class="modal fade" id="editMyPlatformModal" tabindex="-1" wire:ignore.self>
             <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable mx-3 mx-md-auto">
                 <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-
-                    <!-- Modal Header -->
                     <div class="modal-header bg-emerald-light border-0 pb-0 pt-3 px-3 px-md-4">
                         <div class="w-100">
                             <div class="d-flex justify-content-between align-items-center mb-2 mb-md-3">
@@ -579,7 +588,6 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
                                 <button type="button" class="btn-close" style="font-size: 0.8rem;"
                                     data-bs-dismiss="modal"></button>
                             </div>
-
                             <ul class="nav nav-tabs border-0 nav-justified w-100" id="editTabs" role="tablist">
                                 <li class="nav-item" role="presentation">
                                     <button
@@ -611,10 +619,8 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
                             @endif
 
                             <div class="tab-content" id="editTabsContent">
-                                <!-- Profile Pane -->
                                 <div class="tab-pane fade show active" id="profile-pane" role="tabpanel">
                                     <div class="row g-3">
-                                        <!-- Photo Upload -->
                                         <div class="col-12 col-md-4 mb-2 text-center border-md-end">
                                             <label class="small fw-bold text-muted d-block mb-2">Candidate
                                                 Photo</label>
@@ -647,8 +653,6 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
                                                 @enderror
                                             </div>
                                         </div>
-
-                                        <!-- Basic Info -->
                                         <div class="col-12 col-md-8">
                                             <div class="row g-2">
                                                 <div class="col-6 mb-2">
@@ -674,10 +678,7 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
                                                 </div>
                                             </div>
                                         </div>
-
                                         <hr class="my-3 opacity-25">
-
-                                        <!-- Dynamic Fields: Previous Positions -->
                                         <div class="col-12 col-md-6">
                                             <label class="small fw-bold text-primary mb-1 d-block"
                                                 style="font-size: 0.7rem;">Previous Positions</label>
@@ -700,8 +701,6 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
                                                 + Add Position
                                             </button>
                                         </div>
-
-                                        <!-- Dynamic Fields: Previous Projects -->
                                         <div class="col-12 col-md-6">
                                             <label class="small fw-bold text-primary mb-1 d-block"
                                                 style="font-size: 0.7rem;">Previous School Projects</label>
@@ -726,8 +725,6 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
                                         </div>
                                     </div>
                                 </div>
-
-                                <!-- Platform Pane -->
                                 <div class="tab-pane fade" id="platform-pane" role="tabpanel">
                                     <div class="mb-3">
                                         <label class="small fw-bold text-muted" style="font-size: 0.7rem;">Campaign
@@ -761,8 +758,6 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
                                 </div>
                             </div>
                         </div>
-
-                        <!-- Modal Footer -->
                         <div class="modal-footer border-0 bg-light p-2 p-md-3">
                             @if ($lockChanges)
                                 <button type="button" class="btn btn-secondary btn-sm px-4 rounded-3" disabled

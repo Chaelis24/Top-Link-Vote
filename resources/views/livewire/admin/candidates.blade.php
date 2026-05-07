@@ -31,12 +31,28 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
         'position_id' => '',
         'achievements' => '',
         'previous_position' => [''],
+        'previous_school_project' => [''],
         'average_grade' => '',
         'platform_title' => '',
         'tagline' => '',
         'agenda' => '',
         'photo_url' => '',
     ];
+
+    public function addField($property)
+    {
+        $this->editForm[$property][] = '';
+    }
+
+    public function removeField($property, $index)
+    {
+        unset($this->editForm[$property][$index]);
+        $this->editForm[$property] = array_values($this->editForm[$property]);
+
+        if (empty($this->editForm[$property])) {
+            $this->editForm[$property][] = '';
+        }
+    }
 
     public function with(): array
     {
@@ -87,13 +103,17 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
         $platform = $candidate->platforms->first();
         $this->reset('photo');
 
+        $prevPos = is_array($candidate->previous_position) ? $candidate->previous_position : json_decode($candidate->previous_position, true);
+        $prevProj = is_array($candidate->previous_school_project) ? $candidate->previous_school_project : json_decode($candidate->previous_school_project, true);
+
         $this->editForm = [
             'first_name' => $candidate->student->first_name,
             'last_name' => $candidate->student->last_name,
             'party_name' => $candidate->party_name ?? '',
             'position_id' => $candidate->position_id,
             'achievements' => $candidate->achievements ?? '',
-            'previous_position' => is_array($candidate->previous_position) ? $candidate->previous_position : json_decode($candidate->previous_position, true) ?? [''],
+            'previous_position' => !empty($prevPos) ? $prevPos : [''],
+            'previous_school_project' => !empty($prevProj) ? $prevProj : [''],
             'average_grade' => $candidate->average_grade ?? '',
             'platform_title' => $platform->title ?? '',
             'tagline' => $platform->tagline ?? '',
@@ -106,28 +126,35 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
     public function updateCandidate()
     {
         $this->validate([
-            'editForm.first_name' => 'required|string|max:255',
-            'editForm.last_name' => 'required|string|max:255',
             'editForm.party_name' => 'required|string|max:255',
             'editForm.position_id' => 'required|exists:positions,id',
             'editForm.platform_title' => 'required|string|max:255',
+            'editForm.previous_position.*' => 'nullable|string|max:100',
+            'editForm.previous_school_project.*' => 'nullable|string|max:100',
+            'editForm.achievements' => 'nullable|string',
+            'editForm.average_grade' => 'nullable|string|max:10',
+            'editForm.tagline' => 'nullable|string|max:255',
+            'editForm.agenda' => 'nullable|string',
             'photo' => 'nullable|image|max:2048',
         ]);
 
         try {
             DB::beginTransaction();
+
             $candidate = Candidate::findOrFail($this->editingCandidateId);
 
-            $cleanPreviousPositions = array_values(array_filter(array_map('trim', (array) $this->editForm['previous_position'])));
+            $cleanPreviousPositions = array_values(array_filter(array_map('trim', (array) ($this->editForm['previous_position'] ?? []))));
+            $cleanPreviousProjects = array_values(array_filter(array_map('trim', (array) ($this->editForm['previous_school_project'] ?? []))));
 
             $candidateData = [
                 'party_name' => $this->editForm['party_name'],
                 'position_id' => $this->editForm['position_id'],
                 'achievements' => $this->editForm['achievements'],
                 'previous_position' => $cleanPreviousPositions,
+                'previous_school_project' => $cleanPreviousProjects,
                 'average_grade' => $this->editForm['average_grade'],
                 'status' => 'approved',
-                'approved_at' => now(),
+                'approved_at' => $candidate->approved_at ?? now(),
             ];
 
             if ($this->photo) {
@@ -137,12 +164,8 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
 
             $candidate->update($candidateData);
 
-            $candidate->student->update([
-                'first_name' => $this->editForm['first_name'],
-                'last_name' => $this->editForm['last_name'],
-            ]);
-
-            $agendaArray = array_values(array_filter(array_map('trim', explode("\n", str_replace("\r", '', $this->editForm['agenda'])))));
+            $agendaContent = $this->editForm['agenda'] ?? '';
+            $agendaArray = array_values(array_filter(array_map('trim', explode("\n", str_replace("\r", '', $agendaContent)))));
 
             $candidate->platforms()->updateOrCreate(
                 ['candidate_id' => $candidate->id],
@@ -155,15 +178,16 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
             );
 
             DB::commit();
-            $this->dispatch('close-modal', id: 'editCandidateModal');
 
+            $this->dispatch('close-modal', id: 'editCandidateModal');
             $this->dispatch('swal', [
                 'title' => 'Updated!',
-                'text' => 'Candidate profile saved.',
+                'text' => 'Candidate profile saved successfully.',
                 'icon' => 'success',
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
+
             $this->dispatch('swal', [
                 'title' => 'Update Failed',
                 'text' => 'An error occurred while saving: ' . $e->getMessage(),
@@ -434,7 +458,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                                         <button type="button" class="btn-icon btn-edit"
                                             wire:click="editCandidate({{ $candidate->id }})"
                                             style="background: rgba(13, 110, 253, 0.1); color: #0d6efd; border: none; width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                                            <i class="bi bi-pencil-square" style="font-size: 1.1rem;"></i>
+                                            <i class="bi bi-pencil-square" style="font-size: 0.90rem;"></i>
                                         </button>
                                         <button type="button" class="btn-icon btn-delete"
                                             x-on:click="
@@ -453,7 +477,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                                                 }
                                             })"
                                             style="background: rgba(220, 53, 69, 0.1); color: #dc3545; border: none; width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                                            <i class="bi bi-trash" style="font-size: 1.1rem;"></i>
+                                            <i class="bi bi-trash" style="font-size: 0.90rem;"></i>
                                         </button>
                                     </div>
                                 </td>
@@ -549,125 +573,200 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
     </main>
 
     <div class="modal fade" id="editCandidateModal" tabindex="-1" wire:ignore.self>
-        <div class="modal-dialog modal-lg modal-dialog-centered" style="max-width: 95%; width: 800px;">
-            <div class="modal-content border-0 shadow-lg" style="border-radius: 15px;">
-                <div class="modal-header bg-primary text-white p-3 p-md-4">
-                    <h5 class="modal-title fw-bold fs-6 fs-md-5">
-                        <i class="bi bi-person-badge-fill me-2"></i>Edit Candidate Details
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-
-                <form wire:submit="updateCandidate">
-                    <div class="modal-body p-0">
-                        <ul class="nav nav-tabs px-3 pt-2 bg-light flex-nowrap overflow-auto border-0" role="tablist">
-                            <li class="nav-item">
-                                <button class="nav-link active fw-bold small py-2 px-3" data-bs-toggle="tab"
-                                    data-bs-target="#tab-basic" type="button">BASIC INFO</button>
+        <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable mx-3 mx-md-auto">
+            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+                <div class="modal-header bg-primary text-white border-0 pb-0 pt-3 px-3 px-md-4">
+                    <div class="w-100">
+                        <div class="d-flex justify-content-between align-items-center mb-2 mb-md-3">
+                            <h6 class="modal-title fw-bold mb-0">
+                                <i class="bi bi-person-badge-fill me-2"></i>Edit Candidate Details
+                            </h6>
+                            <button type="button" class="btn-close btn-close-white" style="font-size: 0.8rem;"
+                                data-bs-dismiss="modal"></button>
+                        </div>
+                        <ul class="nav nav-tabs border-0 nav-justified w-100" id="editTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button
+                                    class="nav-link active border-0 rounded-0 py-2 fw-bold text-white w-100 small opacity-75"
+                                    id="basic-tab" data-bs-toggle="tab" data-bs-target="#tab-basic" type="button"
+                                    role="tab"
+                                    style="background: transparent; border-bottom: 3px solid white !important;">
+                                    <i class="bi bi-person-circle me-1"></i>BASIC INFO
+                                </button>
                             </li>
-                            <li class="nav-item">
-                                <button class="nav-link fw-bold small py-2 px-3" data-bs-toggle="tab"
-                                    data-bs-target="#tab-vision" type="button">PLATFORM</button>
+                            <li class="nav-item" role="presentation">
+                                <button
+                                    class="nav-link border-0 rounded-0 py-2 fw-bold text-white w-100 small opacity-75"
+                                    id="vision-tab" data-bs-toggle="tab" data-bs-target="#tab-vision" type="button"
+                                    role="tab" style="background: transparent;">
+                                    <i class="bi bi-megaphone me-1"></i>PLATFORM
+                                </button>
                             </li>
                         </ul>
+                    </div>
+                </div>
 
-                        <div class="tab-content p-3 p-md-4">
-                            <div class="tab-pane fade show active" id="tab-basic">
-                                <div class="row g-2 g-md-3">
-                                    <div class="col-12">
-                                        <label class="form-label small fw-bold text-muted mb-1">CANDIDATE PHOTO</label>
-                                        @if ($photo || (isset($editForm['existing_photo']) && $editForm['existing_photo']))
-                                            <div class="mt-2 mb-2">
-                                                <img src="{{ $photo ? $photo->temporaryUrl() : asset('storage/' . $editForm['existing_photo']) }}"
-                                                    class="rounded border shadow-sm"
-                                                    style="width: 50px; height: 50px; object-fit: cover;">
-                                            </div>
-                                        @endif
-                                        <div class="input-group">
-                                            <label class="input-group-text bg-white border-end-0" for="photoInput"
-                                                style="cursor: pointer;">
-                                                <i class="bi bi-image text-primary"></i>
+                <form wire:submit.prevent="updateCandidate">
+                    <div class="modal-body p-3 p-md-4 bg-white">
+                        <div class="tab-content" id="editTabsContent">
+                            <div class="tab-pane fade show active" id="tab-basic" role="tabpanel">
+                                <div class="row g-3">
+                                    <div class="col-12 col-md-4 mb-2 text-center border-md-end">
+                                        <label class="small fw-bold text-muted d-block mb-2">CANDIDATE PHOTO</label>
+                                        <div class="text-center">
+                                            <input type="file" id="photoInput" wire:model="photo" class="d-none"
+                                                accept="image/*">
+                                            <label for="photoInput"
+                                                class="mx-auto shadow-sm d-flex align-items-center justify-content-center position-relative profile-upload-circle"
+                                                style="width: 110px; height: 110px; border-radius: 50%; overflow: hidden; cursor: pointer; border: 4px solid #e9ecef; background: #f8fafc;">
+
+                                                @if ($photo)
+                                                    <img src="{{ $photo->temporaryUrl() }}"
+                                                        class="w-100 h-100 object-fit-cover">
+                                                @elseif (isset($editForm['existing_photo']) && $editForm['existing_photo'])
+                                                    <img src="{{ asset('storage/' . $editForm['existing_photo']) }}"
+                                                        class="w-100 h-100 object-fit-cover">
+                                                @else
+                                                    <i class="bi bi-camera-fill fs-2 text-primary"></i>
+                                                @endif
                                             </label>
-
-                                            <input type="text" readonly
-                                                class="form-control bg-white border-start-0 small"
-                                                placeholder="{{ $photo ? $photo->getClientOriginalName() : (isset($editForm['existing_photo']) ? basename($editForm['existing_photo']) : 'No file selected') }}"
-                                                style="cursor: default;">
-
-                                            <button class="btn btn-outline-primary btn-sm px-3" type="button"
-                                                @click="$refs.photoInput.click()">
-                                                Browse
-                                            </button>
+                                            <small class="text-primary d-block mt-2 fw-bold text-uppercase"
+                                                style="font-size: 9px;">Tap to change</small>
+                                            @error('photo')
+                                                <span class="text-danger d-block mt-1"
+                                                    style="font-size: 0.65rem;">{{ $message }}</span>
+                                            @enderror
                                         </div>
-                                        <input type="file" x-ref="photoInput" wire:model="photo" class="d-none"
-                                            id="photoInput" accept="image/*">
+                                    </div>
 
-                                    </div>
-                                    <div class="col-12 col-md-6">
-                                        <label class="form-label small fw-bold text-muted mb-1">FIRST NAME</label>
-                                        <input type="text" wire:model="editForm.first_name"
-                                            class="form-control-modern">
-                                    </div>
-                                    <div class="col-12 col-md-6">
-                                        <label class="form-label small fw-bold text-muted mb-1">LAST NAME</label>
-                                        <input type="text" wire:model="editForm.last_name"
-                                            class="form-control-modern">
-                                    </div>
-                                    <div class="col-12 col-md-6">
-                                        <label class="form-label small fw-bold text-muted mb-1">PARTY NAME</label>
-                                        <input type="text" wire:model="editForm.party_name"
-                                            class="form-control-modern">
-                                    </div>
-                                    <div class="col-12 col-md-6">
-                                        <label class="form-label small fw-bold text-muted mb-1">AVG GRADE (GWA)</label>
-                                        <input type="text" wire:model="editForm.average_grade"
-                                            class="form-control-modern">
-                                    </div>
-                                    <div class="col-12">
-                                        <label class="form-label small fw-bold text-muted mb-1">ACHIEVEMENTS</label>
-                                        <textarea wire:model="editForm.achievements" class="form-control-modern" rows="3"></textarea>
+                                    <div class="col-12 col-md-8">
+                                        <div class="row g-2">
+                                            <div class="col-6 mb-2">
+                                                <label class="small fw-bold text-muted"
+                                                    style="font-size: 0.7rem;">FIRST NAME</label>
+                                                <input type="text" wire:model="editForm.first_name"
+                                                    class="form-control form-control-sm border-0 bg-light py-2"
+                                                    readonly>
+                                            </div>
+                                            <div class="col-6 mb-2">
+                                                <label class="small fw-bold text-muted"
+                                                    style="font-size: 0.7rem;">LAST NAME</label>
+                                                <input type="text" wire:model="editForm.last_name"
+                                                    class="form-control form-control-sm border-0 bg-light py-2"
+                                                    readonly>
+                                            </div>
+                                            <div class="col-6 mb-2">
+                                                <label class="small fw-bold text-muted"
+                                                    style="font-size: 0.7rem;">PARTY NAME</label>
+                                                <input type="text" wire:model="editForm.party_name"
+                                                    class="form-control form-control-sm border-0 bg-light py-2">
+                                            </div>
+                                            <div class="col-6 mb-2">
+                                                <label class="small fw-bold text-muted" style="font-size: 0.7rem;">AVG
+                                                    GRADE (GWA)</label>
+                                                <input type="text" wire:model="editForm.average_grade"
+                                                    class="form-control form-control-sm border-0 bg-light py-2">
+                                            </div>
+                                            <div class="col-12">
+                                                <label class="small fw-bold text-muted"
+                                                    style="font-size: 0.7rem;">ACHIEVEMENTS</label>
+                                                <textarea wire:model="editForm.achievements" rows="3" class="form-control form-control-sm border-0 bg-light"></textarea>
+                                            </div>
+                                            <div class="row g-3 mt-2">
+                                                <div class="col-12 col-md-6">
+                                                    <label class="small fw-bold text-muted mb-1 d-block"
+                                                        style="font-size: 0.7rem;">PREVIOUS POSITIONS</label>
+
+                                                    @foreach ($editForm['previous_position'] as $index => $pos)
+                                                        <div class="d-flex gap-2 mb-2"
+                                                            wire:key="pos-{{ $index }}">
+                                                            <input type="text"
+                                                                wire:model="editForm.previous_position.{{ $index }}"
+                                                                class="form-control form-control-sm border-0 bg-light py-2"
+                                                                placeholder="e.g. Class President">
+
+                                                            @if (count($editForm['previous_position']) > 1)
+                                                                <button type="button"
+                                                                    wire:click="removeField('previous_position', {{ $index }})"
+                                                                    class="btn btn-sm text-danger p-0">
+                                                                    <i class="bi bi-x-circle-fill"></i>
+                                                                </button>
+                                                            @endif
+                                                        </div>
+                                                    @endforeach
+
+                                                    <button type="button" wire:click="addField('previous_position')"
+                                                        class="btn btn-sm btn-link text-muted p-0 text-decoration-none"
+                                                        style="font-size: 0.7rem;">
+                                                        <i class="bi bi-plus-lg"></i> Add Position
+                                                    </button>
+                                                </div>
+
+                                                <div class="col-12 col-md-6">
+                                                    <label class="small fw-bold text-muted mb-1 d-block"
+                                                        style="font-size: 0.7rem;">PREVIOUS SCHOOL PROJECTS</label>
+
+                                                    @foreach ($editForm['previous_school_project'] as $index => $proj)
+                                                        <div class="d-flex gap-2 mb-2"
+                                                            wire:key="proj-{{ $index }}">
+                                                            <input type="text"
+                                                                wire:model="editForm.previous_school_project.{{ $index }}"
+                                                                class="form-control form-control-sm border-0 bg-light py-2"
+                                                                placeholder="e.g. Tree Planting Drive">
+                                                            @if (count($editForm['previous_school_project']) > 1)
+                                                                <button type="button"
+                                                                    wire:click="removeField('previous_school_project', {{ $index }})"
+                                                                    class="btn btn-sm text-danger p-0">
+                                                                    <i class="bi bi-x-circle-fill"></i>
+                                                                </button>
+                                                            @endif
+                                                        </div>
+                                                    @endforeach
+                                                    <button type="button"
+                                                        wire:click="addField('previous_school_project')"
+                                                        class="btn btn-sm btn-link text-muted p-0 text-decoration-none"
+                                                        style="font-size: 0.7rem;">
+                                                        <i class="bi bi-plus-lg"></i> Add Project
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="tab-pane fade" id="tab-vision">
-                                <div class="row g-2 g-md-3">
-                                    <div class="col-12">
-                                        <label class="form-label small fw-bold text-muted mb-1">PLATFORM
-                                            TITLE</label>
-                                        <input type="text" wire:model="editForm.platform_title"
-                                            class="form-control-modern">
-                                    </div>
-                                    <div class="col-12">
-                                        <label class="form-label small fw-bold text-muted mb-1">CAMPAIGN
-                                            TAGLINE</label>
-                                        <input type="text" wire:model="editForm.tagline"
-                                            class="form-control-modern fst-italic">
-                                    </div>
-                                    <div class="col-12">
-                                        <label class="form-label small fw-bold text-muted mb-1">AGENDA</label>
-                                        <textarea wire:model="editForm.agenda" class="form-control-modern" rows="6"></textarea>
-                                    </div>
+                            <div class="tab-pane fade" id="tab-vision" role="tabpanel">
+                                <div class="mb-3">
+                                    <label class="small fw-bold text-muted" style="font-size: 0.7rem;">PLATFORM
+                                        TITLE</label>
+                                    <input type="text" wire:model="editForm.platform_title"
+                                        class="form-control form-control-sm border-0 bg-light py-2">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="small fw-bold text-muted" style="font-size: 0.7rem;">CAMPAIGN
+                                        TAGLINE</label>
+                                    <input type="text" wire:model="editForm.tagline"
+                                        class="form-control form-control-sm border-0 bg-light py-2 fst-italic">
+                                </div>
+                                <div class="mb-2">
+                                    <label class="small fw-bold text-muted" style="font-size: 0.7rem;">AGENDA
+                                        DETAILS</label>
+                                    <textarea wire:model="editForm.agenda" rows="6" class="form-control form-control-sm border-0 bg-light"></textarea>
                                 </div>
                             </div>
                         </div>
                     </div>
-
-                    <div class="modal-footer border-0 p-4 pt-2 bg-white justify-content-between align-items-center"
-                        style="border-bottom-left-radius: 15px; border-bottom-right-radius: 15px;">
-
-                        <button type="button"
-                            class="btn btn-secondary d-flex align-items-center justify-content-center fw-semibold px-4"
-                            data-bs-dismiss="modal"
-                            style="border-radius: 10px; font-size: 0.85rem; height: 45px; border: none;">
+                    <div class="modal-footer border-0 bg-light p-3">
+                        <button type="button" class="btn btn-secondary btn-sm px-4 pill fw-bold shadow-sm"
+                            data-bs-dismiss="modal">
                             Cancel
                         </button>
-
-                        <button type="submit" class="btn-glow d-flex align-items-center justify-content-center px-4"
-                            style="border-radius: 10px; font-size: 0.85rem; height: 45px; font-weight: 600; min-width: 160px;">
-                            <span wire:loading wire:target="updateCandidate"
-                                class="spinner-border spinner-border-sm me-2"></span>
-                            Save Changes
+                        <button type="submit" class="btn btn-primary btn-sm px-4 pill fw-bold shadow-sm"
+                            wire:loading.attr="disabled">
+                            <span wire:loading.remove wire:target="updateCandidate">Save Changes</span>
+                            <span wire:loading wire:target="updateCandidate">
+                                <span class="spinner-border spinner-border-sm me-1" role="status"></span> Saving...
+                            </span>
                         </button>
                     </div>
                 </form>

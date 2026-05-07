@@ -130,7 +130,6 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
         try {
             DB::transaction(function () use ($student, $cycle, $user) {
                 $referenceNumber = 'REF-' . strtoupper(bin2hex(random_bytes(4)));
-
                 foreach ($this->selections as $positionId => $candidateId) {
                     Vote::create([
                         'student_id' => $student->id,
@@ -152,8 +151,13 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
 
                 ActivityLog::create([
                     'user_id' => $user->id,
+                    'student_id' => $student->id,
                     'action' => 'Voted',
-                    'description' => "Cast votes with Reference: $referenceNumber",
+                    'description' => "$referenceNumber",
+                    'properties' => json_encode([
+                        'selections' => $this->selections,
+                        'reference' => $referenceNumber,
+                    ]),
                     'ip_address' => request()->ip(),
                     'user_agent' => request()->userAgent(),
                 ]);
@@ -175,8 +179,22 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
 
             return $this->redirect('/students/cast-vote', navigate: true);
         } catch (\Exception $e) {
-            Log::error('Voting Error: ' . $e->getMessage());
-            $this->dispatch('swal', title: 'Error!', text: 'Something went wrong.', icon: 'error');
+            Log::error('Mail Error: ' . $e->getMessage());
+
+            ActivityLog::create([
+                'user_id' => $user->id,
+                'student_id' => $student->id,
+                'action' => 'Vote Failed',
+                'description' => "Process failed for $referenceNumber. Error: " . $e->getMessage(),
+                'ip_address' => request()->ip(),
+                'user_agent' => request()->userAgent(),
+            ]);
+
+            $this->dispatch('swal', [
+                'title' => 'Error!',
+                'text' => 'Something went wrong while casting your vote.',
+                'icon' => 'error',
+            ]);
         }
     }
 

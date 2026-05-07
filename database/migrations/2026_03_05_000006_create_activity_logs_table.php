@@ -14,11 +14,13 @@ return new class extends Migration
         Schema::create('activity_logs', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->unsignedBigInteger('student_id')->nullable();
             $table->string('action');
             $table->text('description')->nullable();
             $table->string('ip_address', 45)->nullable();
             $table->text('user_agent')->nullable();
-            $table->timestamp('created_at')->useCurrent();
+            $table->json('properties')->nullable();
+            $table->timestamps();
         });
     }
 

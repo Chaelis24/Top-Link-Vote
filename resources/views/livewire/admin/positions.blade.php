@@ -131,8 +131,8 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
             </div>
         </div>
 
-        <div class="row g-3 mb-3">
-            <div class="col-6 col-lg-3">
+        <div class="row g-2 mb-3">
+            <div class="col-6 col-lg-4">
                 <div class="glass-card stat-card border-0 shadow-sm py-3">
                     <div class="d-flex align-items-center gap-3">
                         <div class="stat-icon-sm bg-primary-soft text-primary"><i class="bi bi-diagram-3"></i></div>
@@ -143,7 +143,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
                     </div>
                 </div>
             </div>
-            <div class="col-6 col-lg-3">
+            <div class="col-6 col-lg-4">
                 <div class="glass-card stat-card border-0 shadow-sm py-3">
                     <div class="d-flex align-items-center gap-3">
                         <div class="stat-icon-sm bg-purple-soft text-purple"><i class="bi bi-people"></i></div>
@@ -154,25 +154,13 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
                     </div>
                 </div>
             </div>
-            <div class="col-6 col-lg-3">
+            <div class="col-6 col-lg-4">
                 <div class="glass-card stat-card border-0 shadow-sm py-3">
                     <div class="d-flex align-items-center gap-3">
                         <div class="stat-icon-sm bg-success-soft text-success"><i class="bi bi-check-all"></i></div>
                         <div>
                             <div class="stat-value-sm text-success">{{ $this->stats['filled'] }}</div>
                             <div class="stat-label">Filled</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-6 col-lg-3">
-                <div class="glass-card stat-card border-0 shadow-sm py-3">
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="stat-icon-sm bg-warning-soft text-warning"><i
-                                class="bi bi-exclamation-triangle"></i></div>
-                        <div>
-                            <div class="stat-value-sm text-warning">{{ $this->stats['unfilled'] }}</div>
-                            <div class="stat-label">Unfilled</div>
                         </div>
                     </div>
                 </div>
@@ -244,8 +232,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
                             </div>
                             <div class="col-6">
                                 <label class="form-label small fw-bold text-muted uppercase">Priority Order</label>
-                                <input type="number" wire:model="priority" class="form-control-modern"
-                                    min="1">
+                                <input type="number" wire:model="priority" class="form-control-modern" min="1">
                             </div>
                         </div>
                     </form>

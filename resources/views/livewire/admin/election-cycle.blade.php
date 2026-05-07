@@ -234,13 +234,17 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                     $active->update([
                         'campaign_start' => $now->copy()->subMinute(),
                         'campaign_end' => $now,
+                        'voting_start' => $now,
+                        'voting_end' => $active->voting_end,
+                        'allow_voting' => true,
                     ]);
+                    $this->allowVoting = true;
                     break;
             }
 
             $this->dispatch('swal', [
-                'title' => 'Phase Updated',
-                'text' => 'The ' . ucfirst($phase) . ' phase has been successfully ended.',
+                'title' => $phase === 'campaign' ? 'Campaign Ended & Voting Open' : 'Phase Updated',
+                'text' => $phase === 'campaign' ? 'Campaign phase ended. Voting portal is now automatically OPEN.' : 'The ' . ucfirst($phase) . ' phase has been successfully ended.',
                 'icon' => 'success',
             ]);
 
@@ -473,9 +477,19 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                                         </span>
                                     </div>
 
-                                    @if ($phase['id'] == 'v')
+                                    @if ($phase['id'] == 'f')
+                                        <div class="progress-container mt-2" x-show="now >= dates.fS && now < dates.fE">
+                                            <div class="progress-bar-fill bg-warning"
+                                                style="width: {{ $filingProgress ?? 0 }}%; height: 6px;"></div>
+                                        </div>
+                                    @elseif ($phase['id'] == 'c')
+                                        <div class="progress-container mt-2" x-show="now >= dates.cS && now < dates.cE">
+                                            <div class="progress-bar-fill bg-warning"
+                                                style="width: {{ $campaignProgress ?? 0 }}%; height: 6px;"></div>
+                                        </div>
+                                    @elseif ($phase['id'] == 'v')
                                         <div class="progress-container mt-2" x-show="now >= dates.vS && now < dates.vE">
-                                            <div class="progress-bar-fill"
+                                            <div class="progress-bar-fill bg-success"
                                                 style="width: {{ $progress }}%; height: 6px;"></div>
                                         </div>
                                     @endif
@@ -517,9 +531,9 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                                     <input class="form-check-input" type="checkbox" role="switch"
                                         style="cursor: pointer;" :checked="$wire.get('{{ $setting['key'] }}')"
                                         @click.prevent="
-                                    const key = '{{ $setting['key'] }}';
-                                    const label = '{{ $setting['label'] }}';
-                                    const isCurrentlyOn = $wire.get(key);
+                                        const key = '{{ $setting['key'] }}';
+                                        const label = '{{ $setting['label'] }}';
+                                        const isCurrentlyOn = $wire.get(key);
 
                                         if (key === 'allowVoting' && !isCurrentlyOn) {
                                             const isNotYetVotingPeriod = @js(!$this->active || now()->lt($this->active->voting_start));
@@ -541,7 +555,6 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                                             confirmButtonText: 'Yes, proceed!'
                                         }).then((result) => {
                                             if (result.isConfirmed) {
-                                                // This calls your PHP toggleSetting() method
                                                 $wire.toggleSetting(key);
                                             }
                                         });
