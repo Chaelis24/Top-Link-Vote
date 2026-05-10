@@ -3,7 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\User;
-use App\Models\Role;
+use Spatie\Permission\Models\Role;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
@@ -23,7 +23,7 @@ class DatabaseSeeder extends Seeder
             'password' => Hash::make('admin'),
         ]);
 
-        $admin->roles()->attach($adminRole);
+        $admin->assignRole('admin');
 
         $studentRole = Role::where('name', 'student')->first();
         $candidateRole = Role::where('name', 'candidate')->first();
@@ -40,7 +40,7 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        $michael->roles()->sync([$studentRole->id, $candidateRole->id]);
+        $michael->assignRole(['student', 'candidate']);
 
         $michael->student()->updateOrCreate(
             ['student_id' => '23-0029'],

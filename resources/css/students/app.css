@@ -226,3 +226,6 @@ body {
     color: var(--primary);
     border: 1px solid rgba(16, 185, 129, 0.2);
 }
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}

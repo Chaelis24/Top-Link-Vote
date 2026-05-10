@@ -11,12 +11,18 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
     public int $currentStep = 1;
     public array $selections = [];
     public $student;
-    public bool $isVotingOpen = false;
+
+    #[Computed]
+    public function isVotingOpen()
+    {
+        $setting = Setting::where('key', 'allowVoting')->first();
+        return $setting && (bool) $setting->value;
+    }
 
     #[Computed]
     public function hasVoted()
     {
-        return auth()->user()->student->has_voted;
+        return $this->student && $this->student->has_voted;
     }
 
     #[Computed]
@@ -38,27 +44,22 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
             ->where(function ($query) use ($voterCourse) {
                 $query->whereNull('student_department')->orWhere('student_department', '')->orWhere('student_department', $voterCourse);
             })
+            ->whereHas('candidates', function ($query) use ($voterCourse) {
+                $query->whereIn('status', ['approved', 'active'])->whereHas('student', function ($q) use ($voterCourse) {
+                    $q->where('course', $voterCourse);
+                });
+            })
             ->with([
                 'candidates' => function ($query) use ($voterCourse) {
-                    $query
-                        ->whereIn('status', ['approved', 'active', 'pending'])
-                        ->whereHas('student', function ($q) use ($voterCourse) {
-                            $q->where('course', $voterCourse);
-                        })
-                        ->with('student');
+                    $query->whereIn('status', ['approved', 'active'])->with('student');
                 },
             ])
-            ->with(['candidates.student'])
             ->orderBy('priority', 'asc')
-            ->get()
-            ->filter(fn($position) => $position->candidates->isNotEmpty());
+            ->get();
     }
 
     public function mount()
     {
-        $settings = Setting::pluck('value', 'key')->toArray();
-        $this->isVotingOpen = (bool) ($settings['allowVoting'] ?? false);
-
         $user = Auth::user()?->load('student');
         $this->student = $user?->student;
 
@@ -75,11 +76,6 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
 
     public function setStep($step)
     {
-        $this->isVotingOpen = (bool) (Setting::where('key', 'allowVoting')->value('value') ?? false);
-        if (!$this->isVotingOpen) {
-            return;
-        }
-
         if ($step > $this->currentStep) {
             $unselectedPositions = [];
             foreach ($this->electionData as $position) {
@@ -103,14 +99,22 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
 
     public function submitVote()
     {
-        $isOpen = (bool) (Setting::where('key', 'allowVoting')->value('value') ?? false);
-        if (!$isOpen) {
+        if (!$this->isVotingOpen || $this->hasVoted) {
             $this->dispatch('swal', [
-                'title' => 'Action Denied',
-                'text' => 'The voting portal was just closed.',
+                'title' => 'Access Denied',
+                'text' => 'Voting is either closed or you have already submitted your ballot.',
                 'icon' => 'error',
             ]);
-            return $this->redirect('/students/dashboard', navigate: true);
+            return;
+        }
+
+        if (empty($this->selections)) {
+            $this->dispatch('swal', [
+                'title' => 'Empty Ballot',
+                'text' => 'Please select at least one candidate before submitting.',
+                'icon' => 'warning',
+            ]);
+            return;
         }
 
         $user = auth()->user();
@@ -118,12 +122,11 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
         $cycle = $this->activeCycle;
 
         if (!$cycle) {
-            $this->dispatch('swal', title: 'Error', text: 'No active election cycle found.', icon: 'error');
-            return;
-        }
-
-        if ($student->has_voted) {
-            $this->dispatch('swal', title: 'Error!', text: 'Vote already recorded.', icon: 'error');
+            $this->dispatch('swal', [
+                'title' => 'No Cycle',
+                'text' => 'No active election cycle found',
+                'icon' => 'warning',
+            ]);
             return;
         }
 
@@ -149,7 +152,7 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                     'vote_reference' => $referenceNumber,
                 ]);
 
-                ActivityLog::create([
+                \App\Jobs\LogActivity::dispatch([
                     'user_id' => $user->id,
                     'student_id' => $student->id,
                     'action' => 'Voted',
@@ -160,7 +163,7 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                     ]),
                     'ip_address' => request()->ip(),
                     'user_agent' => request()->userAgent(),
-                ]);
+                ])->onQueue('logs');
 
                 try {
                     Mail::to($user->email)->send(new VoteConfirmed($student, $cycle, $referenceNumber));
@@ -170,26 +173,17 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
             });
 
             event(new \App\Events\VoteUpdated((string) $student->course));
+            $this->student = $student->fresh();
+            unset($this->hasVoted);
 
             $this->dispatch('swal', [
                 'title' => 'Success!',
                 'text' => 'Your vote has been cast.',
                 'icon' => 'success',
+                'timer' => 4000,
             ]);
-
-            return $this->redirect('/students/cast-vote', navigate: true);
         } catch (\Exception $e) {
-            Log::error('Mail Error: ' . $e->getMessage());
-
-            ActivityLog::create([
-                'user_id' => $user->id,
-                'student_id' => $student->id,
-                'action' => 'Vote Failed',
-                'description' => "Process failed for $referenceNumber. Error: " . $e->getMessage(),
-                'ip_address' => request()->ip(),
-                'user_agent' => request()->userAgent(),
-            ]);
-
+            Log::error('Vote Error: ' . $e->getMessage());
             $this->dispatch('swal', [
                 'title' => 'Error!',
                 'text' => 'Something went wrong while casting your vote.',
@@ -209,11 +203,9 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
         Auth::guard('web')->logout();
         Session::invalidate();
         Session::regenerateToken();
-
         return redirect()->route('login');
     }
 }; ?>
-
 <div>
     @include('layouts.partials.student-sidebar')
     <main class="main-content">
@@ -270,6 +262,21 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                     <a href="/students/dashboard" wire:navigate class="btn btn-glow w-100 py-3">Return to Dashboard</a>
                 </div>
             </div>
+        @elseif (!$this->isVotingOpen)
+            <div class="fade-in d-flex flex-column align-items-center justify-content-center" style="min-height: 65vh;">
+                <div class="glass-card p-5 text-center shadow-sm border-0 bg-white"
+                    style="max-width: 550px; border-radius: 25px;">
+                    <div class="mb-4">
+                        <i class="bi bi-lock-fill text-warning" style="font-size: 5rem;"></i>
+                    </div>
+                    <h2 class="fw-bold text-dark mb-2">Voting Services are Currently Unavailable</h2>
+                    <p class="text-secondary mb-4">The digital ballot is inactive as the election period has not yet
+                        commenced or has officially concluded. Please cross-reference with the Commission on Elections
+                        for the sanctioned schedule.</p>
+                    <a href="/students/dashboard" wire:navigate class="btn btn-secondary w-100 py-3">Back to
+                        Dashboard</a>
+                </div>
+            </div>
         @else
             <div class="d-flex align-items-center justify-content-center mb-4 px-md-5 pt-4">
                 @foreach ([1 => 'Select', 2 => 'Review', 3 => 'Confirm'] as $num => $label)
@@ -291,8 +298,8 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
             </div>
 
             @if ($currentStep == 1)
-                <div class="fade-in px-2 py-2">
-                    @foreach ($this->electionData as $position)
+                <div class="fade-in px-2 py-2" x-transition>
+                    @forelse ($this->electionData as $position)
                         <div class="mb-6 text-center">
                             <h5
                                 class="text-lg md:text-xl font-bold text-gray-800 tracking-tight flex items-center justify-center gap-2">
@@ -300,19 +307,21 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                                 {{ $position->name }}
                                 <span class="h-px w-6 md:w-8 bg-[#10b981]"></span>
                             </h5>
-                            <p class="text-[10px] md:text-[11px] text-gray-500 mt-1 uppercase tracking-[0.1em]">Select
-                                one candidate</p>
+                            @if ($position->candidates->isNotEmpty())
+                                <p class="text-[10px] md:text-[11px] text-gray-500 mt-1 uppercase tracking-[0.1em]">
+                                    Select one candidate</p>
+                            @endif
                         </div>
 
                         <div class="grid grid-cols-2 md:flex md:flex-wrap justify-center gap-3 md:gap-6 mb-8">
-                            @foreach ($position->candidates as $candidate)
+                            @forelse ($position->candidates as $candidate)
                                 @php
                                     $isSelected = ($selections[$position->id] ?? null) == $candidate->id;
                                 @endphp
 
                                 <div wire:click="$set('selections.{{ $position->id }}', {{ $candidate->id }})"
                                     class="relative bg-white rounded-[1.2rem] md:rounded-[2rem] shadow-sm border transition-all duration-300 cursor-pointer overflow-hidden group
-                                    {{ $isSelected ? 'border-[#10b981] ring-2 md:ring-4 ring-emerald-50 shadow-xl scale-[1.02] md:scale-[1.05]' : 'hover:shadow-lg hover:border-gray-300' }} w-full md:max-w-[240px]">
+                        {{ $isSelected ? 'border-[#10b981] ring-2 md:ring-4 ring-emerald-50 shadow-xl scale-[1.02] md:scale-[1.05]' : 'hover:shadow-lg hover:border-gray-300' }} w-full md:max-w-[240px]">
 
                                     <div class="flex justify-end p-3 md:p-4 pb-0">
                                         @if ($isSelected)
@@ -368,19 +377,44 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                                         </div>
                                     </div>
                                 </div>
-                            @endforeach
+                            @empty
+                                <div
+                                    class="col-span-2 w-full py-10 flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-[2rem] bg-gray-50/50">
+                                    <i class="bi bi-people text-gray-300 text-4xl mb-2"></i>
+                                    <p class="text-gray-400 font-bold text-xs uppercase tracking-widest">No candidates
+                                        available</p>
+                                </div>
+                            @endforelse
                         </div>
-                    @endforeach
+                    @empty
+                        <div class="text-center py-20">
+                            <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gray-50 mb-4">
+                                <i class="bi bi-folder-x text-gray-300 text-4xl"></i>
+                            </div>
+                            <h3 class="text-gray-800 font-black text-lg">No Election Data Found</h3>
+                            <p class="text-gray-500 text-sm">There are no positions available for your department at
+                                this time.</p>
+                        </div>
+                    @endforelse
 
-                    <div class="mt-12 flex justify-end pb-10 mb-2 md:mb-12">
-                        <button wire:click="setStep(2)"
-                            class="group relative inline-flex items-center justify-center px-6 py-2.5 font-bold text-white transition-all duration-200 bg-[#10b981] rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#10b981] shadow-lg hover:bg-emerald-600 active:scale-95">
-                            <span class="flex items-center gap-2 uppercase tracking-wider text-[11px]">
-                                Review Selections
-                                <i class="bi bi-arrow-right group-hover:translate-x-1 transition-transform text-xs"></i>
-                            </span>
-                        </button>
-                    </div>
+                    @if ($this->electionData->isNotEmpty())
+                        <div class="mt-12 flex justify-end pb-10 mb-2 md:mb-12">
+                            <button wire:click="setStep(2)" wire:loading.attr="disabled" wire:target="setStep(2)"
+                                class="group relative inline-flex items-center justify-center px-6 py-2.5 font-bold text-white transition-all duration-200 bg-[#10b981] rounded-full shadow-lg hover:bg-emerald-600 active:scale-95 disabled:opacity-75">
+                                <span wire:loading.remove wire:target="setStep(2)"
+                                    class="flex items-center gap-2 uppercase tracking-wider text-[11px]">
+                                    Review Selections
+                                    <i
+                                        class="bi bi-arrow-right group-hover:translate-x-1 transition-transform text-xs"></i>
+                                </span>
+                                <span wire:loading wire:target="setStep(2)"
+                                    class="flex items-center gap-2 uppercase tracking-wider text-[11px]">
+                                    <span class="spinner-border spinner-border-sm"></span>
+                                    Preparing Review...
+                                </span>
+                            </button>
+                        </div>
+                    @endif
                 </div>
             @elseif ($currentStep == 2)
                 <div class="fade-in px-2 py-4">
@@ -394,7 +428,7 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                     </div>
 
                     <div class="grid grid-cols-2 md:flex md:flex-wrap justify-center gap-3 md:gap-6 mb-12">
-                        @foreach ($this->electionData as $position)
+                        @forelse ($this->electionData as $position)
                             @php
                                 $candidate = $position->candidates->firstWhere(
                                     'id',
@@ -444,8 +478,24 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                                         </div>
                                     </div>
                                 </div>
+                            @else
+                                <div
+                                    class="relative bg-gray-50 rounded-[1.5rem] md:rounded-[2rem] border border-dashed border-gray-200 overflow-hidden w-full md:max-w-[240px] p-4 md:p-6 text-center">
+                                    <div class="absolute top-0 left-0 right-0 bg-gray-100 py-1.5 px-1">
+                                        <span
+                                            class="text-[8px] md:text-[9px] font-black text-gray-400 uppercase tracking-widest truncate block">
+                                            {{ $position->name }}
+                                        </span>
+                                    </div>
+                                    <div class="mt-4 py-4">
+                                        <i class="bi bi-dash-circle text-gray-300 text-2xl mb-2"></i>
+                                        <p class="text-[10px] font-bold text-gray-400 uppercase">Abstain / No Selection
+                                        </p>
+                                    </div>
+                                </div>
                             @endif
-                        @endforeach
+                        @empty
+                        @endforelse
                     </div>
 
                     <div class="flex items-center justify-between mt-8 border-t pt-8 pb-10">
@@ -460,12 +510,17 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                             </span>
                         </button>
 
-                        <button wire:click="setStep(3)"
-                            class="group relative inline-flex items-center justify-center px-4 md:px-6 py-2.5 font-bold text-white transition-all duration-200 bg-[#10b981] rounded-full focus:outline-none focus:ring-2 focus:ring-[#10b981] shadow-lg hover:bg-emerald-600 active:scale-95">
-                            <span
+                        <button wire:click="setStep(3)" wire:loading.attr="disabled" wire:target="setStep(3)"
+                            class="group relative inline-flex items-center justify-center px-4 md:px-6 py-2.5 font-bold text-white transition-all duration-200 bg-[#10b981] rounded-full shadow-lg hover:bg-emerald-600 active:scale-95 disabled:opacity-75">
+                            <span wire:loading.remove wire:target="setStep(3)"
                                 class="flex items-center gap-1.5 md:gap-2 uppercase tracking-wider text-[9px] md:text-[11px]">
                                 Confirm <span class="hidden xs:inline">& Submit</span>
                                 <i class="bi bi-shield-check group-hover:scale-110 transition-transform text-xs"></i>
+                            </span>
+                            <span wire:loading wire:target="setStep(3)"
+                                class="flex items-center gap-1.5 md:gap-2 uppercase tracking-wider text-[9px] md:text-[11px]">
+                                <span class="spinner-border spinner-border-sm"></span>
+                                Processing...
                             </span>
                         </button>
                     </div>
@@ -477,13 +532,11 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                         <div
                             class="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-emerald-400 to-emerald-600">
                         </div>
-
                         <div class="mb-6">
                             <div
                                 class="w-16 h-16 md:w-20 md:h-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <i class="bi bi-shield-lock-fill text-[#10b981] text-[1.8rem] md:text-[2.5rem]"></i>
                             </div>
-
                             <h3 class="text-xl md:text-2xl font-black text-gray-800 tracking-tight mb-2">Final
                                 Confirmation</h3>
                             <p class="text-[12px] md:text-sm text-gray-500 leading-relaxed px-2">
@@ -492,7 +545,6 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                                     change your vote.</span>
                             </p>
                         </div>
-
                         <div class="flex flex-col xs:flex-row items-center justify-center gap-3 md:gap-4 mt-8">
                             <button wire:click="setStep(2)"
                                 class="w-full xs:w-auto group relative inline-flex items-center justify-center px-6 py-3 md:py-2.5 font-bold text-emerald-600 transition-all duration-200 bg-emerald-50 rounded-full shadow-sm hover:bg-emerald-100 active:scale-95">
@@ -503,18 +555,18 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                                     Review Again
                                 </span>
                             </button>
-
                             <button wire:click="submitVote" wire:loading.attr="disabled"
-                                class="w-full xs:w-auto group relative inline-flex items-center justify-center px-6 py-3 md:py-2.5 font-bold text-white transition-all duration-200 bg-[#10b981] rounded-full shadow-lg hover:bg-emerald-600 active:scale-95 disabled:opacity-75">
-                                <span wire:loading.remove
+                                class="w-full xs:w-auto group relative inline-flex items-center justify-center px-6 py-3 md:py-2.5 font-bold text-white transition-all duration-200 bg-[#10b981] rounded-full shadow-lg hover:bg-emerald-600 active:scale-95 disabled:opacity-75 disabled:cursor-wait">
+                                <span wire:loading.remove wire:target="submitVote"
                                     class="flex items-center gap-2 uppercase tracking-wider text-[10px] md:text-[11px]">
                                     Cast Official Vote
                                     <i
                                         class="bi bi-send-fill group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform text-xs"></i>
                                 </span>
-                                <span wire:loading
+                                <span wire:loading wire:target="submitVote"
                                     class="flex items-center gap-2 uppercase tracking-wider text-[10px] md:text-[11px]">
-                                    <i class="bi bi-arrow-repeat animate-spin"></i>
+                                    <span class="spinner-border spinner-border-sm" role="status"
+                                        aria-hidden="true"></span>
                                     Recording...
                                 </span>
                             </button>

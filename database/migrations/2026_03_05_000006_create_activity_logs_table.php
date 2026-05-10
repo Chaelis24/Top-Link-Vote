@@ -16,6 +16,8 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->unsignedBigInteger('student_id')->nullable();
             $table->string('action');
+            $table->json('old_values')->nullable();
+            $table->json('new_values')->nullable();
             $table->text('description')->nullable();
             $table->string('ip_address', 45)->nullable();
             $table->text('user_agent')->nullable();

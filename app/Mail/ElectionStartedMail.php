@@ -3,23 +3,22 @@
 namespace App\Mail;
 
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class OtpVerificationMail extends Mailable
+class ElectionStartedMail extends Mailable
 {
     use Queueable, SerializesModels;
-
-    public $code;
 
     /**
      * Create a new message instance.
      */
-    public function __construct($code)
+    public function __construct()
     {
-        $this->code = $code;
+        //
     }
 
     /**
@@ -28,7 +27,7 @@ class OtpVerificationMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Top Link-Vote System Verification Code',
+            subject: 'Election Started Mail',
         );
     }
 
@@ -38,8 +37,7 @@ class OtpVerificationMail extends Mailable
     public function content(): Content
     {
         return new Content(
-            markdown: 'emails.students.otp',
-            with: ['code' => $this->code],
+            view: 'view.name',
         );
     }
 

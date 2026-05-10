@@ -179,6 +179,14 @@
     transform: rotate(180deg);
 }
 
+.modal-backdrop.show {
+    opacity: 0.5 !important;
+}
+
+.modal-backdrop + .modal-backdrop {
+    display: none !important;
+}
+
 [x-cloak] {
     display: none !important;
 }
@@ -278,5 +286,17 @@
 
     .admin-footer-sec {
         display: none !important;
+    }
+    .nav-text {
+        display: none;
+    }
+
+    .admin-nav-link {
+        justify-content: center;
+        padding: 10px 0;
+        display: flex;
+    }
+    .lock-icon {
+        display: none;
     }
 }

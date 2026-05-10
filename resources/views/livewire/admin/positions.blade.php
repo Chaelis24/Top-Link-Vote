@@ -111,7 +111,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
         return redirect()->route('login');
     }
 }; ?>
-<div>
+<div wire:poll.15s>
     @include('layouts.partials.admin-sidebar')
 
     <main class="main-content">

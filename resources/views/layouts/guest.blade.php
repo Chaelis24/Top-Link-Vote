@@ -12,8 +12,6 @@
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=raleway:400,700|figtree:400,500,600&display=swap" rel="stylesheet" />
 
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
     @vite(['resources/css/students/app.css', 'resources/js/app.js'])
 
     @livewireStyles
@@ -23,9 +21,11 @@
 <body>
     {{ $slot }}
 
-    {{-- Scripts --}}
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/aos@2.3.4/dist/aos.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    @livewireScripts
 
     <script>
         AOS.init({
@@ -34,19 +34,59 @@
         });
 
         document.addEventListener('livewire:init', () => {
-            Livewire.on('swal', (event) => {
-                const data = event[0];
-                Swal.fire({
-                    title: data.title,
-                    text: data.text,
-                    icon: data.icon,
-                    confirmButtonColor: '#108500',
-                });
+            const fireSwal = (payload) => {
+                const data = Array.isArray(payload) ? payload[0] : payload;
+
+                if (!data) return;
+
+                if (data.toast) {
+                    const Toast = Swal.mixin({
+                        toast: true,
+                        position: 'top-end',
+                        showConfirmButton: false,
+                        timer: 3000,
+                        timerProgressBar: true,
+                    });
+                    Toast.fire({
+                        icon: data.icon || 'success',
+                        title: data.title || data.text
+                    });
+                } else {
+                    Swal.fire({
+                        title: data.title || (data.icon === 'error' ? 'Oops!' : 'Notification'),
+                        text: data.text,
+                        icon: data.icon || 'info',
+                        timer: data.timer || null,
+                        showConfirmButton: data.showConfirmButton !== undefined ? data
+                            .showConfirmButton : true,
+                        confirmButtonColor: '#108500',
+                    });
+                }
+            };
+
+            Livewire.on('swal', fireSwal);
+            Livewire.on('swal:modal', fireSwal);
+            Livewire.on('swal:toast', (data) => {
+                const d = Array.isArray(data) ? data[0] : data;
+                d.toast = true;
+                fireSwal(d);
+            });
+
+            Livewire.on('auth-failed', () => {
+                console.log('Login attempt failed.');
             });
         });
+
+        @if (session()->has('status'))
+            Swal.fire({
+                icon: 'success',
+                title: 'Success!',
+                text: "{{ session('status') }}",
+                confirmButtonColor: '#108500',
+            });
+        @endif
     </script>
 
-    @livewireScripts
     @stack('scripts')
 </body>
 

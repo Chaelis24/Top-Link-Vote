@@ -38,23 +38,33 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
 
     public function with(): array
     {
+        $stats = cache()->remember('students_stats', 120, function () {
+            return Student::selectRaw(
+                "
+            count(*) as total,
+            count(case when has_voted = 1 then 1 end) as voted,
+            count(case when has_voted = 0 and status = 'active' then 1 end) as not_voted,
+            count(case when status in ('inactive', 'suspended') then 1 end) as disabled
+        ",
+            )->first();
+        });
+
         return [
             'students' => $this->loadStudents(),
-            'totalStudents' => Student::count(),
-            'votedCount' => Student::where('has_voted', true)->count(),
-            'notVotedCount' => Student::where('has_voted', false)->where('status', 'active')->count(),
-            'disabledCount' => Student::whereIn('status', ['inactive', 'suspended'])->count(),
+            'totalStudents' => $stats->total,
+            'votedCount' => $stats->voted,
+            'notVotedCount' => $stats->not_voted,
+            'disabledCount' => $stats->disabled,
         ];
     }
 
     public function loadStudents()
     {
-        return Student::with('user')
-            ->where('student_id', '!=', '001')
+        return Student::query()
+            ->with(['user'])
             ->when($this->search, function ($query) {
-                $query->where(function ($subQuery) {
-                    $subQuery
-                        ->where('first_name', 'like', '%' . $this->search . '%')
+                $query->where(function ($q) {
+                    $q->where('first_name', 'like', '%' . $this->search . '%')
                         ->orWhere('last_name', 'like', '%' . $this->search . '%')
                         ->orWhere('student_id', 'like', '%' . $this->search . '%');
                 });
@@ -66,7 +76,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                     $q->where('has_voted', true);
                 } elseif ($this->status === 'Not Voted') {
                     $q->where('has_voted', false)->where('status', 'active');
-                } elseif ($this->status === 'Disabled') {
+                } elseif ($this->status === 'Deactivated') {
                     $q->whereIn('status', ['inactive', 'suspended']);
                 }
             })
@@ -99,16 +109,14 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
     public function importCSV()
     {
         $this->validate(['csvFile' => 'required|file|max:5120']);
+
         try {
             $path = $this->csvFile->getRealPath();
-            $data = array_map(fn($line) => str_getcsv($line, ',', "\"", ''), file($path));
-            if (count($data) <= 1) {
-                throw new \Exception('Empty file.');
-            }
-            array_shift($data);
+            $file = fopen($path, 'r');
+            $header = fgetcsv($file);
 
             $rowsToImport = [];
-            foreach ($data as $row) {
+            while (($row = fgetcsv($file)) !== false) {
                 $rowsToImport[] = [
                     'student_id' => trim($row[0]),
                     'first_name' => trim($row[1]),
@@ -117,95 +125,32 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                     'suffix' => trim($row[4] ?? ''),
                     'course' => trim($row[5]),
                     'year_level' => (int) $row[6],
-                    'phone' => trim($row[8]),
-                    'address' => trim($row[9]),
-                    'birthday' => trim($row[10]),
-                    'gender' => trim($row[11]),
-                    'email' => trim($row[13]),
+                    'phone' => trim($row[8] ?? ''),
+                    'address' => trim($row[9] ?? ''),
+                    'birthday' => trim($row[10] ?? ''),
+                    'gender' => trim($row[11] ?? ''),
+                    'email' => trim($row[13] ?? ''),
                 ];
             }
-            $this->pendingRows = $rowsToImport;
-            $this->dispatch('confirm-csv-import', count: count($rowsToImport));
+            fclose($file);
+
+            if (empty($rowsToImport)) {
+                throw new \Exception('No data found.');
+            }
+
+            \App\Jobs\ImportStudentsJob::dispatch($rowsToImport);
+
+            $this->reset('csvFile');
+
+            $this->dispatch('swal', [
+                'title' => 'Import In Progress',
+                'text' => count($rowsToImport) . ' students are being processed in the background. You can continue working.',
+                'icon' => 'info',
+            ]);
         } catch (\Exception $e) {
             $this->dispatch('swal', [
                 'title' => 'File Error',
                 'text' => $e->getMessage(),
-                'icon' => 'error',
-            ]);
-        }
-    }
-
-    public function processImport()
-    {
-        DB::beginTransaction();
-        try {
-            $studentRole = Role::where('name', 'student')->first();
-            $now = now();
-            $defaultPassword = Hash::make('student123');
-
-            $usersToInsert = [];
-            foreach ($this->pendingRows as $item) {
-                $usersToInsert[] = [
-                    'name' => $item['first_name'] . ' ' . $item['last_name'],
-                    'email' => $item['email'],
-                    'password' => $defaultPassword,
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ];
-            }
-
-            foreach (array_chunk($usersToInsert, 100) as $userChunk) {
-                User::insert($userChunk);
-            }
-
-            $emails = array_column($usersToInsert, 'email');
-            $newUsers = User::whereIn('email', $emails)->get()->pluck('id', 'email');
-
-            $rolesToAttach = [];
-            $finalStudents = [];
-
-            foreach ($this->pendingRows as $item) {
-                $userId = $newUsers[$item['email']];
-                $studentData = $item;
-                unset($studentData['email']);
-
-                $finalStudents[] = array_merge($studentData, [
-                    'user_id' => $userId,
-                    'status' => 'active',
-                    'has_voted' => false,
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ]);
-
-                if ($studentRole) {
-                    $rolesToAttach[] = ['user_id' => $userId, 'role_id' => $studentRole->id];
-                }
-            }
-
-            foreach (array_chunk($finalStudents, 100) as $chunk) {
-                Student::insert($chunk);
-            }
-
-            if (!empty($rolesToAttach)) {
-                DB::table('user_roles')->insert($rolesToAttach);
-            }
-
-            DB::commit();
-            $count = count($this->pendingRows);
-            $this->reset(['csvFile', 'pendingRows']);
-
-            $this->dispatch('swal', [
-                'title' => 'Import Complete!',
-                'text' => "Successfully imported $count records.",
-                'icon' => 'success',
-            ]);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            $errorText = $e->getCode() == 23000 || str_contains($e->getMessage(), 'Duplicate entry') ? 'Import failed: One or more email addresses are already in use.' : 'An unexpected error occurred: ' . $e->getMessage();
-
-            $this->dispatch('swal', [
-                'title' => 'Import Error',
-                'text' => $errorText,
                 'icon' => 'error',
             ]);
         }
@@ -318,7 +263,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
     }
 }; ?>
 
-<div>
+<div wire:poll.15s>
     @include('layouts.partials.admin-sidebar')
 
     <main class="main-content">
@@ -401,7 +346,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                         <option value="All Status">All Status</option>
                         <option>Voted</option>
                         <option>Not Voted</option>
-                        <option>Deativated</option>
+                        <option>Deactivated</option>
                     </select>
                 </div>
 
@@ -461,7 +406,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                                 <td class="ps-3">{{ $student->student_id }}</td>
                                 <td>
                                     {{ $student->first_name }}
-                                    {{ $student->middle_name ? $student->middle_name . ' ' : '' }}
+                                    {{ $student->middle_name ? substr($student->middle_name, 0, 1) . '.' : '' }}
                                     {{ $student->last_name }}
                                     {{ $student->suffix ? ', ' . $student->suffix : '' }}
                                 </td>
@@ -576,7 +521,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                 @endforelse
             </div>
 
-            <div class="p-3 border-top bg-light">
+            <div class="p-3 border-top bg-light custom-pagination">
                 {{ $students->links() }}
             </div>
         </div>

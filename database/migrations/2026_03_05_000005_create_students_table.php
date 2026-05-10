@@ -34,6 +34,8 @@ return new class extends Migration
 
             $table->index('student_id');
             $table->index(['course', 'year_level']);
+            $table->index('status');
+            $table->index('has_voted');
         });
     }
 

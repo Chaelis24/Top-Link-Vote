@@ -66,7 +66,7 @@ new #[Layout('layouts.admin')] #[Title('Settings')] class extends Component {
         return redirect()->route('login');
     }
 }; ?>
-<div x-data="{
+<div wire:poll.15s x-data="{
     showCurrent: false,
     showNew: false,
     showConfirm: false,

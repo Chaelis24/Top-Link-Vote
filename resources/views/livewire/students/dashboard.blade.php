@@ -9,7 +9,6 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
     public $student;
     public $profile_photo_path;
     public $studentCourse;
-
     public bool $isVotingOpen = false;
     public bool $isResultsVisible = false;
 
@@ -21,25 +20,24 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
         }
 
         $voterCourse = $this->student->course ?? null;
-
-        return \App\Models\Candidate::with(['student', 'position'])
-            ->withCount('votes')
-            ->whereHas('position', function ($query) use ($voterCourse) {
-                $query->whereNull('student_department')->orWhere('student_department', '')->orWhere('student_department', $voterCourse);
-            })
-            ->join('positions', 'candidates.position_id', '=', 'positions.id')
-            ->orderBy('positions.priority', 'asc')
-            ->orderBy('votes_count', 'desc')
-            ->select('candidates.*')
-            ->get()
-            ->map(function ($candidate) {
-                return [
-                    'label' => ($candidate->student->last_name ?? 'Unknown') . ' (' . ($candidate->position->name ?? 'N/A') . ')',
-                    'votes' => $candidate->votes_count ?? 0,
-                ];
-            })
-            ->values()
-            ->toArray();
+        return cache()->remember('tally_results_' . ($voterCourse ?? 'all'), 60, function () use ($voterCourse) {
+            return \App\Models\Candidate::with(['student', 'position'])
+                ->withCount('votes')
+                ->whereHas('position', fn($query) => $query->whereNull('student_department')->orWhere('student_department', '')->orWhere('student_department', $voterCourse))
+                ->join('positions', 'candidates.position_id', '=', 'positions.id')
+                ->orderBy('positions.priority', 'asc')
+                ->orderBy('votes_count', 'desc')
+                ->select('candidates.*')
+                ->get()
+                ->map(
+                    fn($candidate) => [
+                        'label' => ($candidate->student->last_name ?? 'Unknown') . ' (' . ($candidate->position->name ?? 'N/A') . ')',
+                        'votes' => $candidate->votes_count ?? 0,
+                    ],
+                )
+                ->values()
+                ->toArray();
+        });
     }
 
     public function mount()
@@ -60,7 +58,8 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
     #[On('echo-private:election-results.{studentCourse},VoteUpdated')]
     public function refreshTally()
     {
-        $this->dispatch('update-chart', tally: $this->tallyData);
+        cache()->forget('tally_results_' . ($this->studentCourse ?? 'all'));
+        $this->dispatch('update-chart', ['tally' => $this->tallyData()]);
     }
 
     public function logout()
@@ -68,7 +67,6 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
         Auth::guard('web')->logout();
         Session::invalidate();
         Session::regenerateToken();
-
         return redirect()->route('login');
     }
 }; ?>
@@ -147,7 +145,7 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
 
                     @if ($isResultsVisible)
                         <div class="relative h-[300px] md:h-[400px]" style="position: relative;" wire:ignore>
-                            <canvas id="mainTallyChart"></canvas>
+                            <div id="mainTallyChart"></div>
                         </div>
                     @else
                         <div class="text-center py-5">
@@ -169,69 +167,90 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
             let myChart = null;
 
             const renderChart = (newData = null) => {
-                const ctx = document.getElementById('mainTallyChart');
-                if (!ctx) return;
+                const container = document.getElementById('mainTallyChart');
+                if (!container) return;
 
                 const tally = newData ? newData : @json($this->tallyData);
-                if (tally.length === 0) return;
-
                 const labels = tally.map(item => item.label);
                 const votes = tally.map(item => item.votes);
 
-                if (myChart) {
-                    myChart.data.labels = labels;
-                    myChart.data.datasets[0].data = votes;
-                    myChart.update('none');
-                } else {
-                    myChart = new Chart(ctx, {
+                const options = {
+                    chart: {
                         type: 'bar',
-                        data: {
-                            labels: labels,
-                            datasets: [{
-                                label: 'Votes',
-                                data: votes,
-                                backgroundColor: 'rgba(16, 185, 129, 0.6)',
-                                borderColor: '#059669',
-                                borderWidth: 2,
-                                borderRadius: 8
-                            }]
+                        height: 400,
+                        toolbar: {
+                            show: false
                         },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            scales: {
-                                y: {
-                                    beginAtZero: true,
-                                    ticks: {
-                                        stepSize: 1,
-                                        precision: 0
-                                    }
-                                },
-                                x: {
-                                    grid: {
-                                        display: false
-                                    }
-                                }
-                            },
-                            plugins: {
-                                legend: {
-                                    display: false
-                                }
+                        animations: {
+                            enabled: true
+                        }
+                    },
+                    series: [{
+                        name: 'Votes',
+                        data: votes
+                    }],
+                    colors: ['#10b981'],
+                    plotOptions: {
+                        bar: {
+                            borderRadius: 4,
+                            horizontal: true,
+                            barHeight: '70%',
+                            distributed: false
+                        }
+                    },
+                    dataLabels: {
+                        enabled: true,
+                        formatter: function(val) {
+                            return Math.floor(val);
+                        }
+                    },
+                    xaxis: {
+                        categories: labels,
+                        labels: {
+                            formatter: function(val) {
+                                return Math.floor(val);
                             }
                         }
+                    },
+                    yaxis: {
+                        labels: {
+                            style: {
+                                fontSize: '12px',
+                                fontWeight: 600
+                            }
+                        }
+                    },
+                    tooltip: {
+                        y: {
+                            formatter: (val) => Math.floor(val) + " Votes"
+                        }
+                    }
+                };
+
+                if (myChart) {
+                    myChart.updateOptions({
+                        xaxis: {
+                            categories: labels
+                        }
                     });
+                    myChart.updateSeries([{
+                        data: votes
+                    }]);
+                } else {
+                    myChart = new ApexCharts(container, options);
+                    myChart.render();
                 }
             };
 
             renderChart();
 
             $wire.on('update-chart', (payload) => {
-                const freshTally = Array.isArray(payload) ? payload[0].tally : payload.tally;
-                renderChart(freshTally);
+                const eventData = Array.isArray(payload) ? payload[0] : payload;
+                renderChart(eventData.tally);
             });
 
             document.addEventListener('livewire:navigated', () => {
-                if (myChart) myChart.destroy();
+                if (myChart && typeof myChart.destroy === 'function') myChart.destroy();
                 myChart = null;
                 renderChart();
             });

@@ -77,17 +77,30 @@
     </script>
     @auth
         <script type="module">
-            Echo.private(`user.{{ auth()->id() }}`)
-                .listen('.account.duplicate-login', (e) => {
-                    Swal.fire({
-                        title: "Security Alert",
-                        text: "Someone else just logged into your account. You will be logged out.",
-                        icon: "warning",
-                        confirmButtonText: "OK",
-                    }).then(() => {
-                        window.location.reload();
+            document.addEventListener('DOMContentLoaded', function() {
+                Echo.private(`user.{{ auth()->id() }}`)
+                    .listen('.account.duplicate-login', (e) => {
+                        Swal.fire({
+                            title: "Security Alert",
+                            html: "Someone else just logged into your account. You will be logged out in <b></b> seconds.",
+                            icon: "warning",
+                            timer: 5000,
+                            timerProgressBar: true,
+                            confirmButtonText: "Log out now",
+                            allowOutsideClick: false,
+                            allowEscapeKey: false,
+                            didOpen: () => {
+                                const b = Swal.getHtmlContainer().querySelector('b');
+                                const timerInterval = setInterval(() => {
+                                    const secondsLeft = Math.ceil(Swal.getTimerLeft() / 1000);
+                                    b.textContent = secondsLeft;
+                                }, 100);
+                            }
+                        }).then((result) => {
+                            window.location.reload();
+                        });
                     });
-                });
+            });
         </script>
     @endauth
 </body>

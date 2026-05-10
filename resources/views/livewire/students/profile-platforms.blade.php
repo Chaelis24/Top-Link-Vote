@@ -1,10 +1,10 @@
 <?php
 
+use Illuminate\Support\Str;
 use Livewire\Volt\Component;
 use Livewire\WithFileUploads;
 use Livewire\Attributes\{Layout, Title, Computed, Url};
 use Illuminate\Support\Facades\{Auth, Session, Storage, Log};
-use Illuminate\Support\Str;
 use App\Models\{Candidate, Position, ElectionCycle, Platform, Setting, ActivityLog};
 
 new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Component {
@@ -12,11 +12,9 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
 
     #[Url]
     public string $selectedPosition = 'All Positions';
-
     public bool $showProfiles = false;
     public bool $isVotingOpen = false;
     public bool $lockChanges = false;
-
     public string $party_name = '';
     public $achievements = [];
     public array $previous_position = [''];
@@ -24,11 +22,9 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
     public string $average_grade = '';
     public $candidate_photo;
     public $existing_candidate_photo;
-
     public string $platform_title = '';
     public string $tagline = '';
     public string $agenda = '';
-
     public $profile_photo_path = '';
     public $student;
 
@@ -44,7 +40,6 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
     {
         $voterCourse = $this->student->course ?? '';
         $activeCycle = ElectionCycle::where('status', 'active')->first();
-
         if (!$activeCycle) {
             return collect(['All Positions']);
         }
@@ -53,9 +48,7 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
             ->where(function ($query) use ($voterCourse) {
                 $query->whereNull('student_department')->orWhere('student_department', '')->orWhere('student_department', $voterCourse);
             })
-            ->whereHas('candidates', function ($q) {
-                $q->whereIn('status', ['approved', 'active']);
-            })
+            ->whereHas('candidates', fn($q) => $q->whereIn('status', ['approved', 'active']))
             ->pluck('name')
             ->unique();
 
@@ -67,7 +60,6 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
     {
         $voterCourse = $this->student->course ?? '';
         $activeCycle = ElectionCycle::where('status', 'active')->first();
-
         if (!$activeCycle) {
             return collect();
         }
@@ -75,26 +67,17 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
         return Candidate::with(['student.user', 'position', 'platforms' => fn($q) => $q->latest()])
             ->where('election_cycle_id', $activeCycle->id)
             ->whereIn('status', ['approved', 'active'])
-            ->where(function ($query) use ($voterCourse) {
-                $query->whereHas('position', function ($q) use ($voterCourse) {
-                    $q->where(function ($sub) use ($voterCourse) {
-                        $sub->whereNull('student_department')->orWhere('student_department', '')->orWhere('student_department', $voterCourse);
-                    });
-                });
+            ->whereHas('position', function ($q) use ($voterCourse) {
+                $q->where(fn($sub) => $sub->whereNull('student_department')->orWhere('student_department', '')->orWhere('student_department', $voterCourse));
             })
-            ->where(function ($query) use ($voterCourse) {
-                $query
-                    ->whereHas('position', function ($q) {
-                        $q->whereNull('student_department')->orWhere('student_department', '');
-                    })
-                    ->orWhereHas('student', function ($q) use ($voterCourse) {
-                        $q->where('course', $voterCourse);
-                    });
-            })
-            ->when($this->selectedPosition !== 'All Positions', function ($query) {
-                $query->whereHas('position', fn($q) => $q->where('name', $this->selectedPosition));
-            })
+            ->when($this->selectedPosition !== 'All Positions', fn($query) => $query->whereHas('position', fn($q) => $q->where('name', $this->selectedPosition)))
             ->get();
+    }
+
+    #[Computed]
+    public function activeCycle()
+    {
+        return ElectionCycle::where('status', 'active')->first();
     }
 
     public function mount()
@@ -102,8 +85,6 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
         $settings = Setting::pluck('value', 'key')->toArray();
         $this->isVotingOpen = (bool) ($settings['allowVoting'] ?? false);
         $this->showProfiles = (bool) ($settings['showProfiles'] ?? false);
-        $this->lockChanges = (bool) ($settings['lockChanges'] ?? false);
-
         $user = Auth::user()?->load('student', 'candidate');
         $this->student = $user?->student;
 
@@ -113,13 +94,7 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
 
         if ($this->isEligibleToEdit) {
             $candidate = Auth::user()->candidate;
-
-            if ($candidate && $candidate->achievements) {
-                $this->achievements = is_array($candidate->achievements) ? $candidate->achievements : explode("\n", $candidate->achievements);
-            } else {
-                $this->achievements = [''];
-            }
-
+            $this->achievements = $candidate->achievements ? (is_array($candidate->achievements) ? $candidate->achievements : explode("\n", $candidate->achievements)) : [''];
             $this->party_name = $candidate->party_name ?? '';
             $this->previous_position = is_array($candidate->previous_position) ? $candidate->previous_position : [''];
             $this->previous_school_project = is_array($candidate->previous_school_project) ? $candidate->previous_school_project : [''];
@@ -148,37 +123,26 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
 
     public function updatePlatform()
     {
-        if (!$this->isEligibleToEdit || $this->lockChanges) {
+        $active = $this->activeCycle;
+        $isVotingStarted = $active && now()->gt($active->voting_start);
+
+        if (!$this->isEligibleToEdit || $this->lockChanges || $isVotingStarted) {
             $this->dispatch('swal', [
                 'title' => 'Changes Locked',
-                'text' => 'The administrator has frozen all candidate profile updates.',
+                'text' => $isVotingStarted ? 'Voting is ongoing. Profiles are now frozen.' : 'Changes are currently locked.',
                 'icon' => 'warning',
             ]);
             return;
         }
 
         $this->validate([
-            'party_name' => 'nullable|string|max:255',
             'tagline' => 'required|string|max:255',
             'platform_title' => 'required|string|max:255',
             'agenda' => 'required|string',
-            'average_grade' => 'nullable|numeric',
-            'candidate_photo' => 'nullable|image|max:2048',
         ]);
 
-        $tempAchievements = is_array($this->achievements) ? implode("\n", $this->achievements) : (string) $this->achievements;
-
-        $agendaArray = array_values(array_filter(array_map('trim', explode("\n", str_replace("\r", '', $this->agenda)))));
-        $achievementsArray = array_values(array_filter(array_map('trim', explode("\n", str_replace("\r", '', $tempAchievements)))));
-
         try {
-            $candidate = Auth::user()->candidate->load(['student', 'platforms']);
-            $oldData = [
-                'candidate' => $candidate->toArray(),
-                'student' => $candidate->student->toArray(),
-                'platform' => $candidate->platforms ? $candidate->platforms->toArray() : null,
-            ];
-
+            $candidate = Auth::user()->candidate;
             if ($this->candidate_photo) {
                 if ($candidate->photo) {
                     Storage::disk('public')->delete($candidate->photo);
@@ -190,55 +154,37 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
 
             $candidate->update([
                 'party_name' => $this->party_name,
-                'achievements' => implode("\n", $achievementsArray),
+                'achievements' => implode("\n", (array) $this->achievements),
                 'average_grade' => $this->average_grade,
-                'previous_position' => $this->previous_position ?: [],
-                'previous_school_project' => $this->previous_school_project ?: [],
+                'previous_position' => $this->previous_position,
+                'previous_school_project' => $this->previous_school_project,
                 'photo' => $photoPath,
             ]);
-
-            $this->achievements = $achievementsArray;
 
             Platform::updateOrCreate(
                 ['candidate_id' => $candidate->id],
                 [
                     'title' => $this->platform_title,
                     'tagline' => $this->tagline,
-                    'agenda' => $agendaArray,
+                    'agenda' => explode("\n", $this->agenda),
                     'status' => 'pending',
                     'submitted_at' => now(),
                 ],
             );
 
-            ActivityLog::create([
-                'user_id' => Auth::id(),
-                'student_id' => $candidate->student_id,
-                'action' => 'Update Platform',
-                'description' => "Updated profile and platform for candidate: {$candidate->student->first_name} {$candidate->student->last_name}",
-                'ip_address' => request()->ip(),
-                'user_agent' => request()->userAgent(),
-                'properties' => json_encode([
-                    'old' => $oldData,
-                    'new' => [
-                        'candidate' => $candidate->refresh()->toArray(),
-                        'student' => $candidate->student->toArray(),
-                        'platform' => $candidate->platforms()->first() ? $candidate->platforms()->first()->refresh()->toArray() : null,
-                    ],
-                ]),
-            ]);
-
             $this->dispatch('swal', [
                 'title' => 'Submission Successful!',
                 'text' => 'Your profile and platform have been submitted for review.',
                 'icon' => 'success',
+                'timer' => 3000,
+                'showConfirmButton' => false,
             ]);
-
             $this->dispatch('close-modal');
         } catch (\Exception $e) {
             Log::error('Update Error: ' . $e->getMessage());
             $this->dispatch('swal', [
                 'title' => 'Error',
-                'text' => 'Something went wrong while submitting your platform.',
+                'text' => 'Something went wrong while submitting.',
                 'icon' => 'error',
             ]);
         }
@@ -274,11 +220,20 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
             </div>
 
             @if ($this->isEligibleToEdit)
-                @if ($lockChanges)
-                    <button class="btn btn-glow btn-sm shadow-sm" disabled>
-                        <div class="d-flex align-items-center justify-content-center">
+                @php
+                    $active = $this->activeCycle;
+                    $now = now();
+                    $isVotingStarted = $active && $now->gt($active->voting_start);
+                    $isLocked = $isVotingStarted;
+                @endphp
+
+                @if ($isLocked)
+                    <button class="btn btn-glow btn-sm shadow-sm" style="cursor: not-allowed; opacity: 0.8;" disabled>
+                        <div class="d-flex align-items-center justify-content-center text-danger">
                             <i class="bi bi-lock-fill"></i>
-                            <span class="ms-2 d-none d-sm-inline">Edit Platform is Locked</span>
+                            <span class="ms-2 d-none d-sm-inline">
+                                {{ $isVotingStarted ? 'Closed: Campaign Period Ended' : 'Edit Platform Locked' }}
+                            </span>
                         </div>
                     </button>
                 @else
@@ -297,6 +252,7 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
             <div class="d-flex gap-1 gap-md-2 flex-wrap mb-3">
                 @foreach ($this->positionsList as $pos)
                     <button wire:click="selectPosition('{{ $pos }}')"
+                        @click="selectedPosition = '{{ $pos }}'"
                         class="tab-custom {{ $selectedPosition === $pos ? 'active' : '' }}"
                         style="font-size: 0.75rem; padding: 4px 8px;">
                         {{ $pos }}

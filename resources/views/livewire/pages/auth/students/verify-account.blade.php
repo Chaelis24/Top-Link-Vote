@@ -40,7 +40,10 @@ new #[Layout('layouts.guest')] class extends Component {
         $this->maskedEmail = substr($parts[0], 0, 2) . str_repeat('*', strlen($parts[0]) - 2) . '@' . $parts[1];
 
         $this->step = 2;
-        session()->flash('status', 'A verification code has been sent to your registered email.');
+        $this->dispatch('swal:toast', [
+            'icon' => 'success',
+            'title' => 'OTP sent successfully!',
+        ]);
     }
 
     public function verifyOtp()
@@ -52,11 +55,13 @@ new #[Layout('layouts.guest')] class extends Component {
         $cachedCode = Cache::get('otp_student_' . $this->student_id);
 
         if (!$cachedCode || $cachedCode != $this->code) {
-            throw ValidationException::withMessages([
-                'code' => 'The verification code is invalid or has expired.',
+            $this->dispatch('swal:modal', [
+                'icon' => 'error',
+                'title' => 'Invalid OTP',
+                'text' => 'The verification code is invalid or has expired.',
             ]);
+            return;
         }
-
         $this->step = 3;
         session()->flash('status', 'Account verified! You can now set your new password.');
     }

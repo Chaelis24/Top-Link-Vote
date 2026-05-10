@@ -259,6 +259,14 @@
     color: #8392ab;
 }
 
+.modal-backdrop.show {
+    opacity: 0.5 !important;
+}
+
+.modal-backdrop + .modal-backdrop {
+    display: none !important;
+}
+
 [x-cloak] {
     display: none !important;
 }

@@ -269,3 +269,6 @@ select {
     color: var(--text-primary);
     border: 1px solid #e2e8f0;
 }
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}

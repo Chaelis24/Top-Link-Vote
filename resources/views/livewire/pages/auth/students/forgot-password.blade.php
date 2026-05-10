@@ -19,7 +19,11 @@ new #[Layout('layouts.guest')] class extends Component {
         $student = \App\Models\Student::where('student_id', $this->student_id)->first();
 
         if (!$student || $student->user?->email !== $this->email) {
-            $this->addError('student_id', 'The provided details do not match our records.');
+            $this->dispatch('swal:modal', [
+                'icon' => 'error',
+                'title' => 'Oops!',
+                'text' => 'The provided details do not match our records.',
+            ]);
             return;
         }
 
@@ -31,7 +35,10 @@ new #[Layout('layouts.guest')] class extends Component {
         }
 
         $this->isSent = true;
-        session()->flash('status', __($status));
+        $this->dispatch('swal:toast', [
+            'icon' => 'success',
+            'title' => 'Reset link sent to your email!',
+        ]);
     }
 }; ?>
 

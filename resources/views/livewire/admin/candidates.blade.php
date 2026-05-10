@@ -1,16 +1,16 @@
 <?php
 
 use Livewire\Volt\Component;
-use Livewire\Attributes\{Layout, Title, Url, Computed};
 use Livewire\{WithFileUploads, WithPagination};
-use Illuminate\Support\Facades\{Auth, Session, DB};
+use Livewire\Attributes\{Layout, Title, Url, Computed};
+use Illuminate\Support\Facades\{Auth, Session, DB, Storage};
 use App\Models\{Student, User, Candidate, Position, ElectionCycle, Platform};
 
 new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class extends Component {
     use WithFileUploads, WithPagination;
 
     public $csvFile;
-    public $photo;
+    public $candidate_photo;
     public $editingCandidateId;
 
     #[Url(history: true)]
@@ -56,11 +56,21 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
 
     public function with(): array
     {
+        $stats = cache()->remember('candidates_stats', 120, function () {
+            return Candidate::selectRaw(
+                "
+            count(*) as total,
+            count(case when status in ('approved', 'active') then 1 end) as approved,
+            count(case when status = 'pending' then 1 end) as pending
+        ",
+            )->first();
+        });
+
         return [
             'candidates' => $this->loadCandidates(),
-            'totalCandidates' => Candidate::count(),
-            'approvedCount' => Candidate::whereIn('status', ['approved', 'active'])->count(),
-            'pendingCount' => Candidate::where('status', 'pending')->count(),
+            'totalCandidates' => $stats->total,
+            'approvedCount' => $stats->approved,
+            'pendingCount' => $stats->pending,
             'availablePositions' => $this->activeCycle ? Position::where('election_cycle_id', $this->activeCycle->id)->distinct()->pluck('name') : collect(),
             'availableDepartments' => self::DEPARTMENTS,
         ];
@@ -74,7 +84,9 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
 
     public function loadCandidates()
     {
-        return Candidate::with(['student', 'position', 'platforms'])
+        return Candidate::query()
+            ->with(['student', 'position', 'platforms'])
+            ->withCount('votes')
             ->join('positions', 'candidates.position_id', '=', 'positions.id')
             ->where(function ($query) {
                 if ($this->search) {
@@ -86,12 +98,14 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                 }
             })
             ->when($this->positionFilter !== 'All Positions', function ($query) {
-                $query->whereHas('position', fn($q) => $q->where('name', $this->positionFilter));
+                $query->where('positions.name', $this->positionFilter);
             })
             ->when($this->departmentFilter !== 'All Departments', function ($query) {
                 $query->whereHas('student', fn($q) => $q->where('course', $this->departmentFilter));
             })
+
             ->orderBy('positions.priority', 'asc')
+            ->orderBy('candidates.created_at', 'desc')
             ->select('candidates.*')
             ->paginate(10);
     }
@@ -101,7 +115,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
         $candidate = Candidate::with(['student', 'platforms'])->findOrFail($id);
         $this->editingCandidateId = $id;
         $platform = $candidate->platforms->first();
-        $this->reset('photo');
+        $this->reset('candidate_photo');
 
         $prevPos = is_array($candidate->previous_position) ? $candidate->previous_position : json_decode($candidate->previous_position, true);
         $prevProj = is_array($candidate->previous_school_project) ? $candidate->previous_school_project : json_decode($candidate->previous_school_project, true);
@@ -135,7 +149,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
             'editForm.average_grade' => 'nullable|string|max:10',
             'editForm.tagline' => 'nullable|string|max:255',
             'editForm.agenda' => 'nullable|string',
-            'photo' => 'nullable|image|max:2048',
+            'candidate_photo' => 'nullable|image|max:2048',
         ]);
 
         try {
@@ -146,6 +160,15 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
             $cleanPreviousPositions = array_values(array_filter(array_map('trim', (array) ($this->editForm['previous_position'] ?? []))));
             $cleanPreviousProjects = array_values(array_filter(array_map('trim', (array) ($this->editForm['previous_school_project'] ?? []))));
 
+            $photoPath = $candidate->photo;
+
+            if ($this->candidate_photo) {
+                if ($candidate->photo) {
+                    Storage::disk('public')->delete($candidate->photo);
+                }
+                $photoPath = $this->candidate_photo->store('candidates-picture', 'public');
+            }
+
             $candidateData = [
                 'party_name' => $this->editForm['party_name'],
                 'position_id' => $this->editForm['position_id'],
@@ -153,14 +176,10 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                 'previous_position' => $cleanPreviousPositions,
                 'previous_school_project' => $cleanPreviousProjects,
                 'average_grade' => $this->editForm['average_grade'],
+                'photo' => $photoPath,
                 'status' => 'approved',
                 'approved_at' => $candidate->approved_at ?? now(),
             ];
-
-            if ($this->photo) {
-                $path = $this->photo->store('candidates-pictures', 'public');
-                $candidateData['photo'] = $path;
-            }
 
             $candidate->update($candidateData);
 
@@ -202,13 +221,6 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
 
         try {
             $activeCycle = $this->activeCycle;
-            if (!$activeCycle) {
-                return $this->dispatch('swal', [
-                    'title' => 'Import Disabled',
-                    'text' => 'There is no active election cycle in the system.',
-                    'icon' => 'warning',
-                ]);
-            }
 
             $path = $this->csvFile->getRealPath();
             $file = fopen($path, 'r');
@@ -230,7 +242,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                     $pos = Position::firstOrCreate(
                         [
                             'name' => $positionName,
-                            'election_cycle_id' => $activeCycle->id,
+                            'election_cycle_id' => $activeCycle?->id,
                             'student_department' => $student->course,
                         ],
                         [
@@ -244,7 +256,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                     $can = Candidate::updateOrCreate(
                         [
                             'student_id' => $student->id,
-                            'election_cycle_id' => $activeCycle->id,
+                            'election_cycle_id' => $activeCycle?->id,
                         ],
                         [
                             'user_id' => $student->user_id,
@@ -275,6 +287,9 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                 'icon' => 'success',
             ]);
         } catch (\Exception $e) {
+            if (isset($file)) {
+                fclose($file);
+            }
             DB::rollBack();
             $this->dispatch('swal', [
                 'title' => 'Import Failed',
@@ -315,7 +330,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
         return redirect()->route('login');
     }
 }; ?>
-<div>
+<div wire:poll.15s>
     @include('layouts.partials.admin-sidebar')
 
     <main class="main-content">
@@ -567,8 +582,9 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                     <div class="text-center py-5 text-muted fst-italic">No records found.</div>
                 @endforelse
             </div>
-
-            <div class="p-3 border-top bg-light">{{ $candidates->links() }}</div>
+            <div class="p-3 border-top bg-light custom-pagination">
+                {{ $candidates->links() }}
+            </div>
         </div>
     </main>
 
@@ -614,13 +630,13 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                                     <div class="col-12 col-md-4 mb-2 text-center border-md-end">
                                         <label class="small fw-bold text-muted d-block mb-2">CANDIDATE PHOTO</label>
                                         <div class="text-center">
-                                            <input type="file" id="photoInput" wire:model="photo" class="d-none"
-                                                accept="image/*">
+                                            <input type="file" id="photoInput" wire:model="candidate_photo"
+                                                class="d-none" accept="image/*">
                                             <label for="photoInput"
                                                 class="mx-auto shadow-sm d-flex align-items-center justify-content-center position-relative profile-upload-circle"
                                                 style="width: 110px; height: 110px; border-radius: 50%; overflow: hidden; cursor: pointer; border: 4px solid #e9ecef; background: #f8fafc;">
 
-                                                @if ($photo)
+                                                @if ($candidate_photo)
                                                     <img src="{{ $photo->temporaryUrl() }}"
                                                         class="w-100 h-100 object-fit-cover">
                                                 @elseif (isset($editForm['existing_photo']) && $editForm['existing_photo'])

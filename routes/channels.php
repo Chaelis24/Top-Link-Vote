@@ -8,3 +8,7 @@ Broadcast::channel('user.{id}', function ($user, $id) {
 Broadcast::channel('election-results.{courseId}', function ($user, $courseId) {
     return (string) $user->student->course === (string) $courseId;
 });
+
+Broadcast::channel('admin.audit-trail', function ($user) {
+    return $user->hasRole('admin');
+});

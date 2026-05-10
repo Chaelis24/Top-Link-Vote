@@ -7,6 +7,12 @@ document.addEventListener("livewire:init", () => {
             icon: options.icon || "info",
             confirmButtonColor: "#1e3a8a",
             confirmButtonText: options.confirmButtonText || "OK",
+        }).then((result) => {
+            if (result.isConfirmed) {
+                if (data.redirect) {
+                    Livewire.navigate(data.redirect);
+                }
+            }
         });
     });
 

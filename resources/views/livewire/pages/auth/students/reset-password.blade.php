@@ -40,7 +40,11 @@ new #[Layout('layouts.guest')] class extends Component {
         });
 
         if ($status != Password::PASSWORD_RESET) {
-            $this->addError('email', __($status));
+            $this->dispatch('swal:modal', [
+                'icon' => 'error',
+                'title' => 'Error',
+                'text' => __($status),
+            ]);
             return;
         }
 

@@ -1,22 +1,19 @@
 <?php
 
+use Carbon\Carbon;
+use App\Models\Setting;
 use Livewire\Volt\Component;
 use Livewire\WithFileUploads;
 use Livewire\Attributes\{Layout, Title};
-use Illuminate\Support\Facades\{Hash, Auth, Session};
 use Illuminate\Validation\Rules\Password;
-use Carbon\Carbon;
-use App\Models\Setting;
+use Illuminate\Support\Facades\{Hash, Auth, Session, Storage, DB, Log};
 
 new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
     use WithFileUploads;
 
-    // User State
     public $name = '';
     public $email = '';
     public $student;
-
-    // Student Profile State
     public $user_id;
     public $student_id = '';
     public $first_name = '';
@@ -34,25 +31,17 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
     public $profile_photo_path = null;
     public $has_voted = false;
     public $voted_at = null;
-
-    // Password State
     public $current_password = '';
     public $new_password = '';
     public $new_password_confirmation = '';
-
     public bool $isVotingOpen = false;
 
-    /**
-     * Mount logic to populate the form
-     */
     public function mount()
     {
         $user = Auth::user()?->load('student');
         $profile = $user?->student;
-
         $settings = Setting::pluck('value', 'key')->toArray();
         $this->isVotingOpen = (bool) ($settings['allowVoting'] ?? false);
-
         $this->name = $user?->name ?? '';
         $this->email = $user?->email ?? '';
 
@@ -76,50 +65,53 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
         }
     }
 
-    /**
-     * Save Profile Logic
-     */
     public function saveProfile()
     {
         $user = Auth::user();
-
         $this->validate([
             'email' => 'required|email|unique:users,email,' . $user?->id,
             'phone' => 'nullable|numeric',
             'photo' => 'nullable|image|max:2048',
         ]);
 
-        $user?->update([
-            'email' => $this->email,
-        ]);
+        try {
+            DB::beginTransaction();
+            $user?->update(['email' => $this->email]);
 
-        if ($user?->student) {
-            $data = [
-                'phone' => $this->phone,
-            ];
-
-            if ($this->photo && !is_string($this->photo)) {
-                $data['photo'] = $this->photo->store('student-profile', 'public');
-                $this->profile_photo_path = $data['photo'];
-
-                $this->reset('photo');
+            if ($user?->student) {
+                $data = ['phone' => $this->phone];
+                if ($this->photo && !is_string($this->photo)) {
+                    if ($this->profile_photo_path) {
+                        Storage::disk('public')->delete($this->profile_photo_path);
+                    }
+                    $path = $this->photo->store('student-profile', 'public');
+                    $data['photo'] = $path;
+                    $this->profile_photo_path = $path;
+                    $this->reset('photo');
+                }
+                $user->student->update($data);
             }
+            DB::commit();
 
-            $user->student->update($data);
+            $this->dispatch('swal', [
+                'title' => 'Profile Updated',
+                'text' => 'Your personal information has been saved successfully.',
+                'icon' => 'success',
+                'timer' => 3000,
+                'showConfirmButton' => false,
+            ]);
+            $this->dispatch('close-modal');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Profile Save Error: ' . $e->getMessage());
+            $this->dispatch('swal', [
+                'title' => 'Update Failed',
+                'text' => 'Something went wrong while saving your profile.',
+                'icon' => 'error',
+            ]);
         }
-
-        $this->dispatch('swal', [
-            'title' => 'Profile Updated!',
-            'text' => 'Your information has been saved successfully.',
-            'icon' => 'success',
-        ]);
-
-        $this->dispatch('close-modal');
     }
 
-    /**
-     * Update Password Logic
-     */
     public function updatePassword()
     {
         $this->validate([
@@ -127,30 +119,23 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
             'new_password' => ['required', 'confirmed', Password::defaults()],
         ]);
 
-        Auth::user()?->update([
-            'password' => Hash::make($this->new_password),
-        ]);
-
+        $user = Auth::user();
+        $user->update(['password' => Hash::make($this->new_password)]);
         $this->reset(['current_password', 'new_password', 'new_password_confirmation']);
 
         $this->dispatch('swal', [
-            'title' => 'Security Updated',
-            'text' => 'Your password has been changed successfully.',
+            'title' => 'Password Changed',
+            'text' => 'Your account security has been updated.',
             'icon' => 'success',
+            'timer' => 3000,
         ]);
-
-        $this->dispatch('close-modal');
     }
 
-    /**
-     * Logout Logic
-     */
     public function logout()
     {
         Auth::guard('web')->logout();
         Session::invalidate();
         Session::regenerateToken();
-
         return redirect()->route('login');
     }
 }; ?>
@@ -447,6 +432,12 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                             <div class="row align-items-center">
                                 <div class="col-auto">
                                     <label for="photoUpload" class="position-relative" style="cursor: pointer;">
+                                        <div wire:loading wire:target="photo"
+                                            class="position-absolute top-50 start-50 translate-middle"
+                                            style="z-index: 10;">
+                                            <div class="spinner-border spinner-border-sm text-emerald" role="status">
+                                            </div>
+                                        </div>
                                         @if ($photo)
                                             <img src="{{ $photo->temporaryUrl() }}"
                                                 class="avatar-circle border border-2 shadow-sm"

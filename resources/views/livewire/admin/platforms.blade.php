@@ -104,7 +104,7 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
     }
 }; ?>
 
-<div>
+<div wire:poll.15s>
     @include('layouts.partials.admin-sidebar')
 
     <main class="main-content">

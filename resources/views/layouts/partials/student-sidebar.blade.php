@@ -1,13 +1,4 @@
 <div x-data="{ studentMobileOpen: false }">
-
-    <button class="mobile-toggle" @click="studentMobileOpen = true" x-show="!studentMobileOpen" x-cloak>
-        <i class="bi bi-list"></i>
-    </button>
-
-    <div class="sidebar-overlay" :class="{ 'active': studentMobileOpen }" x-show="studentMobileOpen"
-        @click="studentMobileOpen = false" x-cloak>
-    </div>
-
     <aside class="sidebar-modern" :class="{ 'show': studentMobileOpen }">
         <div class="sidebar-brand">
             <div class="brand-wrapper">
@@ -27,7 +18,7 @@
             <ul class="nav-list">
                 <li class="nav-item">
                     <a href="{{ url('students/dashboard') }}" wire:navigate
-                        class="nav-link {{ request()->is('students/dashboard') ? 'active' : '' }}">
+                        class="nav-link {{ request()->is('students/dashboard*') ? 'active' : '' }}">
                         <i class="bi bi-grid-1x2-fill"></i>
                         <span>Dashboard</span>
                     </a>

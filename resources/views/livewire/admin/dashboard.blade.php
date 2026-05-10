@@ -7,73 +7,105 @@ use App\Models\{Vote, Candidate, Student, ElectionCycle};
 use Barryvdh\DomPDF\Facade\Pdf;
 
 new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component {
-    private function getDashboardData(): array
+    public function getActiveProperty()
     {
-        $activeCycle = ElectionCycle::where('status', 'active')->first();
-        $now = now();
-        $targetDate = null;
-        $timerLabel = 'Days Remaining';
+        return ElectionCycle::where('status', 'active')->first();
+    }
 
-        if ($activeCycle) {
-            if ($now->lt($activeCycle->filing_end)) {
-                $targetDate = $activeCycle->filing_end;
-                $timerLabel = 'Filing Ends In';
-            } elseif ($now->lt($activeCycle->voting_start)) {
-                $targetDate = $activeCycle->voting_start;
-                $timerLabel = 'Voting Starts In';
-            } elseif ($now->lt($activeCycle->voting_end)) {
-                $targetDate = $activeCycle->voting_end;
-                $timerLabel = 'Election Ends In';
-            } else {
-                $targetDate = $activeCycle->results_date;
-                $timerLabel = 'Results In';
+    private function getDashboardData($forceRefresh = false): array
+    {
+        if ($forceRefresh) {
+            cache()->forget('admin_dashboard_data');
+        }
+
+        return cache()->remember('admin_dashboard_data', 3600, function () {
+            $activeCycle = $this->active;
+            $now = now();
+            $targetDate = null;
+            $timerLabel = 'Days Remaining';
+
+            if ($activeCycle) {
+                if ($now->lt($activeCycle->filing_end)) {
+                    $targetDate = $activeCycle->filing_end;
+                    $timerLabel = 'Filing Ends In';
+                } elseif ($now->lt($activeCycle->voting_start)) {
+                    $targetDate = $activeCycle->voting_start;
+                    $timerLabel = 'Voting Starts In';
+                } elseif ($now->lt($activeCycle->voting_end)) {
+                    $targetDate = $activeCycle->voting_end;
+                    $timerLabel = 'Election Ends In';
+                } else {
+                    $targetDate = $activeCycle->results_date;
+                    $timerLabel = 'Results In';
+                }
             }
-        }
 
-        $departments = ['IT', 'HRMT', 'ECT', 'HST'];
+            $departments = ['IT', 'HRMT', 'ECT', 'HST'];
+            $allCandidates = Candidate::with(['student', 'position'])
+                ->withCount('votes')
+                ->get();
 
-        $allCandidates = Candidate::whereHas('student', function ($query) use ($departments) {
-            $query->whereIn('course', $departments);
-        })
-            ->with(['student', 'position'])
-            ->withCount('votes')
-            ->get();
+            $tallyByDept = [];
+            foreach ($departments as $dept) {
+                $tallyByDept[$dept] = $allCandidates
+                    ->filter(fn($candidate) => optional($candidate->student)->course === $dept)
+                    ->map(
+                        fn($candidate) => [
+                            'label' => "{$candidate->student->first_name} {$candidate->student->last_name}",
+                            'position' => $candidate->position->name ?? 'N/A',
+                            'votes' => $candidate->votes_count,
+                        ],
+                    )
+                    ->values();
+            }
 
-        $tallyByDept = [];
-        foreach ($departments as $dept) {
-            $tallyByDept[$dept] = $allCandidates
-                ->filter(fn($candidate) => $candidate->student->course === $dept)
-                ->map(
-                    fn($candidate) => [
-                        'label' => "{$candidate->student->first_name} {$candidate->student->last_name}",
-                        'position' => $candidate->position->name ?? 'N/A',
-                        'votes' => $candidate->votes_count,
-                    ],
-                )
-                ->values();
-        }
+            $totalStudents = Student::count();
+            $totalVotes = Vote::distinct('student_id')->count('student_id');
 
-        $totalStudents = Student::count();
-        $totalVotes = Vote::distinct('student_id')->count('student_id');
+            $trends = Vote::selectRaw('HOUR(created_at) as hour, COUNT(*) as count')
+                ->where('created_at', '>=', now()->subHours(6))
+                ->groupBy('hour')
+                ->orderBy('hour')
+                ->get()
+                ->map(fn($item) => ['hour' => $item->hour . ':00', 'count' => $item->count]);
 
-        return [
-            'totalVotes' => $totalVotes,
-            'candidatesCount' => Candidate::count(),
-            'turnout' => $totalStudents > 0 ? number_format(($totalVotes / $totalStudents) * 100, 1) . '%' : '0%',
-            'tallyByDept' => $tallyByDept,
-            'departments' => $departments,
-            'targetDate' => $targetDate ? $targetDate->toIso8601String() : null,
-            'timerLabel' => $timerLabel,
-            'endTime' => $activeCycle?->voting_end?->toIso8601String(),
-        ];
+            $yearLevelData = Student::join('votes', 'students.id', '=', 'votes.student_id')
+                ->selectRaw('students.year_level, COUNT(DISTINCT students.id) as total')
+                ->whereIn('students.year_level', [1, 2, 3])
+                ->groupBy('students.year_level')
+                ->orderBy('students.year_level', 'asc')
+                ->get();
+
+            return [
+                'totalVotes' => $totalVotes,
+                'candidatesCount' => $allCandidates->count(),
+                'turnout' => $totalStudents > 0 ? number_format(($totalVotes / $totalStudents) * 100, 1) . '%' : '0%',
+                'tallyByDept' => $tallyByDept,
+                'departments' => $departments,
+                'targetDate' => $targetDate ? $targetDate->toIso8601String() : null,
+                'timerLabel' => $timerLabel,
+                'endTime' => $activeCycle?->voting_end?->toIso8601String(),
+                'trends' => $trends,
+                'yearLevel' => [
+                    'labels' => $yearLevelData->pluck('year_level')->map(fn($l) => 'Year ' . $l),
+                    'values' => $yearLevelData->pluck('total'),
+                ],
+            ];
+        });
     }
 
     #[On('echo:election-results,VoteUpdated')]
     public function refreshAdminStats()
     {
+        cache()->forget('admin_dashboard_data');
         $data = $this->getDashboardData();
-
-        $this->dispatch('update-admin-charts', tally: $data['tallyByDept'], totalVotes: $data['totalVotes'], turnout: (float) str_replace('%', '', $data['turnout']));
+        $this->dispatch('update-admin-charts', [
+            'tally' => $data['tallyByDept'],
+            'totalVotes' => $data['totalVotes'],
+            'turnout' => (float) str_replace('%', '', $data['turnout']),
+            'trends' => $data['trends'],
+            'yearLevel' => $data['yearLevel'],
+        ]);
     }
 
     public function with(): array
@@ -86,7 +118,12 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
         $data = $this->getDashboardData();
         $data['date'] = now()->format('F d, Y h:i A');
 
-        $pdf = Pdf::loadView('pdf.election-report', $data);
+        $admin = Auth::user();
+        $data['admin_name'] = $admin->name;
+
+        $data['fingerprint'] = hash('sha256', $data['totalVotes'] . now()->timestamp . $admin->id);
+
+        $pdf = Pdf::loadView('pdf.election-report', $data)->setPaper('a4', 'portrait');
 
         return response()->streamDownload(function () use ($pdf) {
             echo $pdf->output();
@@ -98,7 +135,6 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
         Auth::guard('web')->logout();
         Session::invalidate();
         Session::regenerateToken();
-
         return redirect()->route('login');
     }
 }; ?>
@@ -123,72 +159,37 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
                 <p class="text-muted mb-0" style="font-size: 0.85rem;">Election Management & Real-time Analytics</p>
             </div>
             <div class="d-flex align-items-center gap-3">
-                <button type="button" class="btn-glow d-flex align-items-center justify-content-center"
-                    wire:loading.attr="disabled"
-                    x-on:click="
-                        Swal.fire({
-                            title: 'Generate Report?',
-                            text: 'This will compile all election data into a downloadable file.',
-                            icon: 'info',
-                            showCancelButton: true,
-                            confirmButtonColor: '#4f46e5',
-                            cancelButtonColor: '#6c757d',
-                            confirmButtonText: 'Yes, Generate',
-                            cancelButtonText: 'Cancel'
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                $wire.downloadReport()
-                            }
-                        })
-                    "
-                    title="Download Election Report">
+                @php
+                    $active = $this->active;
+                    $now = now();
+                    $isFinished = $active && $now->gt($active->voting_end);
+                    $isOngoing = $active && $now->between($active->filing_start, $active->voting_end);
+                @endphp
 
-                    <span wire:loading wire:target="downloadReport">
-                        <i class="spinner-border spinner-border-sm"></i>
-                    </span>
-
-                    <span wire:loading.remove wire:target="downloadReport" class="me-md-2">
-                        <i class="bi bi-file-earmark-pdf"></i>
-                    </span>
-
-                    <span class="d-none d-md-inline">Election Report</span>
-                </button>
-            </div>
-            <div class="admin-mobile-top-profile d-md-none" x-data="{ adminOpen: false }"
-                style="position: relative; margin-left: 8px;">
-                <div @click="adminOpen = !adminOpen"
-                    style="cursor: pointer; position: relative; width: 50px; height: 50px;">
-                    <img src="https://ui-avatars.com/api/?name={{ urlencode(auth()->user()->name ?? 'Admin') }}&background=1e3a8a&color=fff&font-size=0.35"
-                        style="width: 100%; height: 100%; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.15); object-fit: cover;"
-                        alt="Admin">
-
-                    <div
-                        style="position: absolute; bottom: 1px; right: 1px; width: 10px; height: 10px; border-radius: 50%; border: 2px solid white; background: #10B981;">
-                    </div>
-                </div>
-
-                <div x-show="adminOpen" @click.away="adminOpen = false" x-cloak
-                    x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 scale-95"
-                    x-transition:enter-end="opacity-100 scale-100"
-                    style="position: absolute; right: 0; top: 48px; background: white; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); min-width: 180px; z-index: 9999; border: 1px solid rgba(0,0,0,0.05); overflow: hidden;">
-
-                    <div style="padding: 12px; background: #f8fafc; border-bottom: 1px solid #f1f5f9;">
-                        <p style="margin:0; font-size: 0.8rem; font-weight: 700; color: #1e3a8a;">
-                            {{ auth()->user()->name ?? 'Admin' }}</p>
-                        <p style="margin:0; font-size: 0.65rem; color: #64748b;">Administrator</p>
-                    </div>
-
-                    <a href="/admin/settings" wire:navigate class="d-flex align-items-center gap-2"
-                        style="text-decoration: none; color: #475569; padding: 12px 15px; font-size: 0.85rem; transition: background 0.2s;">
-                        <i class="bi bi-gear"></i> Settings
-                    </a>
-
-                    <button wire:click="logout"
-                        class="w-100 text-start border-0 bg-transparent d-flex align-items-center gap-2 text-danger"
-                        style="padding: 12px 15px; font-size: 0.85rem; border-top: 1px solid #f1f5f9 !important;">
-                        <i class="bi bi-box-arrow-right"></i> Logout
+                @if ($isFinished)
+                    <button type="button" class="btn-glow d-flex align-items-center justify-content-center w-100 py-2"
+                        wire:click="downloadReport" wire:loading.attr="disabled">
+                        <span wire:loading wire:target="downloadReport" class="spinner-border spinner-border-sm"></span>
+                        <i wire:loading.remove wire:target="downloadReport"
+                            class="bi bi-file-earmark-pdf d-md-block"></i>
+                        <span class="fw-bold d-none d-md-inline ms-2" style="font-size: 12px;">Download Report</span>
                     </button>
-                </div>
+                @elseif ($isOngoing)
+                    <button type="button"
+                        class="btn btn-primary d-flex align-items-center justify-content-center w-100 py-2"
+                        style="cursor: wait; opacity: 0.8;" disabled>
+                        <i class="bi bi-hourglass-split"></i>
+                        <span class="fw-bold d-none d-md-inline ms-2" style="font-size: 12px;">Processing
+                            Election...</span>
+                    </button>
+                @else
+                    <button type="button"
+                        class="btn btn-light d-flex align-items-center justify-content-center w-100 py-2"
+                        style="cursor: not-allowed; border: 1px dashed #ccc; opacity: 0.6;" disabled>
+                        <i class="bi bi-lock-fill"></i>
+                        <span class="fw-bold d-none d-md-inline ms-2" style="font-size: 12px;">No Active Cycle</span>
+                    </button>
+                @endif
             </div>
         </div>
 
@@ -210,10 +211,7 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
                     }
                 }" x-init="animate();"
                     @update-admin-charts.window="target = $event.detail.totalVotes; animate();">
-
-                    <div class="stat-icon bg-primary-soft text-primary small">
-                        <i class="bi bi-box-seam"></i>
-                    </div>
+                    <div class="stat-icon bg-primary-soft text-primary small"><i class="bi bi-box-seam"></i></div>
                     <div class="stat-value mt-1 fs-5 fw-bold text-dark" x-text="current">0</div>
                     <div class="stat-label small text-muted text-truncate">Total Voters</div>
                 </div>
@@ -228,13 +226,9 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
                     if (progress < 1) window.requestAnimationFrame(step);
                 };
                 window.requestAnimationFrame(step);">
-                    <div class="stat-icon bg-indigo-soft text-accent small"
-                        style="width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; border-radius: 8px;">
-                        <i class="bi bi-people"></i>
-                    </div>
+                    <div class="stat-icon bg-indigo-soft text-accent small"><i class="bi bi-people"></i></div>
                     <div class="stat-value mt-1 fs-5 fw-bold text-dark" x-text="current">0</div>
-                    <div class="stat-label small text-muted text-truncate" style="font-size: 0.75rem;">Total Candidates
-                    </div>
+                    <div class="stat-label small text-muted text-truncate">Total Candidates</div>
                 </div>
             </div>
 
@@ -254,12 +248,8 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
                     }
                 }" x-init="animate()"
                     @update-admin-charts.window="target = $event.detail.turnout; animate();">
-                    <div class="stat-icon bg-success-soft text-success small">
-                        <i class="bi bi-graph-up-arrow"></i>
-                    </div>
-                    <div class="stat-value mt-1 fs-5 fw-bold text-success">
-                        <span x-text="current">0</span>%
-                    </div>
+                    <div class="stat-icon bg-success-soft text-success small"><i class="bi bi-graph-up-arrow"></i></div>
+                    <div class="stat-value mt-1 fs-5 fw-bold text-success"><span x-text="current">0</span>%</div>
                     <div class="stat-label small text-muted text-truncate">Voter Turnout</div>
                 </div>
             </div>
@@ -274,28 +264,32 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
                         if (diff > 0) {
                             let d = Math.floor(diff / (1000 * 60 * 60 * 24));
                             let h = Math.floor((diff / (1000 * 60 * 60)) % 24);
-
-                            let dayStr = String(d).padStart(2, '0') + 'd';
-                            let hourStr = String(h).padStart(2, '0') + 'h';
-
-                            this.displayValue = `${dayStr} ${hourStr}`;
-                        } else {
-                            this.displayValue = 'Closed';
-                        }
+                            this.displayValue = `${String(d).padStart(2, '0')}d ${String(h).padStart(2, '0')}h`;
+                        } else { this.displayValue = 'Closed'; }
                     }
                 }" x-init="updateTimer();
-                setInterval(() => updateTimer(), 60000)">
+                setInterval(() => updateTimer(), 1000)">
+                    <div class="stat-icon bg-warning-soft text-warning small"><i class="bi bi-calendar-event"></i></div>
+                    <div class="stat-value mt-1 fs-5 fw-bold text-warning" style="color: #f59e0b !important;"><span
+                            x-text="displayValue">00d 00h</span></div>
+                    <div class="stat-label small text-muted text-truncate">{{ $timerLabel }}</div>
+                </div>
+            </div>
+        </div>
 
-                    <div class="stat-icon bg-warning-soft text-warning small"
-                        style="width: 35px; height: 35px; display: flex; align-items: center; justify-content: center; border-radius: 8px;">
-                        <i class="bi bi-calendar-event"></i>
-                    </div>
-                    <div class="stat-value mt-1 fs-5 fw-bold text-warning" style="color: #f59e0b !important;">
-                        <span x-text="displayValue">00d 00h</span>
-                    </div>
-                    <div class="stat-label small text-muted text-truncate" style="font-size: 0.75rem;">
-                        {{ $timerLabel }}
-                    </div>
+        <div class="row g-4 mb-4">
+            <div class="col-lg-8">
+                <div class="glass-card p-4 border-0 shadow-sm h-100">
+                    <h5 class="fw-bold text-primary mb-1">Voter Turnout Trends</h5>
+                    <p class="text-muted small mb-3">Activity over the last 6 hours</p>
+                    <div id="chart-trends" wire:ignore style="height: 300px;"></div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="glass-card p-4 border-0 shadow-sm h-100">
+                    <h5 class="fw-bold text-primary mb-1">Year Level Breakdown</h5>
+                    <p class="text-muted small mb-3">Participation per level</p>
+                    <div id="chart-year-level" wire:ignore style="height: 300px;"></div>
                 </div>
             </div>
         </div>
@@ -309,12 +303,10 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
                                 <h5 class="fw-bold text-primary mb-1">{{ $dept }} Department</h5>
                                 <p class="text-muted small mb-0">Live vote distribution</p>
                             </div>
-                            <span class="badge-status-live">
-                                <span class="pulse-dot"></span> Live Vote Tallying
-                            </span>
+                            <span class="badge-status-live"><span class="pulse-dot"></span> Live Vote Tallying</span>
                         </div>
                         <div style="height: 300px;" wire:ignore>
-                            <canvas id="chart-{{ $dept }}"></canvas>
+                            <div id="chart-{{ $dept }}"></div>
                         </div>
                     </div>
                 </div>
@@ -325,94 +317,119 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
     @script
         <script>
             let charts = {};
+            let trendChart, yearChart;
 
-            const renderCharts = (newTallyData = null) => {
-                const tallyData = newTallyData ? newTallyData : @json($this->getDashboardData()['tallyByDept']);
+            const renderCharts = (newData = null) => {
+                const data = newData ? newData : @json($this->getDashboardData());
+                const tallyData = data.tallyByDept || data;
                 const departments = @json($departments);
 
                 departments.forEach(dept => {
-                    const ctx = document.getElementById(`chart-${dept}`);
-                    if (!ctx) return;
-
-                    const data = tallyData[dept];
-                    const labels = data.map(item => item.label.split(' ')[0]);
-                    const fullLabels = data.map(item => `${item.label} (${item.position})`);
-                    const votes = data.map(item => item.votes);
+                    const container = document.getElementById(`chart-${dept}`);
+                    if (!container) return;
+                    const d = tallyData[dept];
+                    const labels = d.map(item => item.label);
+                    const votes = d.map(item => item.votes);
 
                     if (charts[dept]) {
-                        charts[dept].data.labels = labels;
-                        charts[dept].data.datasets[0].data = votes;
-                        charts[dept].update();
+                        charts[dept].updateSeries([{
+                            data: votes
+                        }]);
+                        charts[dept].updateOptions({
+                            xaxis: {
+                                categories: labels
+                            }
+                        });
                     } else {
-                        charts[dept] = new Chart(ctx, {
-                            type: 'bar',
-                            data: {
-                                labels: labels,
-                                datasets: [{
-                                    label: 'Votes',
-                                    data: votes,
-                                    backgroundColor: '#3b82f6',
-                                    borderRadius: 6,
-                                    barThickness: 35
-                                }]
+                        charts[dept] = new ApexCharts(container, {
+                            chart: {
+                                type: 'bar',
+                                height: 300,
+                                toolbar: {
+                                    show: false
+                                }
                             },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                animation: {
-                                    duration: 1500,
-                                    easing: 'easeOutQuart'
-                                },
-                                plugins: {
-                                    legend: {
-                                        display: false
-                                    },
-                                    tooltip: {
-                                        callbacks: {
-                                            title: (items) => fullLabels[items[0].dataIndex]
-                                        }
+                            series: [{
+                                name: 'Votes',
+                                data: votes
+                            }],
+                            xaxis: {
+                                categories: labels,
+                                labels: {
+                                    style: {
+                                        fontSize: '10px'
                                     }
-                                },
-                                scales: {
-                                    x: {
-                                        grid: {
-                                            display: false
-                                        },
-                                        ticks: {
-                                            font: {
-                                                size: 10
-                                            }
-                                        }
-                                    },
-                                    y: {
-                                        beginAtZero: true,
-                                        grid: {
-                                            color: '#f1f5f9'
-                                        },
-                                        ticks: {
-                                            stepSize: 1,
-                                            precision: 0
-                                        }
+                                }
+                            },
+                            colors: ['#3b82f6']
+                        });
+                        charts[dept].render();
+                    }
+                });
+
+                const trendContainer = document.querySelector("#chart-trends");
+                if (trendContainer) {
+                    if (trendChart) {
+                        trendChart.updateSeries([{
+                            data: data.trends.map(t => t.count)
+                        }]);
+                    } else {
+                        trendChart = new ApexCharts(trendContainer, {
+                            chart: {
+                                type: 'line',
+                                height: 300,
+                                toolbar: {
+                                    show: false
+                                }
+                            },
+                            stroke: {
+                                curve: 'smooth',
+                                width: 3
+                            },
+                            series: [{
+                                name: 'Votes',
+                                data: data.trends.map(t => t.count)
+                            }],
+                            xaxis: {
+                                categories: data.trends.map(t => t.hour)
+                            },
+                            colors: ['#10B981']
+                        });
+                        trendChart.render();
+                    }
+                }
+
+                const yearContainer = document.querySelector("#chart-year-level");
+                if (yearContainer) {
+                    if (yearChart) {
+                        yearChart.updateSeries(data.yearLevel.values);
+                    } else {
+                        yearChart = new ApexCharts(yearContainer, {
+                            chart: {
+                                type: 'donut',
+                                height: 300
+                            },
+                            series: data.yearLevel.values,
+                            labels: data.yearLevel.labels,
+                            legend: {
+                                position: 'bottom'
+                            },
+                            colors: ['#3b82f6', '#6366f1', '#a855f7', '#ec4899'],
+                            plotOptions: {
+                                pie: {
+                                    donut: {
+                                        size: '65%'
                                     }
                                 }
                             }
                         });
+                        yearChart.render();
                     }
-                });
+                }
             };
 
             renderCharts();
-
-            $wire.on('update-admin-charts', (payload) => {
-                const eventData = Array.isArray(payload) ? payload[0] : payload;
-                renderCharts(eventData.tally);
-            });
-
-            document.addEventListener('livewire:navigated', () => {
-                Object.values(charts).forEach(chart => chart.destroy());
-                charts = {};
-                renderCharts();
-            });
+            $wire.on('update-admin-charts', (payload) => renderCharts(Array.isArray(payload) ? payload[0] : payload));
         </script>
     @endscript
 </div>

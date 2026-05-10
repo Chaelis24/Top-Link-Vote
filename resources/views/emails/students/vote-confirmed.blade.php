@@ -66,9 +66,9 @@
         </div>
         <div class="content">
             <p>Hello <strong>
-                    {{ $student->first_name }}
+                    {{ $student->first_name ?? 'Top Link' }}
                     {{ $student->middle_name ? substr($student->middle_name, 0, 1) . '.' : '' }}
-                    {{ $student->last_name }}{{ $student->suffix ? ' ' . $student->suffix : '' }}
+                    {{ $student->last_name ?? 'Student' }}{{ $student->suffix ? ' ' . $student->suffix : '' }}
                 </strong>,</p>
             <p>This email confirms that your official ballot has been cast and successfully encrypted in our system.
                 Your participation helps shape the future of our student body.</p>
@@ -83,7 +83,7 @@
                 </div>
                 <div class="d-flex justify-content-between mb-2">
                     <strong>Reference No:</strong>
-                    <span class="text-accent fw-bold">{{ auth()->user()->student->vote_reference }}</span>
+                    <span class="text-accent fw-bold">{{ $student->vote_reference ?? 'N/A' }}</span>
                 </div>
                 <div class="d-flex justify-content-between mb-2">
                     <strong>Timestamp:</strong>
