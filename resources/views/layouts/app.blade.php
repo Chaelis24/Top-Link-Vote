@@ -74,32 +74,60 @@
                 document.body.style.paddingRight = '';
             });
         });
+
+        Livewire.on("swal-maintenance", (data) => {
+            const options = data[0];
+            Swal.fire({
+                title: options.title,
+                text: options.text,
+                icon: options.icon,
+                confirmButtonText: "OK",
+                allowOutsideClick: false,
+                allowEscapeKey: false
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = "{{ route('force.logout') }}";
+                }
+            });
+        });
     </script>
     @auth
         <script type="module">
             document.addEventListener('DOMContentLoaded', function() {
-                Echo.private(`user.{{ auth()->id() }}`)
-                    .listen('.account.duplicate-login', (e) => {
-                        Swal.fire({
-                            title: "Security Alert",
-                            html: "Someone else just logged into your account. You will be logged out in <b></b> seconds.",
-                            icon: "warning",
-                            timer: 5000,
-                            timerProgressBar: true,
-                            confirmButtonText: "Log out now",
-                            allowOutsideClick: false,
-                            allowEscapeKey: false,
-                            didOpen: () => {
-                                const b = Swal.getHtmlContainer().querySelector('b');
-                                const timerInterval = setInterval(() => {
-                                    const secondsLeft = Math.ceil(Swal.getTimerLeft() / 1000);
-                                    b.textContent = secondsLeft;
-                                }, 100);
-                            }
-                        }).then((result) => {
-                            window.location.reload();
+                if (typeof Echo !== 'undefined') {
+                    Echo.private(`user.{{ auth()->id() }}`)
+                        .listen('.account.duplicate-login', (e) => {
+                            Swal.fire({
+                                title: "Security Alert",
+                                html: "Someone else just logged into your account. You will be logged out in <b></b> seconds.",
+                                icon: "warning",
+                                timer: 5000,
+                                timerProgressBar: true,
+                                confirmButtonText: "Log out now",
+                                allowOutsideClick: false,
+                                allowEscapeKey: false,
+                                didOpen: () => {
+                                    const b = Swal.getHtmlContainer().querySelector('b');
+                                    const timerInterval = setInterval(() => {
+                                        const secondsLeft = Math.ceil(Swal.getTimerLeft() /
+                                            1000);
+                                        b.textContent = secondsLeft;
+                                    }, 100);
+                                }
+                            }).then((result) => {
+                                window.location.reload();
+                            });
                         });
-                    });
+                }
+                @if (auth()->user()->role === 'student')
+                    Echo.channel('system-alerts')
+                        .listen('.App\\Events\\MaintenanceModeToggled', (e) => {
+                            console.log('Maintenance Signal Received:', e);
+                            if (e.isMaintenance) {
+                                window.location.href = "{{ route('force.logout') }}";
+                            }
+                        });
+                @endif
             });
         </script>
     @endauth

@@ -15,7 +15,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
     #[Computed]
     public function activeCycle()
     {
-        return ElectionCycle::latest()->first();
+        return ElectionCycle::where('status', 'active')->latest()->first();
     }
 
     #[Computed]
@@ -28,7 +28,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
 
         $cycleId = $cycle->id;
         $total = Position::where('election_cycle_id', $cycleId)->count();
-
+        $candidatesCount = Candidate::where('election_cycle_id', $cycleId)->count();
         $filled = Position::where('election_cycle_id', $cycleId)->whereHas('candidates', fn($q) => $q->where('status', 'approved'))->count();
 
         return [
@@ -46,7 +46,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
             return collect();
         }
 
-        return Position::where('election_cycle_id', $this->activeCycle->id)->withCount('candidates')->orderBy('priority', 'asc')->get();
+        return Position::where('election_cycle_id', $this->activeCycle->id)->orderBy('priority', 'asc')->get();
     }
 
     public function savePosition()
@@ -71,6 +71,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
                 'priority' => $this->priority,
                 'election_cycle_id' => $this->activeCycle->id,
                 'student_department' => $this->student_department,
+                'is_active' => true,
             ],
         );
 

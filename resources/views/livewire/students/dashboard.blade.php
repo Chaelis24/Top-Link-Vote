@@ -2,15 +2,57 @@
 
 use App\Models\Setting;
 use Livewire\Volt\Component;
+use App\Models\ElectionCycle;
 use Illuminate\Support\Facades\{Auth, Session};
 use Livewire\Attributes\{Layout, On, Title, Computed};
 
 new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Component {
+    // 1. STATE PROPERTIES
     public $student;
     public $profile_photo_path;
     public $studentCourse;
     public bool $isVotingOpen = false;
     public bool $isResultsVisible = false;
+
+    // 2. LIFECYCLE HOOKS
+    public function mount()
+    {
+        $user = Auth::user()?->load('student');
+        $this->student = $user?->student;
+        $this->studentCourse = $this->student->course ?? 'General';
+
+        if ($this->student) {
+            $this->profile_photo_path = $this->student->photo ?? ($this->student->profile_photo_path ?? null);
+        }
+
+        $settings = Setting::pluck('value', 'key')->toArray();
+        $this->isVotingOpen = (bool) ($settings['allowVoting'] ?? false);
+        $this->isResultsVisible = (bool) ($settings['showResults'] ?? false);
+    }
+
+    // 3. COMPUTED PROPERTIES
+    #[Computed]
+    public function activeCycle()
+    {
+        return ElectionCycle::where('status', 'active')->latest()->first();
+    }
+
+    #[Computed]
+    public function isVotingOpen()
+    {
+        $setting = Setting::where('key', 'allowVoting')->first();
+        $activeCycle = $this->activeCycle;
+
+        if (!$setting || !(bool) $setting->value) {
+            return false;
+        }
+
+        if (!$activeCycle || now()->gt($activeCycle->voting_end)) {
+            return false;
+        }
+
+        return true;
+    }
 
     #[Computed]
     public function tallyData()
@@ -40,26 +82,26 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
         });
     }
 
-    public function mount()
-    {
-        $user = Auth::user()?->load('student');
-        $this->student = $user?->student;
-        $this->studentCourse = $this->student->course ?? 'General';
-
-        if ($this->student) {
-            $this->profile_photo_path = $this->student->photo ?? ($this->student->profile_photo_path ?? null);
-        }
-
-        $settings = Setting::pluck('value', 'key')->toArray();
-        $this->isVotingOpen = (bool) ($settings['allowVoting'] ?? false);
-        $this->isResultsVisible = (bool) ($settings['showResults'] ?? false);
-    }
-
+    // 4. EVENT LISTENERS
     #[On('echo-private:election-results.{studentCourse},VoteUpdated')]
     public function refreshTally()
     {
         cache()->forget('tally_results_' . ($this->studentCourse ?? 'all'));
         $this->dispatch('update-chart', ['tally' => $this->tallyData()]);
+    }
+
+    // 5. ACTION / HELPER METHODS
+    public function checkMaintenance()
+    {
+        $isMaintenance = Setting::where('key', 'maintenanceMode')->value('value');
+
+        if ($isMaintenance == '1' || $isMaintenance === true) {
+            $this->dispatch('swal-maintenance', [
+                'icon' => 'warning',
+                'title' => 'System Maintenance',
+                'text' => 'The system is undergoing maintenance. You will be logged out.',
+            ]);
+        }
     }
 
     public function logout()
@@ -71,13 +113,13 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
     }
 }; ?>
 
-<div>
+<div wire:poll.10s="checkMaintenance">
     @include('layouts.partials.student-sidebar')
     <main class="main-content">
         <div class="topbar" wire:key="persistent-topbar-header">
             <div>
                 <h2 class="mb-0">Student <span class="text-primary">Dashboard</span></h2>
-                <p class="text-secondary mb-0" style="font-size: 0.85rem; font-weight: 500;">
+                <p class="text-secondary mb-0">
                     Welcome back, <span class="text-primary">{{ $student->first_name ?? 'Student' }}
                         {{ $student->middle_name ? substr($student->middle_name, 0, 1) . '.' : 'N/A' }}
                         {{ $student->last_name ?? 'Student' }}
@@ -86,38 +128,94 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
             </div>
         </div>
 
-        <div class="row g-2 g-md-3 mb-2">
-            <div class="col-12 col-lg-4 col-md-6">
-                <div class="glass-card p-3 p-md-3 h-100 border-0 shadow-sm">
-                    <div class="d-flex align-items-center gap-2 gap-md-3 mb-2 mb-md-3">
-                        <h6 class="mb-0 fw-bold text-primary" style="font-size: clamp(0.85rem, 2vw, 1rem);">
-                            Cast Your Vote
-                        </h6>
+        <div class="row g-3 mb-4">
+            <div class="col-12 col-lg-8">
+                <div class="glass-card p-3 h-100 border-0 shadow-sm">
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <div class="icon-box bg-info-light p-2 rounded">
+                            <i class="bi bi-info-circle text-info text-primary"></i>
+                        </div>
+                        <h6 class="mb-0 fw-bold text-dark">Quick Guide & Election Rules</h6>
                     </div>
 
-                    @if ($isVotingOpen)
-                        <p class="text-secondary mb-3 mb-md-4"
-                            style="font-size: clamp(0.75rem, 1.5vw, 0.85rem); line-height: 1.4;">
-                            Exercise your right! Cast your vote securely in the system.
-                        </p>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <small class="text-primary fw-bold d-block mb-2">
+                                <i class="bi bi-list-check me-1"></i> How to Vote:
+                            </small>
+                            <ul class="list-unstyled mb-0" style="font-size: 0.75rem; color: #64748b;">
+                                <li class="mb-2 d-flex align-items-start">
+                                    <i class="bi bi-1-circle text-primary me-2"></i>
+                                    <span>Click the <strong>"Vote Now"</strong> button.</span>
+                                </li>
+                                <li class="mb-2 d-flex align-items-start">
+                                    <i class="bi bi-2-circle text-primary me-2"></i>
+                                    <span>Select one candidate per position.</span>
+                                </li>
+                                <li class="mb-0 d-flex align-items-start">
+                                    <i class="bi bi-3-circle text-primary me-2"></i>
+                                    <span>Review and <strong>Submit</strong> your ballot.</span>
+                                </li>
+                            </ul>
+                        </div>
 
-                        <a href="/students/cast-vote" wire:navigate class="btn btn-glow btn-sm w-100 w-md-50 py-2">
-                            <span style="font-size: 0.75rem;">Vote Now</span><i class="bi bi-arrow-right ms-1"></i>
-                        </a>
-                    @else
-                        <p class="text-muted mb-3 mb-md-4"
-                            style="font-size: clamp(0.75rem, 1.5vw, 0.85rem); line-height: 1.4;">
-                            The voting portal is currently <strong>closed</strong>.
-                        </p>
+                        <div class="col-md-6 border-start-md">
+                            <small class="text-danger fw-bold d-block mb-2">
+                                <i class="bi bi-exclamation-triangle me-1"></i> Important Rules:
+                            </small>
+                            <ul class="list-unstyled mb-0" style="font-size: 0.75rem; color: #64748b;">
+                                <li class="mb-2 d-flex align-items-start">
+                                    <i class="bi bi-dot fs-5 leading-none text-danger"></i>
+                                    <span>You can only vote <strong>once</strong>.</span>
+                                </li>
+                                <li class="mb-2 d-flex align-items-start">
+                                    <i class="bi bi-dot fs-5 leading-none text-danger"></i>
+                                    <span>Votes cannot be edited after submission.</span>
+                                </li>
+                                <li class="mb-0 d-flex align-items-start">
+                                    <i class="bi bi-dot fs-5 leading-none text-danger"></i>
+                                    <span>Your vote is 100% anonymous.</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-                        <button
-                            class="btn btn-sm w-100 py-2 fw-bold d-flex align-items-center justify-content-center gap-2"
-                            style="background-color: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; cursor: not-allowed; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.5px; border-radius: 8px; opacity: 0.8;"
-                            disabled>
-                            <i class="bi bi-shield-lock-fill" style="font-size: 0.8rem; color: #94a3b8;"></i>
-                            <span>Portal Locked</span>
-                        </button>
-                    @endif
+            <div class="col-12 col-lg-4">
+                <div class="glass-card p-3 h-100 border-0 shadow-sm d-flex flex-column justify-content-between">
+                    <div>
+                        <div class="d-flex align-items-center gap-2 mb-3">
+                            <div class="icon-box bg-primary-light p-2 rounded">
+                                <i class="bi bi-box-seam text-primary"></i>
+                            </div>
+                            <h6 class="mb-0 fw-bold text-primary" style="font-size: clamp(0.85rem, 2vw, 1rem);">
+                                Cast Your Vote
+                            </h6>
+                        </div>
+
+                        @if ($this->isVotingOpen)
+                            <p class="text-success small">
+                                <i class="bi bi-check-circle-fill me-1"></i> The election is live.
+                            </p>
+                            <a href="{{ route('cast-vote') }}" class="btn btn-primary w-100 fw-bold">
+                                <i class="bi bi-box-seam me-2"></i> Proceed to Vote
+                            </a>
+                        @else
+                            <p class="text-danger small" style="font-size: 0.80rem">
+                                <i class="bi bi-lock-fill me-1"></i> Voting is no longer active.
+                            </p>
+                            <button class="btn btn-secondary btn-sm w-75 fw-bold" disabled>
+                                <i class="bi bi-slash-circle me-2"></i> Voting Closed
+                            </button>
+                            @if ($this->activeCycle && now()->gt($this->activeCycle->voting_end))
+                                <div class="mt-2 xsmall text-muted" style="font-size: 0.80rem">
+                                    The voting period concluded on
+                                    {{ $this->activeCycle->voting_end->format('M d, Y h:i A') }}
+                                </div>
+                            @endif
+                        @endif
+                    </div>
                 </div>
             </div>
         </div>

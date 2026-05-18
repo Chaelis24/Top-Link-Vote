@@ -125,21 +125,6 @@
             color: #666;
         }
 
-        .verification-box {
-            margin-top: 80px;
-            padding: 15px;
-            border: 1px dashed #ccc;
-            background: #fffcf5;
-            clear: both;
-        }
-
-        .hash-text {
-            font-family: 'Courier', monospace;
-            font-size: 9px;
-            color: #777;
-            word-break: break-all;
-        }
-
         .watermark {
             position: absolute;
             top: 45%;
@@ -208,28 +193,10 @@
 
     <div class="footer-section">
         <div class="signature-wrapper">
-            <p style="font-size: 12px; margin-bottom: 40px;">Certified Correct by:</p>
+            <p style="font-size: 12px; margin-bottom: 40px;">Certified by:</p>
             <div class="signature-line">{{ strtoupper($admin_name ?? Auth::user()->name) }}</div>
-            <div class="designation">System Administrator / Comelec Chair</div>
+            <div class="designation">System Administrator</div>
         </div>
-    </div>
-
-    <div class="verification-box">
-        <table style="border: none; margin: 0;">
-            <tr>
-                <td style="border: none; padding: 0;">
-                    <strong style="font-size: 11px; color: #1a237e;">ELECTRONIC VERIFICATION DATA</strong><br>
-                    <span class="hash-text">System ID:
-                        {{ Str::slug($currentCycle ?? 'election') }}-{{ now()->format('Ymd') }}</span><br>
-                    <span class="hash-text">Authenticity Hash: {{ $fingerprint ?? hash('sha256', $date) }}</span>
-                </td>
-                <td style="border: none; text-align: right; vertical-align: bottom;">
-                    <p style="font-size: 9px; color: #999; margin: 0;">
-                        This document is digitally signed and serves as the official record of the election results.
-                    </p>
-                </td>
-            </tr>
-        </table>
     </div>
 </body>
 

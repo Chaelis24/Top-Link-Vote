@@ -4,7 +4,7 @@ use Livewire\Volt\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\{Layout, Title};
 use Illuminate\Support\Facades\{Auth, Session};
-use App\Models\{Platform, Candidate};
+use App\Models\{Platform, Candidate, ElectionCycle};
 
 new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Component {
     use WithPagination;
@@ -12,14 +12,23 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
     public string $search = '';
     public ?Platform $selectedPlatform = null;
 
+    #[Computed]
+    public function activeCycle()
+    {
+        return ElectionCycle::where('status', 'active')->latest()->first();
+    }
+
     public function getPlatformsProperty()
     {
+        $activeCycleId = ElectionCycle::where('status', 'active')->value('id') ?? 0;
+
         return Platform::with(['candidate.student', 'candidate.position'])
             ->whereIn('platforms.id', function ($query) {
                 $query->selectRaw('MAX(id)')->from('platforms')->groupBy('candidate_id');
             })
             ->join('candidates', 'platforms.candidate_id', '=', 'candidates.id')
             ->join('positions', 'candidates.position_id', '=', 'positions.id')
+            ->where('candidates.election_cycle_id', $activeCycleId)
             ->whereNotNull('platforms.title')
             ->where('platforms.title', '!=', '')
             ->whereNotNull('platforms.agenda')

@@ -56,21 +56,25 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
 
     public function with(): array
     {
-        $stats = cache()->remember('candidates_stats', 120, function () {
-            return Candidate::selectRaw(
-                "
-            count(*) as total,
-            count(case when status in ('approved', 'active') then 1 end) as approved,
-            count(case when status = 'pending' then 1 end) as pending
-        ",
-            )->first();
+        $activeCycleId = $this->activeCycle ? $this->activeCycle->id : 0;
+
+        $stats = cache()->remember("candidates_stats_{$activeCycleId}", 120, function () use ($activeCycleId) {
+            return Candidate::where('election_cycle_id', $activeCycleId) // Filter by cycle
+                ->selectRaw(
+                    "
+                count(*) as total,
+                count(case when status in ('approved', 'active') then 1 end) as approved,
+                count(case when status = 'pending' then 1 end) as pending
+            ",
+                )
+                ->first();
         });
 
         return [
             'candidates' => $this->loadCandidates(),
-            'totalCandidates' => $stats->total,
-            'approvedCount' => $stats->approved,
-            'pendingCount' => $stats->pending,
+            'totalCandidates' => $stats->total ?? 0,
+            'approvedCount' => $stats->approved ?? 0,
+            'pendingCount' => $stats->pending ?? 0,
             'availablePositions' => $this->activeCycle ? Position::where('election_cycle_id', $this->activeCycle->id)->distinct()->pluck('name') : collect(),
             'availableDepartments' => self::DEPARTMENTS,
         ];
@@ -84,10 +88,13 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
 
     public function loadCandidates()
     {
+        $activeCycleId = $this->activeCycle ? $this->activeCycle->id : 0;
+
         return Candidate::query()
             ->with(['student', 'position', 'platforms'])
             ->withCount('votes')
             ->join('positions', 'candidates.position_id', '=', 'positions.id')
+            ->where('candidates.election_cycle_id', $activeCycleId)
             ->where(function ($query) {
                 if ($this->search) {
                     $query->whereHas('student', function ($q) {
@@ -103,7 +110,6 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
             ->when($this->departmentFilter !== 'All Departments', function ($query) {
                 $query->whereHas('student', fn($q) => $q->where('course', $this->departmentFilter));
             })
-
             ->orderBy('positions.priority', 'asc')
             ->orderBy('candidates.created_at', 'desc')
             ->select('candidates.*')
@@ -279,6 +285,9 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
             }
 
             fclose($file);
+            cache()->forget('candidates_stats_' . $activeCycle->id);
+            cache()->forget('admin_dashboard_data');
+
             DB::commit();
             $this->reset('csvFile');
             $this->dispatch('swal', [
@@ -330,7 +339,8 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
         return redirect()->route('login');
     }
 }; ?>
-<div wire:poll.15s>
+
+<div>
     @include('layouts.partials.admin-sidebar')
 
     <main class="main-content">
@@ -628,7 +638,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                             <div class="tab-pane fade show active" id="tab-basic" role="tabpanel">
                                 <div class="row g-3">
                                     <div class="col-12 col-md-4 mb-2 text-center border-md-end">
-                                        <label class="small fw-bold text-muted d-block mb-2">CANDIDATE PHOTO</label>
+                                        <label class="small fw-bold text-primary d-block mb-2">CANDIDATE PHOTO</label>
                                         <div class="text-center">
                                             <input type="file" id="photoInput" wire:model="candidate_photo"
                                                 class="d-none" accept="image/*">
@@ -658,39 +668,43 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                                     <div class="col-12 col-md-8">
                                         <div class="row g-2">
                                             <div class="col-6 mb-2">
-                                                <label class="small fw-bold text-muted"
+                                                <label class="small fw-bold text-primary"
                                                     style="font-size: 0.7rem;">FIRST NAME</label>
                                                 <input type="text" wire:model="editForm.first_name"
                                                     class="form-control form-control-sm border-0 bg-light py-2"
-                                                    readonly>
+                                                    placeholder="Juan" readonly>
                                             </div>
                                             <div class="col-6 mb-2">
-                                                <label class="small fw-bold text-muted"
+                                                <label class="small fw-bold text-primary"
                                                     style="font-size: 0.7rem;">LAST NAME</label>
                                                 <input type="text" wire:model="editForm.last_name"
                                                     class="form-control form-control-sm border-0 bg-light py-2"
-                                                    readonly>
+                                                    placeholder="Dela Cruz" readonly>
                                             </div>
                                             <div class="col-6 mb-2">
-                                                <label class="small fw-bold text-muted"
+                                                <label class="small fw-bold text-primary"
                                                     style="font-size: 0.7rem;">PARTY NAME</label>
                                                 <input type="text" wire:model="editForm.party_name"
+                                                    placeholder="e.g. Reform Party"
                                                     class="form-control form-control-sm border-0 bg-light py-2">
                                             </div>
                                             <div class="col-6 mb-2">
-                                                <label class="small fw-bold text-muted" style="font-size: 0.7rem;">AVG
+                                                <label class="small fw-bold text-primary"
+                                                    style="font-size: 0.7rem;">AVG
                                                     GRADE (GWA)</label>
                                                 <input type="text" wire:model="editForm.average_grade"
+                                                    placeholder="e.g. 1.25"
                                                     class="form-control form-control-sm border-0 bg-light py-2">
                                             </div>
                                             <div class="col-12">
-                                                <label class="small fw-bold text-muted"
+                                                <label class="small fw-bold text-primary"
                                                     style="font-size: 0.7rem;">ACHIEVEMENTS</label>
-                                                <textarea wire:model="editForm.achievements" rows="3" class="form-control form-control-sm border-0 bg-light"></textarea>
+                                                <textarea wire:model="editForm.achievements" rows="3"
+                                                    placeholder="List down honors, awards, or recognitions..." class="form-control form-control-sm border-0 bg-light"></textarea>
                                             </div>
                                             <div class="row g-3 mt-2">
                                                 <div class="col-12 col-md-6">
-                                                    <label class="small fw-bold text-muted mb-1 d-block"
+                                                    <label class="small fw-bold text-primary mb-1 d-block"
                                                         style="font-size: 0.7rem;">PREVIOUS POSITIONS</label>
 
                                                     @foreach ($editForm['previous_position'] as $index => $pos)
@@ -712,14 +726,14 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                                                     @endforeach
 
                                                     <button type="button" wire:click="addField('previous_position')"
-                                                        class="btn btn-sm btn-link text-muted p-0 text-decoration-none"
+                                                        class="btn btn-sm btn-link text-primary p-0 text-decoration-none"
                                                         style="font-size: 0.7rem;">
                                                         <i class="bi bi-plus-lg"></i> Add Position
                                                     </button>
                                                 </div>
 
                                                 <div class="col-12 col-md-6">
-                                                    <label class="small fw-bold text-muted mb-1 d-block"
+                                                    <label class="small fw-bold text-primary mb-1 d-block"
                                                         style="font-size: 0.7rem;">PREVIOUS SCHOOL PROJECTS</label>
 
                                                     @foreach ($editForm['previous_school_project'] as $index => $proj)
@@ -740,7 +754,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                                                     @endforeach
                                                     <button type="button"
                                                         wire:click="addField('previous_school_project')"
-                                                        class="btn btn-sm btn-link text-muted p-0 text-decoration-none"
+                                                        class="btn btn-sm btn-link text-primary p-0 text-decoration-none"
                                                         style="font-size: 0.7rem;">
                                                         <i class="bi bi-plus-lg"></i> Add Project
                                                     </button>
@@ -753,21 +767,25 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
 
                             <div class="tab-pane fade" id="tab-vision" role="tabpanel">
                                 <div class="mb-3">
-                                    <label class="small fw-bold text-muted" style="font-size: 0.7rem;">PLATFORM
+                                    <label class="small fw-bold text-primary" style="font-size: 0.7rem;">PLATFORM
                                         TITLE</label>
                                     <input type="text" wire:model="editForm.platform_title"
+                                        placeholder="e.g. Educational Empowerment for All"
                                         class="form-control form-control-sm border-0 bg-light py-2">
                                 </div>
                                 <div class="mb-3">
-                                    <label class="small fw-bold text-muted" style="font-size: 0.7rem;">CAMPAIGN
+                                    <label class="small fw-bold text-primary" style="font-size: 0.7rem;">CAMPAIGN
                                         TAGLINE</label>
                                     <input type="text" wire:model="editForm.tagline"
+                                        placeholder="e.g. 'A Leader Who Listens, A Voice for Students'"
                                         class="form-control form-control-sm border-0 bg-light py-2 fst-italic">
                                 </div>
                                 <div class="mb-2">
-                                    <label class="small fw-bold text-muted" style="font-size: 0.7rem;">AGENDA
+                                    <label class="small fw-bold text-primary" style="font-size: 0.7rem;">AGENDA
                                         DETAILS</label>
-                                    <textarea wire:model="editForm.agenda" rows="6" class="form-control form-control-sm border-0 bg-light"></textarea>
+                                    <textarea wire:model="editForm.agenda" rows="6"
+                                        placeholder="Describe your goals, plans, and strategies in detail..."
+                                        class="form-control form-control-sm border-0 bg-light"></textarea>
                                 </div>
                             </div>
                         </div>

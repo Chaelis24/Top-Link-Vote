@@ -1,60 +1,13 @@
-@php
-    $activeCycle = \App\Models\ElectionCycle::where('status', 'active')->first();
-
-    $menuItems = [
-        [
-            'url' => 'admin/dashboard',
-            'icon' => 'bi-grid-1x2-fill',
-            'label' => 'Dashboard',
-            'route' => 'admin.dashboard*',
-            'locked' => false,
-        ],
-        [
-            'url' => 'admin/candidates',
-            'icon' => 'bi-person-badge-fill',
-            'label' => 'Candidates Profile',
-            'route' => 'admin.candidates*',
-            'locked' => !$activeCycle,
-        ],
-        [
-            'url' => 'admin/platforms',
-            'icon' => 'bi-megaphone-fill',
-            'label' => 'Platforms',
-            'route' => 'admin.platforms*',
-            'locked' => !$activeCycle,
-        ],
-        [
-            'url' => 'admin/positions',
-            'icon' => 'bi-diagram-3-fill',
-            'label' => 'Positions',
-            'route' => 'admin.positions*',
-            'locked' => !$activeCycle,
-        ],
-        [
-            'url' => 'admin/students',
-            'icon' => 'bi-person-check-fill',
-            'label' => 'Students List',
-            'route' => 'admin.students*',
-            'locked' => !$activeCycle,
-        ],
-        [
-            'url' => 'admin/election-cycle',
-            'icon' => 'bi-calendar-event-fill',
-            'label' => 'Election Cycle',
-            'route' => 'admin.election-cycle*',
-            'locked' => false,
-        ],
-        [
-            'url' => 'admin/audit-trail',
-            'icon' => 'bi-clock-history',
-            'label' => 'User Activities',
-            'route' => 'admin.audit-trail*',
-            'locked' => false,
-        ],
-    ];
-@endphp
-
 <div x-data="{ mobileMenuOpen: false }">
+
+    <button class="admin-mobile-btn" @click="mobileMenuOpen = true" x-show="!mobileMenuOpen" x-cloak>
+        <i class="bi bi-list"></i>
+    </button>
+
+    <div class="admin-overlay-screen" :class="{ 'active': mobileMenuOpen }" x-show="mobileMenuOpen"
+        @click="mobileMenuOpen = false" x-cloak>
+    </div>
+
     <aside class="admin-side-wrapper" :class="{ 'show': mobileMenuOpen }">
         <div class="admin-brand-box">
             <div class="brand-wrapper">
@@ -72,23 +25,55 @@
 
         <nav class="sidebar-content">
             <ul class="admin-nav-list">
-                @foreach ($menuItems as $item)
-                    <li class="admin-nav-item">
-                        <a href="{{ $item['locked'] ? 'javascript:void(0)' : url($item['url']) }}"
-                            {{ $item['locked'] ? '' : 'wire:navigate' }}
-                            class="admin-nav-link {{ request()->routeIs($item['route']) ? 'active' : '' }} {{ $item['locked'] ? 'opacity-50' : '' }}"
-                            style="{{ $item['locked'] ? 'cursor: not-allowed;' : '' }}"
-                            title="{{ $item['locked'] ? 'System Locked: Create a cycle first' : '' }}">
-
-                            <i class="bi {{ $item['icon'] }}"></i>
-                            <span>{{ $item['label'] }}</span>
-
-                            @if ($item['locked'])
-                                <i class="bi bi-lock-fill ms-auto small"></i>
-                            @endif
-                        </a>
-                    </li>
-                @endforeach
+                <li class="admin-nav-item">
+                    <a href="{{ url('admin/dashboard') }}" wire:navigate
+                        class="admin-nav-link {{ request()->is('admin/dashboard') ? 'active' : '' }}">
+                        <i class="bi bi-grid-1x2-fill"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                <li class="admin-nav-item">
+                    <a href="{{ url('admin/candidates') }}" wire:navigate
+                        class="admin-nav-link {{ request()->is('admin/candidates*') ? 'active' : '' }}">
+                        <i class="bi bi-person-badge-fill"></i>
+                        <span>Candidates Profile</span>
+                    </a>
+                </li>
+                <li class="admin-nav-item">
+                    <a href="{{ url('admin/platforms') }}" wire:navigate
+                        class="admin-nav-link {{ request()->is('admin/platforms*') ? 'active' : '' }}">
+                        <i class="bi bi-megaphone-fill"></i>
+                        <span>Platforms</span>
+                    </a>
+                </li>
+                <li class="admin-nav-item">
+                    <a href="{{ url('admin/positions') }}" wire:navigate
+                        class="admin-nav-link {{ request()->is('admin/positions*') ? 'active' : '' }}">
+                        <i class="bi bi-diagram-3-fill"></i>
+                        <span>Positions</span>
+                    </a>
+                </li>
+                <li class="admin-nav-item">
+                    <a href="{{ url('admin/students') }}" wire:navigate
+                        class="admin-nav-link {{ request()->is('admin/students*') ? 'active' : '' }}">
+                        <i class="bi bi-person-check-fill"></i>
+                        <span>Students List</span>
+                    </a>
+                </li>
+                <li class="admin-nav-item">
+                    <a href="{{ url('admin/election-cycle') }}" wire:navigate
+                        class="admin-nav-link {{ request()->is('admin/election-cycle*') ? 'active' : '' }}">
+                        <i class="bi bi-calendar-event-fill"></i>
+                        <span>Election Cycle</span>
+                    </a>
+                </li>
+                <li class="admin-nav-item">
+                    <a href="{{ url('admin/audit-trail') }}" wire:navigate
+                        class="admin-nav-link {{ request()->is('admin/audit-trail*') ? 'active' : '' }}">
+                        <i class="bi bi-clock-history"></i>
+                        <span>User Activities</span>
+                    </a>
+                </li>
             </ul>
         </nav>
 
@@ -98,7 +83,7 @@
                 <div class="d-flex align-items-center gap-2">
                     <div style="position: relative;">
                         <img src="https://ui-avatars.com/api/?name={{ urlencode(auth()->user()->name ?? 'Admin') }}&background=1e3a8a&color=fff"
-                            style="width: 32px; height: 32px; border-radius: 8px;" alt="Admin">
+                            style="width: 32px; height: 32px; border-radius: 50%;" alt="Admin">
                         <div
                             style="position: absolute; bottom: -2px; right: -2px; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; background: #10B981;">
                         </div>
@@ -122,7 +107,9 @@
                     style="text-decoration: none; color: #4b5563; padding: 8px 12px; font-size: 0.8rem;">
                     <i class="bi bi-gear-fill"></i> Settings
                 </a>
+
                 <hr style="margin: 8px 0; border-top: 1px solid #f3f4f6;">
+
                 <button wire:click="logout"
                     class="dropdown-item text-danger w-100 text-start border-0 bg-transparent d-flex align-items-center gap-2"
                     style="padding: 8px 12px; font-size: 0.8rem;">

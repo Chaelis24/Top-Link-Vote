@@ -46,12 +46,21 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
         return ElectionCycle::where('status', 'active')->latest()->first();
     }
 
+    public function with(): array
+    {
+        $active = ElectionCycle::where('status', 'active')->first();
+        return [
+            'active' => $active,
+            'vEndIso' => $active?->voting_end?->format('Y-m-d\TH:i:s'),
+        ];
+    }
+
     public function mount()
     {
         $active = $this->active;
         $settings = Setting::pluck('value', 'key')->toArray();
 
-        if ($active) {
+        if ($active = $this->active) {
             $this->currentCycle = $active->name;
             $this->status = $active->status;
             $this->academic_year = $active->academic_year;
@@ -157,7 +166,7 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                         'icon' => 'success',
                     ]);
                 }
-            } elseif ($now->greaterThan($active->voting_end)) {
+            } elseif ($now->greaterThan($active->voting_end) && $now->lessThan($active->results_date)) {
                 if ($this->allowVoting) {
                     $this->allowVoting = false;
                     Setting::updateOrCreate(['key' => 'allowVoting'], ['value' => 0]);
@@ -172,15 +181,24 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                 }
             }
 
-            if ($now->gt($active->voting_end) && $this->allowVoting) {
-                $this->allowVoting = false;
-                Setting::updateOrCreate(['key' => 'allowVoting'], ['value' => 0]);
+            if ($now->greaterThan($active->results_date)) {
+                if ($active->status === 'active') {
+                    $active->update(['status' => 'completed']);
 
-                $this->dispatch('swal', [
-                    'title' => 'Voting Period Ended',
-                    'text' => 'The voting portal has been automatically closed.',
-                    'icon' => 'info',
-                ]);
+                    Setting::updateOrCreate(['key' => 'allowVoting'], ['value' => 0]);
+                    Setting::updateOrCreate(['key' => 'showProfiles'], ['value' => 0]);
+                    $this->allowVoting = false;
+                    $this->showProfiles = false;
+
+                    $this->dispatch('swal', [
+                        'title' => 'Cycle Completed',
+                        'text' => 'The election cycle has been automatically finalized.',
+                        'icon' => 'success',
+                    ]);
+
+                    unset($this->active);
+                    $this->mount();
+                }
             }
         }
     }
@@ -221,6 +239,10 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                 'text' => 'The configuration has been successfully changed.',
                 'icon' => 'success',
             ]);
+
+            if ($setting === 'maintenanceMode') {
+                return;
+            }
         }
     }
 
@@ -272,11 +294,15 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                 ]);
             });
 
+            cache()->forget('admin_dashboard_data');
+
             unset($this->active);
             $this->reset(['cycle_name', 'academic_year', 'filing_start', 'filing_end', 'campaign_start', 'campaign_end', 'start_date', 'end_date', 'results_date']);
             $this->mount();
 
             $this->dispatch('close-modal', id: 'newCycleModal');
+
+            $this->dispatch('update-admin-charts');
 
             $this->dispatch('swal', [
                 'title' => 'Cycle Initialized!',
@@ -317,6 +343,7 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
 
                 unset($this->active);
                 $this->mount();
+                $this->dispatch('close-modal', id: 'updateDatesModal');
 
                 $this->dispatch('swal', [
                     'title' => 'Dates Updated!',
@@ -420,6 +447,10 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
             $active = $this->active;
             if ($active) {
                 $active->update(['status' => 'completed']);
+
+                App\Models\Student::where('status', 'active')
+                    ->where('has_voted', false)
+                    ->update(['status' => 'inactive']);
             }
 
             unset($this->active);
@@ -513,13 +544,14 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                         <span
                             class="badge d-flex align-items-center gap-1 gap-md-2 px-2 py-1 px-md-3 py-2 rounded-pill shadow-sm"
                             style="font-size: 0.75rem;"
-                            :class="!dates.vE ? 'bg-secondary' : (now < dates.vE ?
-                                'bg-success-subtle text-success border border-success' :
-                                'bg-danger-subtle text-danger border border-danger')">
-                            <span x-show="dates.vE" class="pulse-dot" style="width: 6px; height: 6px;"
-                                :style="'background: ' + (now < dates.vE ? '#10b981' : '#ef4444')"></span>
+                            :class="!dates.rD ? 'bg-secondary' : (now < dates.rD ? 'bg-success-subtle text-success' :
+                                'bg-danger-subtle text-danger')" 'bg-success-subtle text-success border border-success'
+                            : 'bg-danger-subtle text-danger border border-danger' )">
+                            <span x-show="dates.rD" class="pulse-dot" style="width: 6px; height: 6px;"
+                                :style="'background: ' + (now < dates.rD ? '#10b981' : '#ef4444')"></span>
                             <span class="fw-bold"
-                                x-text="!dates.vE ? 'No Cycle Active' : (now < dates.vE ? 'Election Active' : 'Closed')"></span>
+                                x-text="!dates.rD ? 'No Cycle Active' : (now < dates.rD ? 'Election Process Ongoing' : 'Cycle Completed')">
+                            </span>
                         </span>
                     </div>
 
@@ -532,7 +564,7 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                                         'title' => 'Phase 1: Filing Period',
                                         'start' => 'fS',
                                         'end' => 'fE',
-                                        'color' => 'text-danger',
+                                        'color' => 'text-warning',
                                     ],
                                     [
                                         'id' => 'c',
@@ -546,7 +578,7 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                                         'title' => 'Phase 3: Voting Period',
                                         'start' => 'vS',
                                         'end' => 'vE',
-                                        'color' => 'text-success',
+                                        'color' => 'text-warning',
                                     ],
                                     [
                                         'id' => 'r',
@@ -623,7 +655,7 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                                                     <div class="fw-bold text-primary mt-1 text-[11px] md:text-sm">
                                                         Scheduled:
                                                         <span
-                                                            x-text="pad(getRemaining(dates.rD).d) + 'd ' + pad(getRemaining(dates.rD).h) + 'h'"></span>
+                                                            x-text="pad(getRemaining(dates.rD).d) + 'd ' + pad(getRemaining(dates.rD).h) + 'h ' + pad(getRemaining(dates.rD).m) + 'm'"></span>
                                                     </div>
                                                 </template>
                                                 <template x-if="now >= dates.rD">
@@ -635,31 +667,19 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                                         </div>
 
                                         <span class="badge rounded-pill" style="font-size: 0.65rem;"
-                                            :class="now < dates.{{ $phase['start'] }} ? 'bg-secondary' : (
-                                                {{ $phase['end'] ? 'now < dates.' . $phase['end'] : 'true' }} ?
-                                                '{{ $phase['id'] == 'r' ? 'bg-primary' : ($phase['id'] == 'v' ? 'bg-success' : 'bg-warning') }}' :
-                                                'bg-success')">
+                                            :class="now < dates.{{ $phase['start'] }} ?
+                                                (dates.vE && now >= dates.vE && '{{ $phase['id'] }}' == 'r' ?
+                                                    'bg-warning' : 'bg-secondary') :
+                                                ({{ $phase['end'] ? 'now < dates.' . $phase['end'] : ($status === 'active' ? 'true' : 'false') }} ?
+                                                    'bg-warning' : 'bg-success')">
+
                                             <span
-                                                x-text="now < dates.{{ $phase['start'] }} ? 'Upcoming' : ({{ $phase['end'] ? 'now < dates.' . $phase['end'] : 'true' }} ? '{{ $phase['id'] == 'r' ? 'Released' : 'Ongoing' }}' : 'Completed')"></span>
+                                                x-text="now < dates.{{ $phase['start'] }} ?
+                                                (dates.vE && now >= dates.vE && '{{ $phase['id'] }}' == 'r' ? 'Ongoing' : 'Upcoming') :
+                                                ({{ $phase['end'] ? 'now < dates.' . $phase['end'] : ($status === 'active' ? 'true' : 'false') }} ? 'Ongoing' : 'Completed')">
+                                            </span>
                                         </span>
                                     </div>
-
-                                    @if ($phase['id'] == 'f')
-                                        <div class="progress-container mt-2" x-show="now >= dates.fS && now < dates.fE">
-                                            <div class="progress-bar-fill bg-warning"
-                                                style="width: {{ $filingProgress }}%; height: 6px;"></div>
-                                        </div>
-                                    @elseif ($phase['id'] == 'c')
-                                        <div class="progress-container mt-2" x-show="now >= dates.cS && now < dates.cE">
-                                            <div class="progress-bar-fill bg-warning"
-                                                style="width: {{ $campaignProgress }}%; height: 6px;"></div>
-                                        </div>
-                                    @elseif ($phase['id'] == 'v')
-                                        <div class="progress-container mt-2" x-show="now >= dates.vS && now < dates.vE">
-                                            <div class="progress-bar-fill bg-success"
-                                                style="width: {{ $progress }}%; height: 6px;"></div>
-                                        </div>
-                                    @endif
                                 </div>
                             @endforeach
                         </div>
@@ -690,7 +710,7 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                                                     'text-success fw-bold' : 'text-warning'))">
                                                 <i class="bi bi-clock me-1"></i>
                                                 <span
-                                                    x-text="!dates.vE ? 'No Active Cycle' : (now > dates.vE ? 'Voting Period Ended' : (now >= dates.vS ? 'Voting is Ongoing' : 'Auto-scheduled'))"></span>
+                                                    x-text="!dates.vE ? 'No Active Cycle' : (now > dates.vE ? 'Voting Period Ended' : (now >= dates.vS ? 'Election Process Ongoing' : 'Auto-scheduled'))"></span>
                                             </span>
                                         @else
                                             {{ $setting['desc'] }}
@@ -746,7 +766,6 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                             </div>
                         @endforeach
 
-                        {{-- Buttons --}}
                         <div class="mt-3 mt-md-4 pt-3 border-top d-flex flex-column gap-2">
                             <button class="btn btn-outline-primary btn-sm w-100 py-2 fw-bold text-[12px] md:text-sm"
                                 @click.prevent="

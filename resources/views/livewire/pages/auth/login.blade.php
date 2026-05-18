@@ -15,6 +15,10 @@ new #[Layout('layouts.guest')] class extends Component {
 
     public function mount()
     {
+        if (session()->has('swal')) {
+            $this->dispatch('swal', session('swal'));
+        }
+
         $settings = Setting::pluck('value', 'key')->toArray();
         $this->isMaintenance = isset($settings['maintenanceMode']) && (bool) $settings['maintenanceMode'];
     }
@@ -72,12 +76,19 @@ new #[Layout('layouts.guest')] class extends Component {
 
         @if ($isMaintenance)
             <div class="bg-gray-50 py-16 px-6 w-full flex flex-col justify-center items-center min-h-[400px]">
-                <img src="https://www.svgrepo.com/show/426192/cogs-settings.svg" alt="Maintenance"
-                    class="mb-8 h-32 md:h-40 opacity-80">
-                <h1 class="text-3xl md:text-5xl font-bold text-center text-gray-700 mb-4 tracking-tight">
+                <div class="p-8 bg-gray-50 inline-block rounded-xl">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"
+                        class="overflow-visible w-24 h-24 md:w-44 md:h-44">
+                        <path class="gear-big fill-gray-600"
+                            d="M11.5,2C11.2,2 11,2.2 11,2.5V3.3C10.1,3.4 9.3,3.8 8.5,4.3L7.9,3.7C7.7,3.5 7.4,3.5 7.2,3.7L5.8,5.1C5.6,5.3 5.6,5.6 5.8,5.8L6.4,6.4C5.9,7.2 5.5,8 5.4,8.9H4.5C4.2,8.9 4,9.1 4,9.4V11.4C4,11.7 4.2,11.9 4.5,11.9H5.4C5.5,12.8 5.9,13.6 6.4,14.4L5.8,15C5.6,15.2 5.6,15.5 5.8,15.7L7.2,17.1C7.4,17.3 7.7,17.3 7.9,17.1L8.5,16.5C9.3,17 10.1,17.4 11,17.5V18.4C11,18.7 11.2,18.9 11.5,18.9H13.5C13.8,18.9 14,18.7 14,18.4V17.5C14.9,17.4 15.7,17 16.5,16.5L17.1,17.1C17.3,17.3 17.6,17.3 17.8,17.1L19.2,15.7C19.4,15.5 19.4,15.2 19.2,15L18.6,14.4C19.1,13.6 19.5,12.8 19.6,11.9H20.5C20.8,11.9 21,11.7 21,11.4V9.4C21,9.1 20.8,8.9 20.5,8.9H19.6C19.5,8 19.1,7.2 18.6,6.4L19.2,5.8C19.4,5.6 19.4,5.3 19.2,5.1L17.8,3.7C17.6,3.5 17.3,3.5 17.1,3.7L16.5,4.3C15.7,3.8 14.9,3.4 14,3.3V2.5C14,2.2 13.8,2 13.5,2H11.5M12.5,7A3.5,3.5 0 0,1 16,10.5A3.5,3.5 0 0,1 12.5,14A3.5,3.5 0 0,1 9,10.5A3.5,3.5 0 0,1 12.5,7Z" />
+                        <path class="gear-small fill-yellow-500"
+                            d="M5.5,15.5C5.2,15.5 5,15.7 5,16V16.3C4.5,16.4 4,16.6 3.6,16.9L3.3,16.6C3.1,16.4 2.8,16.4 2.6,16.6L2.1,17.1C1.9,17.3 1.9,17.6 2.1,17.8L2.4,18.1C2.1,18.5 1.9,19 1.8,19.4H1.5C1.2,19.4 1,19.6 1,19.9V20.6C1,20.9 1.2,21.1 1.5,21.1H1.8C1.9,21.6 2.1,22 2.4,22.4L2.1,22.7C1.9,22.9 1.9,23.2 2.1,23.4L2.6,23.9C2.8,24.1 3.1,24.1 3.3,23.9L3.6,23.6C4,23.9 4.5,24.1 5,24.2V24.5C5,24.8 5.2,25 5.5,25H6.2C6.5,25 6.7,24.8 6.7,24.5V24.2C7.2,24.1 7.7,23.9 8.1,23.6L8.4,23.9C8.6,24.1 8.9,24.1 9.1,23.9L9.6,23.4C9.8,23.2 9.8,22.9 9.6,22.7L9.3,22.4C9.6,22 9.8,21.6 9.9,21.1H10.2C10.5,21.1 10.7,20.9 10.7,20.6V19.9C10.7,19.6 10.5,19.4 10.2,19.4H9.9C9.8,19 9.6,18.5 9.3,18.1L9.6,17.8C9.8,17.6 9.8,17.3 9.6,17.1L9.1,16.6C8.9,16.4 8.6,16.4 8.4,16.6L8.1,16.9C7.7,16.6 7.2,16.4 6.7,16.3V16C6.7,15.7 6.5,15.5 6.2,15.5H5.5M5.8,18.5A1.75,1.75 0 0,1 7.6,20.25A1.75,1.75 0 0,1 5.8,22A1.75,1.75 0 0,1 4.1,20.25A1.75,1.75 0 0,1 5.8,18.5Z" />
+                    </svg>
+                </div>
+                <h1 class="text-3xl md:text-4xl font-bold text-center text-gray-700 mb-4 tracking-tight">
                     Site is under maintenance
                 </h1>
-                <p class="text-center text-gray-500 text-base md:text-lg max-w-md">
+                <p class="text-center text-gray-500 text-sm md:text-xl max-w-md">
                     We're working hard to improve the user experience. Stay tuned!
                 </p>
             </div>

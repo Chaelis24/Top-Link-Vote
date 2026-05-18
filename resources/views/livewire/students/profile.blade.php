@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\{Hash, Auth, Session, Storage, DB, Log};
 new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
     use WithFileUploads;
 
+    // 1. STATE PROPERTIES
     public $name = '';
     public $email = '';
     public $student;
@@ -36,12 +37,20 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
     public $new_password_confirmation = '';
     public bool $isVotingOpen = false;
 
+    // 2. LIFECYCLE HOOKS
     public function mount()
     {
         $user = Auth::user()?->load('student');
         $profile = $user?->student;
+
+        $activeCycle = \App\Models\ElectionCycle::where('status', 'active')->first();
         $settings = Setting::pluck('value', 'key')->toArray();
-        $this->isVotingOpen = (bool) ($settings['allowVoting'] ?? false);
+
+        $isSettingOpen = (bool) ($settings['allowVoting'] ?? false);
+        $isDateValid = $activeCycle && now()->lte($activeCycle->voting_end);
+
+        $this->isVotingOpen = $isSettingOpen && $isDateValid;
+
         $this->name = $user?->name ?? '';
         $this->email = $user?->email ?? '';
 
@@ -65,6 +74,7 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
         }
     }
 
+    // 3. ACTION METHODS
     public function saveProfile()
     {
         $user = Auth::user();
@@ -131,6 +141,20 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
         ]);
     }
 
+    // 4. HELPER / UTILITY METHODS
+    public function checkMaintenance()
+    {
+        $isMaintenance = Setting::where('key', 'maintenanceMode')->value('value');
+
+        if ($isMaintenance == '1' || $isMaintenance === true) {
+            $this->dispatch('swal-maintenance', [
+                'icon' => 'warning',
+                'title' => 'System Maintenance',
+                'text' => 'The system is undergoing maintenance. You will be logged out.',
+            ]);
+        }
+    }
+
     public function logout()
     {
         Auth::guard('web')->logout();
@@ -139,7 +163,8 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
         return redirect()->route('login');
     }
 }; ?>
-<div>
+
+<div wire:poll.10s="checkMaintenance">
     @include('layouts.partials.student-sidebar')
 
     <main class="main-content">
@@ -370,24 +395,43 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
 
             <div class="col-lg-8">
                 <div class="glass-card p-4 h-100 border-0 shadow-sm">
-                    <h5 class="fw-bold mb-4 text-dark">
-                        <i class="bi bi-clock-history me-2 text-primary"></i>Activity Timeline
+                    <h5 class="fw-bold mb-4 text-dark d-flex align-items-center justify-content-between">
+                        <span><i class="bi bi-clock-history me-2 text-primary"></i>Activity Timeline</span>
                     </h5>
 
-                    <div class="position-relative mt-3">
-                        <div class="position-absolute top-0 h-100 border-start border-light"
-                            style="left: 15px; border-width: 2px !important;"></div>
+                    <div class="position-relative mt-3 ps-2">
+                        <div class="position-absolute border-start border-light-subtle"
+                            style="left: 15px; top: 15px; bottom: 15px; border-width: 2px !important; border-style: dashed !important;">
+                        </div>
 
                         @if ($has_voted)
                             <div class="position-relative d-flex align-items-start mb-4">
                                 <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle bg-success shadow-sm text-white"
                                     style="width: 32px; height: 32px; z-index: 2;">
-                                    <i class="bi bi-check-lg"></i>
+                                    <i class="bi bi-check-lg lh-1 fs-6"></i>
                                 </div>
                                 <div class="ps-3 pt-1">
-                                    <div class="fw-semibold text-dark">Cast Vote Successfully</div>
+                                    <div class="fw-semibold text-dark d-flex align-items-center">
+                                        Cast Vote Successfully
+                                        <span class="badge bg-success-subtle text-success ms-2 font-monospace"
+                                            style="font-size: 0.65rem;">LATEST</span>
+                                    </div>
                                     <small
-                                        class="text-secondary">{{ \Carbon\Carbon::parse($voted_at)->format('M d, Y, h:i A') }}</small>
+                                        class="text-secondary">{{ Carbon::parse($voted_at)->format('M d, Y, h:i A') }}</small>
+                                </div>
+                            </div>
+
+                            <div class="position-relative d-flex align-items-start mb-4">
+                                <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle bg-dark shadow-sm text-white"
+                                    style="width: 32px; height: 32px; z-index: 2;">
+                                    <i class="bi bi-receipt-lg lh-1 fs-6"></i>
+                                </div>
+                                <div class="ps-3 pt-1">
+                                    <div class="fw-semibold text-dark">Ballot Receipt Encrypted & Saved</div>
+                                    <small class="text-muted text-monospace font-monospace small"
+                                        style="font-size: 0.75rem;">
+                                        Ref: #{{ substr(md5($voted_at), 0, 8) }}...
+                                    </small>
                                 </div>
                             </div>
                         @endif
@@ -398,8 +442,14 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                                 <i class="bi bi-box-arrow-in-right"></i>
                             </div>
                             <div class="ps-3 pt-1">
-                                <div class="fw-semibold text-dark">Logged in to Voting Portal</div>
-                                <small class="text-secondary">Today</small>
+                                <div class="fw-semibold text-dark">
+                                    Logged in to Voting Portal
+                                    @if (!$has_voted)
+                                        <span class="badge bg-primary-subtle text-primary ms-2 font-monospace"
+                                            style="font-size: 0.65rem;">LATEST</span>
+                                    @endif
+                                </div>
+                                <small class="text-secondary">Today, {{ now()->format('h:i A') }}</small>
                             </div>
                         </div>
 
@@ -409,10 +459,11 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                                 <i class="bi bi-person-plus"></i>
                             </div>
                             <div class="ps-3 pt-1">
-                                <div class="fw-semibold text-dark">Account Created</div>
-                                <small class="text-secondary">Initial setup</small>
+                                <div class="fw-semibold text-dark">Account Verified & Created</div>
+                                <small class="text-secondary">Initial setup complete</small>
                             </div>
                         </div>
+
                     </div>
                 </div>
             </div>

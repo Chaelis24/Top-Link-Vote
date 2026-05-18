@@ -229,3 +229,37 @@ body {
 .scrollbar-hide::-webkit-scrollbar {
     display: none;
 }
+
+@keyframes spin-left {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(-360deg);
+    }
+}
+
+@keyframes spin-right {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(-360deg);
+    }
+}
+
+.gear-big,
+.gear-small {
+    transform-origin: center;
+    transform-box: fill-box;
+}
+
+.gear-big {
+    animation: spin-right 4s linear infinite;
+}
+
+.gear-small {
+    animation: spin-left 3s linear infinite;
+}

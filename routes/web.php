@@ -1,6 +1,6 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\{Route, Session, Auth};
 use Livewire\Volt\Volt;
 
 Route::middleware(['auth', 'role:student'])
@@ -18,6 +18,13 @@ Route::middleware(['auth', 'role:student'])
 
         Volt::route('/cast-vote', 'students.cast-vote')
             ->name('student.cast-vote');
+
+        Route::get('/force-logout', function () {
+            Auth::logout();
+            Session::invalidate();
+            Session::regenerateToken();
+            return redirect()->route('login');
+        })->name('force.logout');
     });
 
 

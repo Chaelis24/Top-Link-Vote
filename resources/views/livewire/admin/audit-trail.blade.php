@@ -114,7 +114,7 @@ new #[Layout('layouts.admin')] #[Title('User Activity')] class extends Component
                 <table class="table table-hover align-middle mb-0 hidden md:table">
                     <thead class="bg-light">
                         <tr style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px;">
-                            <th class="ps-4">User / Student</th>
+                            <th class="ps-4">Student / Candidate</th>
                             <th>Action & Description</th>
                             <th class="text-end pe-4">Location & Time</th>
                         </tr>

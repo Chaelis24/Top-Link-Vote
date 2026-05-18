@@ -3,7 +3,7 @@
 use Livewire\Volt\Component;
 use Illuminate\Support\Facades\{Auth, Session, DB, Hash};
 use Livewire\Attributes\{Layout, Title, Url};
-use App\Models\{User, Student, Role, Vote};
+use App\Models\{User, Student, Role, Vote, ElectionCycle};
 use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 use Illuminate\Support\Str;
@@ -26,7 +26,9 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
     public $editingStudentId;
     public $editForm = [
         'first_name' => '',
+        'middle_name' => '',
         'last_name' => '',
+        'suffix' => '',
         'course' => '',
         'year_level' => '',
         'status' => '',
@@ -35,6 +37,12 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
         'birthday' => '',
         'gender' => '',
     ];
+
+    #[Computed]
+    public function activeCycle()
+    {
+        return ElectionCycle::where('status', 'active')->latest()->first();
+    }
 
     public function with(): array
     {
@@ -168,7 +176,9 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
         $this->editingStudentId = $id;
         $this->editForm = [
             'first_name' => $student->first_name,
+            'middle_name' => $student->middle_name,
             'last_name' => $student->last_name,
+            'suffix' => $student->suffix,
             'course' => $student->course,
             'year_level' => $student->year_level,
             'status' => $student->status,
@@ -183,10 +193,16 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
     public function updateStudent()
     {
         $this->validate([
-            'editForm.first_name' => 'required',
-            'editForm.last_name' => 'required',
+            'editForm.first_name' => 'required|string|max:255',
+            'editForm.middle_name' => 'nullable|string|max:255',
+            'editForm.last_name' => 'required|string|max:255',
+            'editForm.suffix' => 'nullable|string|max:10',
+            'editForm.course' => 'required|string',
+            'editForm.year_level' => 'required',
+            'editForm.status' => 'required|in:active,inactive,suspended',
             'editForm.phone' => 'nullable|numeric',
             'editForm.birthday' => 'nullable|date',
+            'editForm.gender' => 'nullable|in:Male,Female,Other',
         ]);
 
         try {
@@ -529,49 +545,77 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
 
     <div class="modal fade" id="viewStudentModal" tabindex="-1" wire:ignore.self>
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title">Student Profile</h5>
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 15px;">
+                <div class="modal-header bg-primary text-white p-3">
+                    <h6 class="modal-title fw-bold mb-0">Student Profile Details</h6>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body p-4">
+                <div class="modal-body p-0">
                     @if ($selectedStudent)
-                        <div class="mb-4">
-                            <h6 class="text-uppercase fw-bold text-primary small mb-3 border-bottom pb-2">Student
-                                Information</h6>
-                            <p class="mb-1"><strong>Name:</strong> {{ $selectedStudent->first_name }}
-                                {{ $selectedStudent->last_name }}</p>
-                            <p class="mb-1"><strong>ID:</strong> {{ $selectedStudent->student_id }}</p>
-                            <p class="mb-1"><strong>Course:</strong> {{ $selectedStudent->course }}</p>
-                            <p class="mb-0"><strong>Email:</strong> {{ $selectedStudent->user->email ?? 'N/A' }}</p>
+                        <div class="p-4 text-center border-bottom bg-light">
+                            <div class="d-inline-flex align-items-center justify-content-center bg-primary text-white fw-bold shadow-sm mb-3"
+                                style="width: 60px; height: 60px; border-radius: 50%; font-size: 1.5rem;">
+                                {{ strtoupper(substr($selectedStudent->first_name, 0, 1)) }}{{ strtoupper(substr($selectedStudent->last_name, 0, 1)) }}
+                            </div>
+                            <h5 class="fw-bold text-dark mb-0">{{ $selectedStudent->first_name }}
+                                {{ $selectedStudent->last_name }}</h5>
+                            <p class="text-muted small mb-0">{{ $selectedStudent->student_id }} |
+                                {{ $selectedStudent->course }}</p>
                         </div>
 
-                        <div class="p-3 rounded-3 bg-emerald-light border border-primary-subtle">
-                            <h6 class="text-uppercase fw-bold text-primary small mb-2">Voting Details</h6>
+                        <div class="p-4">
+                            <h6 class="text-primary fw-bold small mb-3 text-uppercase" style="letter-spacing: 1px;">
+                                Information</h6>
+                            <div class="row g-3 mb-4">
+                                <div class="col-6">
+                                    <label class="text-primary fw-bold d-block mb-0" style="font-size: 0.65rem;">EMAIL
+                                        ADDRESS</label>
+                                    <span class="text-dark small">{{ $selectedStudent->user->email ?? 'N/A' }}</span>
+                                </div>
+                                <div class="col-6">
+                                    <label class="text-primary fw-bold d-block mb-0"
+                                        style="font-size: 0.65rem;">GENDER</label>
+                                    <span class="text-dark small">{{ $selectedStudent->gender ?? 'N/A' }}</span>
+                                </div>
+                            </div>
 
-                            @if ($selectedStudent->latestVote)
-                                <p class="mb-1">
-                                    <strong>Reference No:</strong>
-                                    <span
-                                        class="badge bg-white text-dark border shadow-sm px-2 py-1 fs-6 font-monospace">
-                                        {{ $selectedStudent->latestVote->reference_number }}
-                                    </span>
-                                </p>
-                                <p class="mb-0">
-                                    <strong>Voted on:</strong>
-                                    @if ($selectedStudent->latestVote && $selectedStudent->latestVote->created_at)
-                                        <span>{{ $selectedStudent->latestVote->created_at->timezone('Asia/Manila')->format('M d, Y - h:i A') }}</span>
-                                    @else
-                                        <span class="text-muted">Pending</span>
-                                    @endif
-                                </p>
-                            @else
-                                <p class="mb-0 text-muted fst-italic">
-                                    <i class="bi bi-info-circle me-1"></i> This student has not voted yet.
-                                </p>
-                            @endif
+                            <div class="p-3 rounded-3 border-0 shadow-sm"
+                                style="background: #f8f9ff; border-left: 4px solid #0d6efd !important;">
+                                <h6 class="text-primary fw-bold small mb-2 text-uppercase"
+                                    style="letter-spacing: 1px;">Voting Status</h6>
+
+                                @if ($selectedStudent->latestVote)
+                                    <div class="mb-2">
+                                        <label class="text-primary fw-bold d-block mb-1"
+                                            style="font-size: 0.65rem;">REFERENCE NO.</label>
+                                        <span
+                                            class="badge bg-white text-primary border border-primary-subtle px-2 py-1 font-monospace"
+                                            style="font-size: 0.85rem;">
+                                            {{ $selectedStudent->latestVote->reference_number }}
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <label class="text-primary fw-bold d-block mb-0"
+                                            style="font-size: 0.65rem;">VOTED ON</label>
+                                        <span class="text-dark small">
+                                            <i class="bi bi-calendar-check me-1"></i>
+                                            {{ $selectedStudent->latestVote->created_at->timezone('Asia/Manila')->format('M d, Y - h:i A') }}
+                                        </span>
+                                    </div>
+                                @else
+                                    <div class="py-2">
+                                        <span class="text-muted small fst-italic">
+                                            <i class="bi bi-info-circle me-1"></i> Not yet voted
+                                        </span>
+                                    </div>
+                                @endif
+                            </div>
                         </div>
                     @endif
+                </div>
+                <div class="modal-footer border-0 p-3">
+                    <button type="button" class="btn btn-secondary btn-sm fw-bold px-4"
+                        data-bs-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>
@@ -579,95 +623,119 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
 
     <div class="modal fade" id="editStudentModal" tabindex="-1" wire:ignore.self>
         <div class="modal-dialog modal-lg modal-dialog-centered px-2">
-            <div class="modal-content border-0 shadow-lg">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 15px;">
                 <div class="modal-header bg-primary text-white p-2 p-md-3">
                     <h6 class="modal-title fw-bold small mb-0">Edit Student Profile</h6>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
                         style="font-size: 0.75rem;"></button>
                 </div>
                 <form wire:submit="updateStudent">
-                    <div class="modal-body p-3 p-md-4">
-                        <div class="row g-2 g-md-3">
-                            <div class="col-6 col-md-6">
-                                <label class="form-label mb-1 text-muted fw-bold"
-                                    style="font-size: 0.65rem; letter-spacing: 0.5px;">FIRST NAME</label>
+                    <div class="modal-body p-3">
+                        <div class="row g-2">
+                            <div class="col-md-4 col-12">
+                                <label class="form-label mb-0 text-primary fw-bold" style="font-size: 0.65rem;">FIRST
+                                    NAME</label>
                                 <input type="text" wire:model="editForm.first_name"
-                                    class="form-control-modern py-1 py-md-2 text-sm" style="font-size: 0.85rem;">
-                            </div>
-                            <div class="col-6 col-md-6">
-                                <label class="form-label mb-1 text-muted fw-bold"
-                                    style="font-size: 0.65rem; letter-spacing: 0.5px;">LAST NAME</label>
-                                <input type="text" wire:model="editForm.last_name"
-                                    class="form-control-modern py-1 py-md-2 text-sm" style="font-size: 0.85rem;">
-                            </div>
-                            <div class="col-4 col-md-4">
-                                <label class="form-label mb-1 text-muted fw-bold"
-                                    style="font-size: 0.65rem;">COURSE</label>
-                                <select wire:model="editForm.course" class="form-select-modern py-1 py-md-2"
+                                    class="form-control-modern py-1 text-sm bg-light" disabled
                                     style="font-size: 0.8rem;">
+                            </div>
+                            <div class="col-md-3 col-6">
+                                <label class="form-label mb-0 text-primary fw-bold" style="font-size: 0.65rem;">MIDDLE
+                                    NAME</label>
+                                <input type="text" wire:model="editForm.middle_name"
+                                    class="form-control-modern py-1 text-sm bg-light" disabled
+                                    style="font-size: 0.8rem;">
+                            </div>
+                            <div class="col-md-3 col-6">
+                                <label class="form-label mb-0 text-primary fw-bold" style="font-size: 0.65rem;">LAST
+                                    NAME</label>
+                                <input type="text" wire:model="editForm.last_name"
+                                    class="form-control-modern py-1 text-sm bg-light" disabled
+                                    style="font-size: 0.8rem;">
+                            </div>
+                            <div class="col-md-2 col-12">
+                                <label class="form-label mb-0 text-primary fw-bold"
+                                    style="font-size: 0.65rem;">SUFFIX</label>
+                                <input type="text" wire:model="editForm.suffix"
+                                    class="form-control-modern py-1 text-sm bg-light" disabled
+                                    style="font-size: 0.8rem;" placeholder="N/A">
+                            </div>
+
+                            <div class="col-md-4 col-4">
+                                <label class="form-label mb-0 text-primary fw-bold"
+                                    style="font-size: 0.65rem;">COURSE</label>
+                                <select wire:model="editForm.course"
+                                    class="form-select-modern py-1 @error('editForm.course') is-invalid @enderror"
+                                    style="font-size: 0.8rem;">
+                                    <option value="">Select</option>
                                     <option>IT</option>
                                     <option>HRMT</option>
                                     <option>HST</option>
                                     <option>ECT</option>
                                 </select>
                             </div>
-                            <div class="col-4 col-md-4">
-                                <label class="form-label mb-1 text-muted fw-bold"
-                                    style="font-size: 0.65rem;">YEAR</label>
-                                <select wire:model="editForm.year_level" class="form-select-modern py-1 py-md-2"
+                            <div class="col-md-4 col-4">
+                                <label class="form-label mb-0 text-primary fw-bold" style="font-size: 0.65rem;">YEAR
+                                    LEVEL</label>
+                                <select wire:model="editForm.year_level" class="form-select-modern py-1"
                                     style="font-size: 0.8rem;">
                                     <option value="1">1st Yr</option>
                                     <option value="2">2nd Yr</option>
                                     <option value="3">3rd Yr</option>
                                 </select>
                             </div>
-                            <div class="col-4 col-md-4">
-                                <label class="form-label mb-1 text-muted fw-bold"
+                            <div class="col-md-4 col-4">
+                                <label class="form-label mb-0 text-primary fw-bold"
                                     style="font-size: 0.65rem;">STATUS</label>
-                                <select wire:model="editForm.status" class="form-select-modern py-1 py-md-2"
+                                <select wire:model="editForm.status" class="form-select-modern py-1"
                                     style="font-size: 0.8rem;">
                                     <option value="active">Active</option>
-                                    <option value="inactive">Inactv</option>
+                                    <option value="inactive">Inactive</option>
+                                    <option value="suspended">Suspended</option>
                                 </select>
                             </div>
-                            <div class="col-7 col-md-6">
-                                <label class="form-label mb-1 text-muted fw-bold" style="font-size: 0.65rem;">PHONE
+
+                            <div class="col-md-5 col-12">
+                                <label class="form-label mb-0 text-primary fw-bold" style="font-size: 0.65rem;">PHONE
                                     NUMBER</label>
                                 <input type="text" wire:model="editForm.phone"
-                                    class="form-control-modern py-1 py-md-2" placeholder="09xxxxxxxxx"
-                                    style="font-size: 0.85rem;">
+                                    class="form-control-modern py-1 @error('editForm.phone') is-invalid @enderror"
+                                    placeholder="09xxxxxxxxx" style="font-size: 0.8rem;">
                             </div>
-                            <div class="col-5 col-md-6">
-                                <label class="form-label mb-1 text-muted fw-bold"
+                            <div class="col-md-3 col-6">
+                                <label class="form-label mb-0 text-primary fw-bold"
                                     style="font-size: 0.65rem;">GENDER</label>
-                                <select wire:model="editForm.gender" class="form-select-modern py-1 py-md-2"
-                                    style="font-size: 0.8rem;">
-                                    <option value="">Select</option>
+                                <select wire:model="editForm.gender" class="form-select-modern py-1 bg-light"
+                                    style="font-size: 0.8rem;" disabled>
                                     <option value="Male">Male</option>
                                     <option value="Female">Female</option>
                                 </select>
                             </div>
-                            <div class="col-12 col-md-6">
-                                <label class="form-label mb-1 text-muted fw-bold"
+                            <div class="col-md-4 col-6">
+                                <label class="form-label mb-0 text-primary fw-bold"
                                     style="font-size: 0.65rem;">BIRTHDAY</label>
                                 <input type="date" wire:model="editForm.birthday"
-                                    class="form-control-modern py-1 py-md-2" style="font-size: 0.85rem;">
+                                    class="form-control-modern py-1 bg-light text-sm" style="font-size: 0.8rem;"
+                                    disabled>
                             </div>
+
                             <div class="col-12">
-                                <label class="form-label mb-1 text-muted fw-bold"
+                                <label class="form-label mb-0 text-primary fw-bold"
                                     style="font-size: 0.65rem;">ADDRESS</label>
-                                <textarea wire:model="editForm.address" class="form-control-modern py-1 py-md-2" rows="2"
-                                    style="font-size: 0.85rem;"></textarea>
+                                <textarea wire:model="editForm.address"
+                                    class="form-control-modern py-1 @error('editForm.address') is-invalid @enderror" rows="1"
+                                    style="font-size: 0.8rem;"></textarea>
                             </div>
+
                         </div>
                     </div>
-                    <div class="modal-footer bg-light p-2 p-md-3">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"
-                            style="font-size: 0.75rem;">
-                            Cancel
+
+                    <div class="modal-footer bg-light p-2">
+                        <button type="submit" class="btn-glow px-4 py-2 fw-bold"
+                            style="font-size: 0.7rem; border-radius: 5px;" wire:loading.attr="disabled">
+                            <span wire:loading.remove>Update Profile</span>
+                            <span wire:loading><span class="spinner-border spinner-border-sm"></span></span>
                         </button>
-                        <button type="submit" class="btn-glow px-3 py-2"
-                            style="font-size: 0.75rem; border-radius: 6px;">Update Profile</button>
                     </div>
                 </form>
             </div>

@@ -118,7 +118,7 @@
 .user-avatar {
     width: 32px;
     height: 32px;
-    border-radius: 10px;
+    border-radius: 50%;
     object-fit: cover;
 }
 .user-details {
@@ -365,6 +365,7 @@
         flex-direction: column !important;
         justify-content: center !important;
         align-items: center !important;
+        margin-top: 6px;
     }
 
     .user-details,

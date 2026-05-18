@@ -11,21 +11,24 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        $this->call([
-            RoleSeeder::class,
-        ]);
+        $roles = ['admin', 'student', 'candidate'];
+        foreach ($roles as $role) {
+            Role::firstOrCreate(['name' => $role]);
+        }
 
-        $adminRole = Role::where('name', 'admin')->first();
+        // $adminRole = Role::where('name', 'admin')->first();
 
-        $admin = User::create([
-            'name' => 'System Administrator',
-            'email' => 'admin@gmail.com',
-            'password' => Hash::make('admin'),
-        ]);
+        $admin = User::updateOrCreate(
+            ['email' => 'admin@gmail.com'],
+            [
+                'name' => 'System Administrator',
+                'password' => Hash::make('admin'),
+            ]
+        );
 
         $admin->assignRole('admin');
 
-        $studentRole = Role::where('name', 'student')->first();
+        // $studentRole = Role::where('name', 'student')->first();
         $candidateRole = Role::where('name', 'candidate')->first();
 
         if (!$candidateRole) {

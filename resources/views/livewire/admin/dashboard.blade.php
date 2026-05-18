@@ -14,12 +14,17 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
 
     private function getDashboardData($forceRefresh = false): array
     {
+        $activeCycle = $this->active;
+        $cacheKey = 'admin_dashboard_data_' . ($activeCycle ? $activeCycle->id : 'none');
+
         if ($forceRefresh) {
             cache()->forget('admin_dashboard_data');
         }
 
         return cache()->remember('admin_dashboard_data', 3600, function () {
             $activeCycle = $this->active;
+            $activeCycleId = $activeCycle ? $activeCycle->id : 0;
+
             $now = now();
             $targetDate = null;
             $timerLabel = 'Days Remaining';
@@ -42,6 +47,7 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
 
             $departments = ['IT', 'HRMT', 'ECT', 'HST'];
             $allCandidates = Candidate::with(['student', 'position'])
+                ->where('election_cycle_id', $activeCycleId)
                 ->withCount('votes')
                 ->get();
 
@@ -60,9 +66,14 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
             }
 
             $totalStudents = Student::count();
-            $totalVotes = Vote::distinct('student_id')->count('student_id');
+            $totalVotes = Vote::whereHas('candidate', function ($q) use ($activeCycleId) {
+                $q->where('election_cycle_id', $activeCycleId);
+            })
+                ->distinct('student_id')
+                ->count('student_id');
 
-            $trends = Vote::selectRaw('HOUR(created_at) as hour, COUNT(*) as count')
+            $trends = Vote::whereHas('candidate', fn($q) => $q->where('election_cycle_id', $activeCycleId))
+                ->selectRaw('HOUR(created_at) as hour, COUNT(*) as count')
                 ->where('created_at', '>=', now()->subHours(6))
                 ->groupBy('hour')
                 ->orderBy('hour')
@@ -70,6 +81,8 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
                 ->map(fn($item) => ['hour' => $item->hour . ':00', 'count' => $item->count]);
 
             $yearLevelData = Student::join('votes', 'students.id', '=', 'votes.student_id')
+                ->join('candidates', 'votes.candidate_id', '=', 'candidates.id')
+                ->where('candidates.election_cycle_id', $activeCycleId)
                 ->selectRaw('students.year_level, COUNT(DISTINCT students.id) as total')
                 ->whereIn('students.year_level', [1, 2, 3])
                 ->groupBy('students.year_level')
@@ -82,9 +95,9 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
                 'turnout' => $totalStudents > 0 ? number_format(($totalVotes / $totalStudents) * 100, 1) . '%' : '0%',
                 'tallyByDept' => $tallyByDept,
                 'departments' => $departments,
-                'targetDate' => $targetDate ? $targetDate->toIso8601String() : null,
+                'targetDate' => $targetDate ? $targetDate->format('Y-m-d H:i:s') : null,
                 'timerLabel' => $timerLabel,
-                'endTime' => $activeCycle?->voting_end?->toIso8601String(),
+                'endTime' => $activeCycle?->voting_end?->format('Y-m-d H:i:s'),
                 'trends' => $trends,
                 'yearLevel' => [
                     'labels' => $yearLevelData->pluck('year_level')->map(fn($l) => 'Year ' . $l),
@@ -172,16 +185,15 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
                         <span wire:loading wire:target="downloadReport" class="spinner-border spinner-border-sm"></span>
                         <i wire:loading.remove wire:target="downloadReport"
                             class="bi bi-file-earmark-pdf d-md-block"></i>
-                        <span class="fw-bold d-none d-md-inline ms-2" style="font-size: 12px;">Download Report</span>
+                        <span class="fw-bold d-none d-md-inline ms-2" style="font-size: 12px;">Download Result</span>
                     </button>
                 @elseif ($isOngoing)
-                    <button type="button"
-                        class="btn btn-primary d-flex align-items-center justify-content-center w-100 py-2"
-                        style="cursor: wait; opacity: 0.8;" disabled>
-                        <i class="bi bi-hourglass-split"></i>
-                        <span class="fw-bold d-none d-md-inline ms-2" style="font-size: 12px;">Processing
-                            Election...</span>
-                    </button>
+                    <div class="btn-glow d-flex align-items-center justify-content-center px-2 px-md-3 bg-success text-white"
+                        style="height: 38px; border-radius: 8px; cursor: default;" title="Election Process Ongoing">
+                        <i class="bi bi-clock-history"></i>
+                        <span class="fw-bold d-none d-md-inline ms-2" style="font-size: 14px;">Election Process
+                            Ongoing</span>
+                    </div>
                 @else
                     <button type="button"
                         class="btn btn-light d-flex align-items-center justify-content-center w-100 py-2"
@@ -256,22 +268,39 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
 
             <div class="col-6 col-lg-3">
                 <div class="stat-card p-2 p-md-3 shadow-sm h-100" x-data="{
-                    targetDate: '{{ $targetDate }}',
-                    displayValue: '0',
+                    remainingSeconds: {{ $targetDate ? now()->diffInSeconds($targetDate, false) : -1 }},
+                    displayValue: '...',
+                
                     updateTimer() {
-                        if (!this.targetDate) return;
-                        let diff = new Date(this.targetDate) - new Date();
-                        if (diff > 0) {
-                            let d = Math.floor(diff / (1000 * 60 * 60 * 24));
-                            let h = Math.floor((diff / (1000 * 60 * 60)) % 24);
-                            this.displayValue = `${String(d).padStart(2, '0')}d ${String(h).padStart(2, '0')}h`;
-                        } else { this.displayValue = 'Closed'; }
+                        if (this.remainingSeconds <= 0) {
+                            this.displayValue = 'Closed';
+                            return;
+                        }
+                
+                        let s = this.remainingSeconds;
+                        let d = Math.floor(s / (24 * 3600));
+                        s %= (24 * 3600);
+                        let h = Math.floor(s / 3600);
+                        s %= 3600;
+                        let m = Math.floor(s / 60);
+                        let sc = s % 60;
+                
+                        this.displayValue = `${String(d).padStart(2, '0')}d ${String(h).padStart(2, '0')}h ${String(m).padStart(2, '0')}m`;
                     }
                 }" x-init="updateTimer();
-                setInterval(() => updateTimer(), 1000)">
-                    <div class="stat-icon bg-warning-soft text-warning small"><i class="bi bi-calendar-event"></i></div>
-                    <div class="stat-value mt-1 fs-5 fw-bold text-warning" style="color: #f59e0b !important;"><span
-                            x-text="displayValue">00d 00h</span></div>
+                setInterval(() => {
+                    if (remainingSeconds > 0) {
+                        remainingSeconds--;
+                        updateTimer();
+                    }
+                }, 1000);">
+
+                    <div class="stat-icon bg-warning-soft text-warning small">
+                        <i class="bi bi-calendar-event"></i>
+                    </div>
+                    <div class="stat-value mt-1 fs-5 fw-bold text-warning" style="color: #f59e0b !important;">
+                        <span x-text="displayValue">00d 00h 00m</span>
+                    </div>
                     <div class="stat-label small text-muted text-truncate">{{ $timerLabel }}</div>
                 </div>
             </div>

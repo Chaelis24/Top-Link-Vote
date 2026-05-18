@@ -7,18 +7,30 @@ use Illuminate\Support\Facades\{Auth, Mail, DB, Session, Log};
 use App\Models\{Position, Candidate, Vote, ElectionCycle, ActivityLog, Setting};
 
 new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component {
+    // 1. STATE PROPERTIES
     public $profile_photo_path = '';
     public int $currentStep = 1;
     public array $selections = [];
     public $student;
 
-    #[Computed]
-    public function isVotingOpen()
+    // 2. LIFECYCLE HOOKS
+    public function mount()
     {
-        $setting = Setting::where('key', 'allowVoting')->first();
-        return $setting && (bool) $setting->value;
+        $user = Auth::user()?->load('student');
+        $this->student = $user?->student;
+
+        if ($this->student) {
+            $this->profile_photo_path = $this->student->photo;
+        }
+
+        if ($this->isVotingOpen && !$this->hasVoted) {
+            foreach ($this->electionData as $position) {
+                $this->selections[$position->id] = null;
+            }
+        }
     }
 
+    // 3. COMPUTED PROPERTIES
     #[Computed]
     public function hasVoted()
     {
@@ -29,6 +41,23 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
     public function activeCycle()
     {
         return ElectionCycle::where('status', 'active')->first();
+    }
+
+    #[Computed]
+    public function isVotingOpen()
+    {
+        $setting = Setting::where('key', 'allowVoting')->first();
+        $activeCycle = $this->activeCycle;
+
+        if (!$setting || !(bool) $setting->value) {
+            return false;
+        }
+
+        if (!$activeCycle || now()->gt($activeCycle->voting_end)) {
+            return false;
+        }
+
+        return true;
     }
 
     #[Computed]
@@ -58,22 +87,7 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
             ->get();
     }
 
-    public function mount()
-    {
-        $user = Auth::user()?->load('student');
-        $this->student = $user?->student;
-
-        if ($this->student) {
-            $this->profile_photo_path = $this->student->photo;
-        }
-
-        if ($this->isVotingOpen && !$this->hasVoted) {
-            foreach ($this->electionData as $position) {
-                $this->selections[$position->id] = null;
-            }
-        }
-    }
-
+    // 4. ACTION METHODS (User Interactions)
     public function setStep($step)
     {
         if ($step > $this->currentStep) {
@@ -192,6 +206,20 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
         }
     }
 
+    // 5. HELPER / UTILITY METHODS
+    public function checkMaintenance()
+    {
+        $isMaintenance = Setting::where('key', 'maintenanceMode')->value('value');
+
+        if ($isMaintenance == '1' || $isMaintenance === true) {
+            $this->dispatch('swal-maintenance', [
+                'icon' => 'warning',
+                'title' => 'System Maintenance',
+                'text' => 'The system is undergoing maintenance. You will be logged out.',
+            ]);
+        }
+    }
+
     public function getAvatarColor($id)
     {
         $colors = ['#10b981', '#3b82f6', '#6366f1', '#f59e0b', '#ef4444'];
@@ -206,7 +234,8 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
         return redirect()->route('login');
     }
 }; ?>
-<div>
+
+<div wire:poll.10s="checkMaintenance">
     @include('layouts.partials.student-sidebar')
     <main class="main-content">
         <div class="topbar">
@@ -267,14 +296,16 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                 <div class="glass-card p-5 text-center shadow-sm border-0 bg-white"
                     style="max-width: 550px; border-radius: 25px;">
                     <div class="mb-4">
-                        <i class="bi bi-lock-fill text-warning" style="font-size: 5rem;"></i>
+                        <i class="bi bi-calendar2-week text-muted" style="font-size: 3.5rem;"></i>
                     </div>
-                    <h2 class="fw-bold text-dark mb-2">Voting Services are Currently Unavailable</h2>
-                    <p class="text-secondary mb-4">The digital ballot is inactive as the election period has not yet
-                        commenced or has officially concluded. Please cross-reference with the Commission on Elections
-                        for the sanctioned schedule.</p>
-                    <a href="/students/dashboard" wire:navigate class="btn btn-secondary w-100 py-3">Back to
-                        Dashboard</a>
+                    <h3 class="fw-bold text-dark mb-2">Voting is Currently Inactive</h3>
+                    <p class="text-secondary mb-4 px-3">
+                        There is no active election cycle at this time. Please check the Commission on Elections
+                        announcement for the official timeline and schedule.
+                    </p>
+                    <a href="/students/dashboard" wire:navigate class="btn btn-secondary btn-sm w-75 py-2 fw-bold">
+                        Return to Dashboard
+                    </a>
                 </div>
             </div>
         @else
@@ -555,21 +586,34 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                                     Review Again
                                 </span>
                             </button>
-                            <button wire:click="submitVote" wire:loading.attr="disabled"
-                                class="w-full xs:w-auto group relative inline-flex items-center justify-center px-6 py-3 md:py-2.5 font-bold text-white transition-all duration-200 bg-[#10b981] rounded-full shadow-lg hover:bg-emerald-600 active:scale-95 disabled:opacity-75 disabled:cursor-wait">
-                                <span wire:loading.remove wire:target="submitVote"
-                                    class="flex items-center gap-2 uppercase tracking-wider text-[10px] md:text-[11px]">
-                                    Cast Official Vote
-                                    <i
-                                        class="bi bi-send-fill group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform text-xs"></i>
-                                </span>
-                                <span wire:loading wire:target="submitVote"
-                                    class="flex items-center gap-2 uppercase tracking-wider text-[10px] md:text-[11px]">
-                                    <span class="spinner-border spinner-border-sm" role="status"
-                                        aria-hidden="true"></span>
-                                    Recording...
-                                </span>
-                            </button>
+                            <div x-data="{ isOffline: !navigator.onLine }" x-init="window.addEventListener('online', () => isOffline = false);
+                            window.addEventListener('offline', () => isOffline = true)">
+
+                                <button wire:click="submitVote" wire:loading.attr="disabled" :disabled="isOffline"
+                                    class="w-full xs:w-auto group relative inline-flex items-center justify-center px-6 py-3 md:py-2.5 font-bold text-white transition-all duration-200 rounded-full shadow-lg active:scale-95 disabled:opacity-75"
+                                    :class="isOffline ? 'bg-secondary cursor-not-allowed' : 'bg-[#10b981] hover:bg-emerald-600'">
+
+                                    <span x-show="!isOffline" wire:loading.remove wire:target="submitVote"
+                                        class="flex items-center gap-2 uppercase tracking-wider text-[10px] md:text-[11px]">
+                                        Cast Official Vote
+                                        <i
+                                            class="bi bi-send-fill group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform text-xs"></i>
+                                    </span>
+
+                                    <span x-show="isOffline" x-cloak
+                                        class="flex items-center gap-2 uppercase tracking-wider text-[10px] md:text-[11px]">
+                                        <i class="bi bi-wifi-off text-xs"></i>
+                                        Offline: Check Connection
+                                    </span>
+
+                                    <span wire:loading wire:target="submitVote"
+                                        class="flex items-center gap-2 uppercase tracking-wider text-[10px] md:text-[11px]">
+                                        <span class="spinner-border spinner-border-sm" role="status"
+                                            aria-hidden="true"></span>
+                                        Recording...
+                                    </span>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
