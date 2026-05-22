@@ -65,7 +65,7 @@ new #[Layout('layouts.admin')] #[Title('User Activity')] class extends Component
         Auth::guard('web')->logout();
         Session::invalidate();
         Session::regenerateToken();
-        return redirect()->route('login');
+        return redirect()->route('admin.login');
     }
 }; ?>
 
@@ -76,7 +76,7 @@ new #[Layout('layouts.admin')] #[Title('User Activity')] class extends Component
         <div class="topbar">
             <div>
                 <h2 class="fw-bold text-primary">System <span class="text-accent">Audit Trail</span></h2>
-                <p class="text-muted mb-0" style="font-size: 0.85rem;">Detailed accountability and security monitoring</p>
+                <p class="text-muted mb-0" style="font-size: 0.85rem;">Track Student/Candidate Activity</p>
             </div>
         </div>
 

@@ -336,7 +336,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
         Auth::guard('web')->logout();
         Session::invalidate();
         Session::regenerateToken();
-        return redirect()->route('login');
+        return redirect()->route('admin.login');
     }
 }; ?>
 
@@ -347,7 +347,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
         <div class="topbar">
             <div class="topbar-info">
                 <h2 class="fw-bold text-primary">Manage <span class="text-accent">Candidates Profile</span></h2>
-                <p class="text-muted mb-0" style="font-size: 0.85rem;">Unified candidate records and electoral profiles
+                <p class="text-muted mb-0" style="font-size: 0.85rem;">Import & Update Candidate Profile
                 </p>
             </div>
             <div x-data="{
@@ -509,7 +509,8 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="4" class="text-center py-5 text-muted fst-italic">No records found.</td>
+                                <td colspan="4" class="text-center py-5 text-muted fst-italic">No candidate found.
+                                </td>
                             </tr>
                         @endforelse
                     </tbody>

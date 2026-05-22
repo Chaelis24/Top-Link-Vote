@@ -109,7 +109,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
         Session::invalidate();
         Session::regenerateToken();
 
-        return redirect()->route('login');
+        return redirect()->route('admin.login');
     }
 }; ?>
 <div wire:poll.15s>
@@ -119,8 +119,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
         <div class="topbar">
             <div class="topbar-info">
                 <h2 class="fw-bold text-primary">Manage <span class="text-accent">Positions</span></h2>
-                <p class="text-muted mb-0" style="font-size: 0.85rem;">Define the organizational structure for the
-                    election</p>
+                <p class="text-muted mb-0" style="font-size: 0.85rem;">Add Position for Student Election</p>
             </div>
             <div class="d-flex align-items-center gap-3">
                 <button class="btn-glow btn-sm d-flex align-items-center justify-content-center gap-1"

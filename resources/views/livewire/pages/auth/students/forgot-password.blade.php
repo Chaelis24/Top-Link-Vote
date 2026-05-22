@@ -3,7 +3,7 @@
 use Illuminate\Support\Facades\Password;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
-use App\Models\Setting;
+use App\Models\{Setting, Student};
 
 new #[Layout('layouts.guest')] class extends Component {
     public string $email = '';
@@ -28,7 +28,7 @@ new #[Layout('layouts.guest')] class extends Component {
             'email' => ['required', 'string', 'email'],
         ]);
 
-        $student = \App\Models\Student::where('student_id', $this->student_id)->first();
+        $student = Student::where('student_id', $this->student_id)->first();
 
         if (!$student || $student->user?->email !== $this->email) {
             $this->dispatch('swal:modal', [

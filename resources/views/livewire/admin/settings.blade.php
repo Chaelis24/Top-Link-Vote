@@ -63,7 +63,7 @@ new #[Layout('layouts.admin')] #[Title('Settings')] class extends Component {
         Auth::guard('web')->logout();
         Session::invalidate();
         Session::regenerateToken();
-        return redirect()->route('login');
+        return redirect()->route('admin.login');
     }
 }; ?>
 <div wire:poll.15s x-data="{
@@ -87,7 +87,7 @@ new #[Layout('layouts.admin')] #[Title('Settings')] class extends Component {
         <div class="topbar">
             <div class="topbar-info">
                 <h2 class="fw-bold text-primary">Account <span class="text-accent">Settings</span></h2>
-                <p class="text-muted mb-0" style="font-size: 0.85rem;">Manage your administrative profile and security</p>
+                <p class="text-muted mb-0" style="font-size: 0.85rem;">Manage Your Profile & Security</p>
             </div>
             <div class="d-flex align-items-center gap-3">
                 <div class="text-end d-none d-md-block">

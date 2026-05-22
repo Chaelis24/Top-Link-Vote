@@ -476,7 +476,7 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
         Auth::guard('web')->logout();
         Session::invalidate();
         Session::regenerateToken();
-        return redirect()->route('login');
+        return redirect()->route('admin.login');
     }
 }; ?>
 <div>

@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Mail\ResetPasswordMail;
+use App\Mail\AdminResetPasswordMail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -54,10 +54,21 @@ class User extends Authenticatable
 
     public function sendPasswordResetNotification($token)
     {
-        $url = url(route('password.reset', [
+        if ($this->hasRole('admin')) {
+            $url = route('admin.password.reset', [
+                'token' => $token,
+                'email' => $this->email,
+            ]);
+            $this->notify(new \Illuminate\Auth\Notifications\ResetPassword($token));
+
+            Mail::to($this->email)->send(new AdminResetPasswordMail($url, $this));
+            return;
+        }
+
+        $url = route('password.reset', [
             'token' => $token,
             'email' => $this->email,
-        ], false));
+        ]);
 
         $student = $this->student;
 

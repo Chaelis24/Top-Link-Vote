@@ -148,7 +148,7 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
         Auth::guard('web')->logout();
         Session::invalidate();
         Session::regenerateToken();
-        return redirect()->route('login');
+        return redirect()->route('admin.login');
     }
 }; ?>
 
@@ -169,7 +169,7 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
         <div class="topbar">
             <div class="topbar-info">
                 <h2 class="fw-bold text-primary">Admin <span class="text-accent">Dashboard</span></h2>
-                <p class="text-muted mb-0" style="font-size: 0.85rem;">Election Management & Real-time Analytics</p>
+                <p class="text-muted mb-0" style="font-size: 0.85rem;">Live Election Analytics & Overview</p>
             </div>
             <div class="d-flex align-items-center gap-3">
                 @php

@@ -109,7 +109,7 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
         Auth::guard('web')->logout();
         Session::invalidate();
         Session::regenerateToken();
-        return redirect()->route('login');
+        return redirect()->route('admin.login');
     }
 }; ?>
 
@@ -120,7 +120,7 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
         <div class="topbar">
             <div class="topbar-info">
                 <h2 class="fw-bold text-primary">Platform <span class="text-accent">Management</span></h2>
-                <p class="text-muted mb-0" style="font-size: 0.85rem;">Review candidate profiles and manifestos</p>
+                <p class="text-muted mb-0" style="font-size: 0.85rem;">View & Approve Candidate Platform</p>
             </div>
         </div>
         <div class="flex items-center w-full md:w-auto mb-3">
@@ -254,7 +254,7 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="text-center py-5 text-muted small">No records found.</td>
+                                <td colspan="5" class="text-center py-5 text-muted small">No platform found.</td>
                             </tr>
                         @endforelse
                     </tbody>

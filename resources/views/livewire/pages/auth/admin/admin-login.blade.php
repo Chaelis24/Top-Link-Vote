@@ -79,31 +79,37 @@ new #[Layout('layouts.guest')] class extends Component {
                 <p class="text-gray-500 text-xs md:text-sm">Enter your credentials.</p>
             </div>
 
-            @if ($errors->any())
-                <div
-                    class="mb-4 text-red-600 text-[10px] font-bold uppercase p-3 bg-red-50 rounded-lg border border-red-100">
-                    {{ $errors->first() }}
-                </div>
-            @endif
-
             <form wire:submit="login" class="space-y-4 md:space-y-5">
                 <div>
                     <label class="text-[10px] font-bold uppercase text-gray-500 mb-1 block ms-1">Admin Email</label>
                     <input wire:model="form.email" type="email" placeholder="admin@gmail.com" required autofocus
-                        class="w-full px-4 py-2.5 md:py-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-blue-100 focus:border-[#1e3a8a] outline-none transition-all text-sm text-[#1e293b]">
-                    <x-input-error :messages="$errors->get('form.email')" class="mt-2 text-red-600 text-[10px]" />
+                        class="w-full px-4 py-2.5 md:py-3 rounded-lg border outline-none transition-all text-sm text-[#1e293b] focus:ring-2
+                    {{ $errors->has('email') || $errors->has('form.email')
+                        ? 'border-red-500 focus:border-red-500 focus:ring-red-200'
+                        : 'border-gray-200 focus:ring-blue-100 focus:border-[#1e3a8a]' }}">
+                    @error('email')
+                        <p class="text-[10px] text-red-500 font-bold mt-1 ms-1 uppercase italic">{{ $message }}</p>
+                    @enderror
+                    @error('form.email')
+                        <p class="text-[10px] text-red-500 font-bold mt-1 ms-1 uppercase italic">{{ $message }}</p>
+                    @enderror
                 </div>
 
                 <div x-data="{ show: false }" class="relative">
                     <label class="text-[10px] font-bold uppercase text-gray-500 mb-1 block ms-1">Admin Password</label>
-                    <input :type="show ? 'text' : 'password'" wire:model="form.password" placeholder="password" required
-                        class="w-full px-4 py-2.5 md:py-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-blue-100 focus:border-[#1e3a8a] outline-none transition-all text-sm text-[#1e293b]">
-
-                    <button type="button" @click="show = !show"
-                        class="absolute right-3 top-[32px] md:top-[38px] text-[9px] font-black text-[#3b82f6] uppercase tracking-widest hover:text-[#1e3a8a]">
-                        <span x-text="show ? 'Hide' : 'Show'"></span>
-                    </button>
-                    <x-input-error :messages="$errors->get('form.password')" class="mt-2 text-red-600 text-[10px]" />
+                    <div class="relative">
+                        <input :type="show ? 'text' : 'password'" wire:model="form.password" placeholder="password"
+                            required
+                            class="w-full px-4 py-2.5 md:py-3 rounded-lg border outline-none transition-all text-sm text-[#1e293b] focus:ring-2
+                            {{ $errors->has('password') || $errors->has('form.password')
+                                ? 'border-red-500 focus:border-red-500 focus:ring-red-200'
+                                : 'border-gray-200 focus:ring-blue-100 focus:border-[#1e3a8a]' }}">
+                        <button type="button" @click="show = !show"
+                            class="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black uppercase tracking-widest transition-colors
+                            {{ $errors->has('email') || $errors->has('form.email') ? 'text-red-500 hover:text-red-700' : 'text-[#3b82f6] hover:text-[#1e3a8a]' }}">
+                            <span x-text="show ? 'Hide' : 'Show'"></span>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="flex items-center justify-between text-[10px] font-bold uppercase tracking-tighter">
@@ -124,13 +130,6 @@ new #[Layout('layouts.guest')] class extends Component {
                     <span wire:loading>Authenticating...</span>
                 </button>
             </form>
-
-            <div class="mt-6 md:mt-8 pt-4 md:pt-6 border-t border-gray-50 text-center">
-                <a href="{{ url('/') }}" wire:navigate
-                    class="text-[10px] font-bold text-gray-400 uppercase tracking-widest hover:text-[#1e3a8a] inline-flex items-center transition-colors">
-                    Back to Student Portal
-                </a>
-            </div>
         </div>
     </div>
 </div>

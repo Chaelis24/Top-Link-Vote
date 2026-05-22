@@ -275,7 +275,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
         Auth::logout();
         Session::invalidate();
         Session::regenerateToken();
-        return redirect()->route('login');
+        return redirect()->route('admin.login');
     }
 }; ?>
 
@@ -286,7 +286,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
         <div class="topbar">
             <div class="topbar-info">
                 <h2 class="fw-bold text-primary">Manage <span class="text-accent">Students</span></h2>
-                <p class="text-muted mb-0 small">Student list management</p>
+                <p class="text-muted mb-0 small">Import & Update Student Profile</p>
             </div>
             <div x-data="{ progress: 0 }" x-on:livewire-upload-progress="progress = $event.detail.progress">
                 <input type="file" x-ref="csvInput" wire:model.live="csvFile" class="d-none" accept=".csv">
@@ -304,7 +304,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
             <div class="col-6 col-lg-3">
                 <div class="glass-card p-2 p-md-3 border-0 shadow-sm">
                     <div class="stat-value-sm text-lg md:text-2xl">{{ $totalStudents }}</div>
-                    <div class="stat-label text-[10px] md:text-xs uppercase font-semibold">Total</div>
+                    <div class="stat-label text-[10px] md:text-xs uppercase font-semibold">Total Students</div>
                 </div>
             </div>
             <div class="col-6 col-lg-3">
@@ -316,7 +316,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
             <div class="col-6 col-lg-3">
                 <div class="glass-card p-2 p-md-3 border-0 shadow-sm">
                     <div class="stat-value-sm text-warning text-lg md:text-2xl">{{ $notVotedCount }}</div>
-                    <div class="stat-label text-[10px] md:text-xs uppercase font-semibold">Pending</div>
+                    <div class="stat-label text-[10px] md:text-xs uppercase font-semibold">Not Voted</div>
                 </div>
             </div>
             <div class="col-6 col-lg-3">
@@ -423,8 +423,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                                 <td>
                                     {{ $student->first_name }}
                                     {{ $student->middle_name ? substr($student->middle_name, 0, 1) . '.' : '' }}
-                                    {{ $student->last_name }}
-                                    {{ $student->suffix ? ', ' . $student->suffix : '' }}
+                                    {{ $student->last_name }}{{ $student->suffix ? ', ' . $student->suffix : '' }}
                                 </td>
                                 <td>{{ $student->course }} - {{ $student->formatted_year }}</td>
                                 <td>{{ $student->user->email ?? 'N/A' }}</td>

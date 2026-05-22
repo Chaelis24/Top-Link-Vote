@@ -8,7 +8,7 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class AdminPasswordReset extends Mailable
+class AdminResetPasswordMail extends Mailable
 {
     use Queueable, SerializesModels;
 
