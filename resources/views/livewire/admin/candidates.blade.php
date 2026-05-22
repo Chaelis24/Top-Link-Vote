@@ -15,12 +15,12 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
 
     #[Url(history: true)]
     public string $search = '';
-
     #[Url(history: true)]
     public string $positionFilter = 'All Positions';
-
     #[Url(history: true)]
     public string $departmentFilter = 'All Departments';
+    #[Url(history: true)]
+    public string $selectedCycleId = 'active';
 
     public const DEPARTMENTS = ['IT', 'HRMT', 'ECT', 'HST'];
 
@@ -52,6 +52,11 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
         if (empty($this->editForm[$property])) {
             $this->editForm[$property][] = '';
         }
+    }
+
+    public function getElectionCyclesProperty()
+    {
+        return ElectionCycle::orderBy('created_at', 'desc')->get();
     }
 
     public function with(): array
@@ -88,13 +93,13 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
 
     public function loadCandidates()
     {
-        $activeCycleId = $this->activeCycle ? $this->activeCycle->id : 0;
+        $cycleId = $this->selectedCycleId === 'active' ? ($this->activeCycle ? $this->activeCycle->id : 0) : $this->selectedCycleId;
 
         return Candidate::query()
             ->with(['student', 'position', 'platforms'])
             ->withCount('votes')
             ->join('positions', 'candidates.position_id', '=', 'positions.id')
-            ->where('candidates.election_cycle_id', $activeCycleId)
+            ->where('candidates.election_cycle_id', $cycleId)
             ->where(function ($query) {
                 if ($this->search) {
                     $query->whereHas('student', function ($q) {
@@ -394,26 +399,42 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
 
         <div class="glass-card p-3 p-md-4 mb-3 border-0 shadow-sm">
             <div class="row g-2 g-md-3 align-items-center">
-                <div class="col-12 col-md-4">
+                <div class="col-12 col-md-3">
                     <div class="search-wrap-modern">
                         <i class="bi bi-search search-icon"></i>
                         <input type="text" wire:model.live.debounce.300ms="search" class="search-input"
                             placeholder="Search name or ID...">
                     </div>
                 </div>
-                <div class="col-6 col-md-4">
-                    <select wire:model.live="departmentFilter" class="form-select-modern w-100">
-                        <option value="All Departments">All Departments</option>
+
+                <div class="col-4 col-md-3">
+                    <select wire:model.live="departmentFilter" class="form-select-modern w-100"
+                        style="font-size: 0.8rem; padding-left: 5px; padding-right: 5px;">
+                        <option value="All Departments">🏢 All Depts</option>
                         @foreach ($availableDepartments as $dept)
                             <option value="{{ $dept }}">{{ $dept }}</option>
                         @endforeach
                     </select>
                 </div>
-                <div class="col-6 col-md-4">
-                    <select wire:model.live="positionFilter" class="form-select-modern w-100">
-                        <option value="All Positions">All Positions</option>
+
+                <div class="col-4 col-md-3">
+                    <select wire:model.live="positionFilter" class="form-select-modern w-100"
+                        style="font-size: 0.8rem; padding-left: 5px; padding-right: 5px;">
+                        <option value="All Positions">👔 Positions</option>
                         @foreach ($availablePositions as $name)
                             <option value="{{ $name }}">{{ $name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="col-4 col-md-3">
+                    <select wire:model.live="selectedCycleId" class="form-select-modern w-100"
+                        style="font-size: 0.8rem; padding-left: 5px; padding-right: 5px;">
+                        <option value="active">📅 Current Active Cycle</option>
+                        @foreach ($this->electionCycles as $cycle)
+                            @if ($cycle->status !== 'active')
+                                <option value="{{ $cycle->id }}">📜 {{ $cycle->cycle_name }}</option>
+                            @endif
                         @endforeach
                     </select>
                 </div>
@@ -449,11 +470,42 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                                             @endif
                                         </div>
                                         <div>
-                                            <div class="text-primary fw-bold text-nowrap">
-                                                {{ $candidate->student->first_name }}
-                                                {{ $candidate->student->last_name }}</div>
-                                            <div class="small text-muted fw-bold">{{ $candidate->student->student_id }}
-                                                | {{ $candidate->student->course }}</div>
+                                            <div class="text-primary fw-bold mb-0 d-flex align-items-center flex-wrap gap-2"
+                                                style="font-size: 0.95rem;">
+                                                <span>{{ $candidate->student->first_name }}
+                                                    {{ $candidate->student->last_name }}</span>
+
+                                                @if ($selectedCycleId !== 'active')
+                                                    @php
+                                                        $hasHigher = \App\Models\Candidate::where(
+                                                            'election_cycle_id',
+                                                            $candidate->election_cycle_id,
+                                                        )
+                                                            ->where('position_id', $candidate->position_id)
+                                                            ->where('id', '!=', $candidate->id)
+                                                            ->withCount('votes')
+                                                            ->get()
+                                                            ->max('votes_count');
+
+                                                        $isWinner =
+                                                            $candidate->votes_count >= $hasHigher &&
+                                                            $candidate->votes_count > 0;
+                                                    @endphp
+
+                                                    @if ($isWinner)
+                                                        <span
+                                                            class="badge bg-success-soft text-success x-small d-inline-flex align-items-center"
+                                                            style="font-size: 0.6rem; padding: 2px 4px; font-weight: 800;">
+                                                            <i class="bi bi-trophy-fill text-warning me-1"></i> WINNER
+                                                            ({{ $candidate->votes_count }})
+                                                        </span>
+                                                    @endif
+                                                @endif
+                                            </div>
+                                            <div class="small text-muted fw-bold">
+                                                {{ $candidate->student->student_id }} |
+                                                {{ $candidate->student->course }}
+                                            </div>
                                         </div>
                                     </div>
                                 </td>

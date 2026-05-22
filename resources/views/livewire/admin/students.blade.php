@@ -328,19 +328,53 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
         </div>
 
         <div class="glass-card p-3 mb-3 border-0 shadow-sm bg-white">
-            <div class="d-flex flex-nowrap align-items-center gap-2 overflow-x-auto pb-2 pb-md-0"
-                style="scrollbar-width: none; -ms-overflow-style: none;">
+            <div class="row g-2 align-items-center">
 
-                <div style="min-width: 180px; flex: 1;">
+                <div class="col-8 col-md-4">
                     <div class="search-wrap-modern">
                         <i class="bi bi-search"></i>
                         <input type="text" wire:model.live.debounce.300ms="search" placeholder="Search..."
-                            class="form-control-sm">
+                            class="form-control-sm w-100">
                     </div>
                 </div>
-                <div style="min-width: 110px;">
-                    <select wire:model.live="course" class="form-select-modern py-2">
-                        <option value="All Courses">All Courses</option>
+
+                <div class="col-4 col-md-2 order-md-last ms-md-auto">
+                    <button type="button" class="btn btn-outline-primary btn-sm w-100 py-2 flex-shrink-0"
+                        x-on:click="
+                Swal.fire({
+                    title: 'Export Data?',
+                    text: 'Do you want to download the student list as CSV?',
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#0d6efd',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Yes, download it!',
+                    cancelButtonText: 'Cancel'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        $wire.exportStudents()
+                        const Toast = Swal.mixin({
+                            toast: true,
+                            position: 'top-end',
+                            showConfirmButton: false,
+                            timer: 3000
+                        });
+                        Toast.fire({
+                            icon: 'success',
+                            title: 'Preparing download...'
+                        });
+                    }
+                })
+            ">
+                        <i class="bi bi-download"></i>
+                        <span class="d-none d-md-inline ms-1">Export</span>
+                    </button>
+                </div>
+
+                <div class="col-4 col-md-2">
+                    <select wire:model.live="course" class="form-select-modern py-2 w-100"
+                        style="font-size: 0.8rem; padding-left: 4px; padding-right: 4px;">
+                        <option value="All Courses">🏢 All Courses</option>
                         <option>IT</option>
                         <option>HRMT</option>
                         <option>HST</option>
@@ -348,58 +382,26 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                     </select>
                 </div>
 
-                <div style="min-width: 100px;">
-                    <select wire:model.live="year" class="form-select-modern py-2">
-                        <option value="All Years">All Years</option>
+                <div class="col-4 col-md-2">
+                    <select wire:model.live="year" class="form-select-modern py-2 w-100"
+                        style="font-size: 0.8rem; padding-left: 4px; padding-right: 4px;">
+                        <option value="All Years">🎓 All Years</option>
                         <option value="1">1st Year</option>
                         <option value="2">2nd Year</option>
                         <option value="3">3rd Year</option>
                     </select>
                 </div>
 
-                <div style="min-width: 110px;">
-                    <select wire:model.live="status" class="form-select-modern py-2">
-                        <option value="All Status">All Status</option>
+                <div class="col-4 col-md-2">
+                    <select wire:model.live="status" class="form-select-modern py-2 w-100"
+                        style="font-size: 0.8rem; padding-left: 4px; padding-right: 4px;">
+                        <option value="All Status">📊 All Status</option>
                         <option>Voted</option>
                         <option>Not Voted</option>
                         <option>Deactivated</option>
                     </select>
                 </div>
 
-                <div style="min-width: 90px;">
-                    <button type="button" class="btn btn-outline-primary btn-sm w-100 py-2 flex-shrink-0"
-                        x-on:click="
-                        Swal.fire({
-                            title: 'Export Data?',
-                            text: 'Do you want to download the student list as CSV?',
-                            icon: 'question',
-                            showCancelButton: true,
-                            confirmButtonColor: '#0d6efd',
-                            cancelButtonColor: '#6c757d',
-                            confirmButtonText: 'Yes, download it!',
-                            cancelButtonText: 'Cancel'
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                $wire.exportStudents()
-
-                                // Optional: Toast success
-                                const Toast = Swal.mixin({
-                                    toast: true,
-                                    position: 'top-end',
-                                    showConfirmButton: false,
-                                    timer: 3000
-                                });
-                                Toast.fire({
-                                    icon: 'success',
-                                    title: 'Preparing download...'
-                                });
-                            }
-                        })
-                    ">
-                        <i class="bi bi-download md:me-1"></i>
-                        <span class="hidden md:inline">Export</span>
-                    </button>
-                </div>
             </div>
         </div>
 
