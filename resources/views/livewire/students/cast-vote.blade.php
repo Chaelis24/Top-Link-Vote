@@ -132,6 +132,19 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
         }
 
         $user = auth()->user();
+
+        $throttleKey = 'submit-vote:' . $user->id;
+        if (RateLimiter::tooManyAttempts($throttleKey, 1)) {
+            $this->dispatch('swal', [
+                'title' => 'Please Wait',
+                'text' => 'Your vote is currently being processed. Please wait a few seconds.',
+                'icon' => 'warning',
+            ]);
+            return;
+        }
+
+        RateLimiter::hit($throttleKey, 10);
+
         $student = $user->student;
         $cycle = $this->activeCycle;
 
@@ -146,6 +159,10 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
 
         try {
             DB::transaction(function () use ($student, $cycle, $user) {
+                $lockedStudent = $user->student()->lockForUpdate()->first();
+                if ($lockedStudent->has_voted) {
+                    throw new \Exception('Student has already voted.');
+                }
                 $referenceNumber = 'REF-' . strtoupper(bin2hex(random_bytes(4)));
                 foreach ($this->selections as $positionId => $candidateId) {
                     Vote::create([
@@ -160,7 +177,7 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                     Candidate::where('id', $candidateId)->increment('votes_count');
                 }
 
-                $student->update([
+                $lockedStudent->update([
                     'has_voted' => true,
                     'voted_at' => now(),
                     'vote_reference' => $referenceNumber,
@@ -185,6 +202,8 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                     Log::error('Mail Error: ' . $e->getMessage());
                 }
             });
+
+            RateLimiter::clear($throttleKey);
 
             event(new \App\Events\VoteUpdated((string) $student->course));
             $this->student = $student->fresh();

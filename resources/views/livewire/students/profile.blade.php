@@ -78,18 +78,23 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
     public function saveProfile()
     {
         $user = Auth::user();
+
         $this->validate([
-            'email' => 'required|email|unique:users,email,' . $user?->id,
+            'email' => 'nullable|email|unique:users,email,' . $user?->id,
             'phone' => 'nullable|numeric',
             'photo' => 'nullable|image|max:2048',
         ]);
 
         try {
             DB::beginTransaction();
-            $user?->update(['email' => $this->email]);
+
+            if ($this->email) {
+                $user?->update(['email' => $this->email]);
+            }
 
             if ($user?->student) {
                 $data = ['phone' => $this->phone];
+
                 if ($this->photo && !is_string($this->photo)) {
                     if ($this->profile_photo_path) {
                         Storage::disk('public')->delete($this->profile_photo_path);
