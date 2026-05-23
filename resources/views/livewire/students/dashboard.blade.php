@@ -202,16 +202,34 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
                                 <i class="bi bi-box-seam me-2"></i> Proceed to Vote
                             </a>
                         @else
-                            <p class="text-danger small" style="font-size: 0.80rem">
-                                <i class="bi bi-lock-fill me-1"></i> Voting is no longer active.
-                            </p>
-                            <button class="btn btn-secondary btn-sm w-75 fw-bold" disabled>
-                                <i class="bi bi-slash-circle me-2"></i> Voting Closed
-                            </button>
-                            @if ($this->activeCycle && now()->gt($this->activeCycle->voting_end))
-                                <div class="mt-2 xsmall text-muted" style="font-size: 0.80rem">
-                                    The voting period concluded on
-                                    {{ $this->activeCycle->voting_end->format('M d, Y h:i A') }}
+                            @php
+                                $latestCycle = \App\Models\ElectionCycle::latest()->first();
+                            @endphp
+
+                            @if ($latestCycle && ($latestCycle->status === 'finished' || $latestCycle->status === 'completed'))
+                                <p class="text-danger small" style="font-size: 0.80rem">
+                                    <i class="bi bi-lock-fill me-1"></i> Voting is no longer active.
+                                </p>
+                                <button class="btn btn-secondary btn-sm w-100 w-md-75 fw-bold" disabled>
+                                    <i class="bi bi-slash-circle me-2"></i> Voting Closed
+                                </button>
+
+                                @if ($latestCycle->voting_end)
+                                    <div class="mt-2 text-muted text-center text-md-start" style="font-size: 0.80rem">
+                                        The voting period concluded on
+                                        <strong>{{ $latestCycle->voting_end->format('M d, Y h:i A') }}</strong>.
+                                    </div>
+                                @endif
+                            @else
+                                <p class="text-warning text-center text-md-start mb-1 mb-md-0 small"
+                                    style="font-size: 0.80rem">
+                                    <i class="bi bi-exclamation-triangle-fill me-1"></i> No ongoing election.
+                                </p>
+                                <button class="btn btn-light btn-sm w-100 w-md-75 fw-bold text-muted border" disabled>
+                                    <i class="bi bi-hourglass-top me-2"></i> Not Yet Available
+                                </button>
+                                <div class="mt-2 text-muted text-center text-md-start" style="font-size: 0.80rem">
+                                    Please stand by until an administrator initiates the next voting cycle.
                                 </div>
                             @endif
                         @endif
@@ -248,9 +266,10 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
                     @else
                         <div class="text-center py-5">
                             <div class="p-3 bg-light d-inline-block rounded-circle mb-3">
-                                <i class="bi bi-eye-slash fs-1 text-muted"></i>
+                                <i class="bi bi-eye-slash fs-2 text-muted bg-light rounded-circle d-inline-flex align-items-center justify-content-center"
+                                    style="width: 30px; height: 30px;"></i>
                             </div>
-                            <h6 class="fw-bold text-dark">Tally is Hidden</h6>
+                            <h6 class="fw-bold text-dark">Vote Tallying is Hidden</h6>
                             <p class="text-muted small px-4">Live results are currently restricted by the administrator.
                             </p>
                         </div>

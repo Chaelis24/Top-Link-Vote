@@ -242,7 +242,7 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                 </div>
 
                 <div class="col-md-auto p-3 p-md-4 text-center position-relative" style="z-index: 1060;">
-                    <button class="btn btn-outline-glow btn-sm w-100 w-md-auto px-3" type="button"
+                    <button class="btn btn-outline-glow btn-sm w-75 w-md-auto px-3" type="button"
                         data-bs-toggle="modal" data-bs-target="#editProfileModal">
                         <i class="bi bi-pencil-square me-1"></i>Edit Profile
                     </button>
@@ -378,7 +378,7 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                             class="badge bg-primary-light text-primary border border-primary-subtle px-3 py-2 mb-3 rounded-pill">Eligible</span>
                         <p class="text-secondary mb-0 small">You are eligible to vote in this election.</p>
                         <a href="{{ url('students/cast-vote') }}" wire:navigate
-                            class="btn btn-glow btn-sm mt-4 w-100">
+                            class="btn btn-glow btn-sm mt-4 mt-md-2 w-100 w-md-50">
                             <i class="bi bi-check2-square me-1"></i>Cast Vote Now
                         </a>
                     @else
@@ -386,7 +386,7 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                             <i class="bi bi-lock-fill me-1"></i>Locked
                         </span>
                         <p class="text-secondary mb-0 small">Voting is currently closed or has not yet started.</p>
-                        <button class="btn btn-secondary btn-sm mt-4 w-100" disabled>
+                        <button class="btn btn-secondary btn-sm mt-4 mt-md-2 w-100 w-md-50" disabled>
                             Voting Unavailable
                         </button>
                     @endif
@@ -453,7 +453,7 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                             </div>
                         </div>
 
-                        <div class="position-relative d-flex align-items-start">
+                        <div class="position-relative d-flex align-items-start mb-12 mb-md-0">
                             <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle bg-secondary shadow-sm text-white"
                                 style="width: 32px; height: 32px; z-index: 2;">
                                 <i class="bi bi-person-plus"></i>

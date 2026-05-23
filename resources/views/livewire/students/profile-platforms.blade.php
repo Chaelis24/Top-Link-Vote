@@ -318,7 +318,7 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
                 <div class="row g-2 g-md-4">
                     @forelse($this->filteredCandidates as $candidate)
                         <div class="col-6 col-md-6 col-lg-4 col-xl-3 mb-2 mb-md-4"
-                            wire:key="candidate-card-{{ $candidate->id }}">
+                            wire:key="candidate-box-{{ $selectedPosition }}-{{ $candidate->id }}">
                             @php
                                 $latestPlatform = $candidate->platforms->first();
                                 $isApproved = $latestPlatform && $latestPlatform->status === 'approved';
@@ -425,22 +425,45 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
                 </div>
             @endif
         @else
-            <div class="glass-card p-5 text-center my-5 shadow-sm border-0 rounded-4 bg-light">
-                <div class="mb-4">
-                    <div class="position-relative d-inline-block">
-                        <i class="bi bi-box-seam text-muted opacity-25" style="font-size: 5rem;"></i>
-                        <i class="bi bi-question-circle-fill text-primary position-absolute bottom-0 end-0"
-                            style="font-size: 2rem;"></i>
+            @php
+                $latestCycle = ElectionCycle::latest()->first();
+            @endphp
+
+            @if ($latestCycle && ($latestCycle->status === 'finished' || $latestCycle->status === 'completed'))
+                <div class="glass-card p-5 text-center my-5 shadow-sm border-0 rounded-4 bg-light">
+                    <div class="mb-4">
+                        <div class="position-relative d-inline-block">
+                            <i class="bi bi-calendar-check text-success opacity-75" style="font-size: 5rem;"></i>
+                            <i class="bi bi-check-circle-fill text-success position-absolute bottom-0 end-0"
+                                style="font-size: 2rem;"></i>
+                        </div>
                     </div>
+                    <h2 class="fw-black text-dark">Voting Period Finished</h2>
+                    <p class="text-secondary mx-auto mb-4" style="max-width: 500px;">
+                        Voting officially closed on
+                        <strong class="text-primary">
+                            {{ $latestCycle->voting_end?->format('M d, Y') ?? 'the scheduled deadline' }}
+                        </strong>.
+                        Candidate profiles and ballot submissions are now locked while results are being finalized.
+                    </p>
                 </div>
-                <h2 class="fw-black text-dark">Voting Period Finished</h2>
-                <p class="text-secondary mx-auto mb-4" style="max-width: 500px;">
-                    Voting officially closed on
-                    <strong
-                        class="text-primary">{{ ElectionCycle::where('status', 'active')->first()?->voting_end->format('M d, Y') }}</strong>.
-                    Candidate profiles and ballot submissions are now locked while results are being finalized.
-                </p>
-            </div>
+            @else
+                <div class="glass-card p-5 text-center my-5 shadow-sm border-0 rounded-4 bg-light">
+                    <div class="mb-4">
+                        <div class="position-relative d-inline-block">
+                            <i class="bi bi-box-seam text-muted opacity-25" style="font-size: 5rem;"></i>
+                            <i class="bi bi-exclamation-circle-fill text-warning position-absolute bottom-0 end-0"
+                                style="font-size: 2rem;"></i>
+                        </div>
+                    </div>
+                    <h2 class="fw-black text-dark">No Active Election</h2>
+                    <p class="text-secondary mx-auto mb-4" style="max-width: 500px;">
+                        There is currently no ongoing election cycle or the voting period has not been opened yet by the
+                        administrator.
+                        Please check back later for official announcements.
+                    </p>
+                </div>
+            @endif
         @endif
     </main>
 

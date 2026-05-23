@@ -74,7 +74,7 @@
                 x-transition:enter-end="opacity-100 transform scale-100" class="dropdown-menu-custom">
 
                 <a href="/students/profile" wire:navigate class="dropdown-item">
-                    <i class="bi bi-person-circle"></i> Profile
+                    <i class="bi bi-person-circle"></i> My Profile
                 </a>
 
                 <hr class="dropdown-divider" style="border-top: 1px solid rgba(0,0,0,0.1); margin: 8px 0;">

@@ -86,7 +86,7 @@ new #[Layout('layouts.guest')] class extends Component {
             </div>
         @else
             <div
-                class="md:w-1/2 bg-[linear-gradient(115deg,#0dff00,#068a08,#010d05)] p-6 md:p-12 text-white flex flex-col justify-center relative overflow-hidden min-h-[160px] md:min-h-[450px]">
+                class="md:w-1/2 bg-[linear-gradient(115deg,#0dff00,#068a08,#010d05)] p-2 md:p-12 text-white flex flex-col justify-center relative overflow-hidden min-h-[160px] md:min-h-[450px]">
                 <div class="absolute -top-24 -left-24 w-64 h-64 bg-black/10 rounded-full"></div>
                 <div class="absolute -bottom-24 -right-24 w-48 h-48 bg-white/20 rounded-full"></div>
 
@@ -100,7 +100,7 @@ new #[Layout('layouts.guest')] class extends Component {
                         Security
                     </h2>
 
-                    <p class="hidden md:block text-white leading-relaxed text-sm font-bold">
+                    <p class="block text-white/90 leading-relaxed text-xs md:text-sm font-medium">
                         Create a strong password to protect your account. Your security is our priority.
                     </p>
                 </div>
@@ -113,7 +113,7 @@ new #[Layout('layouts.guest')] class extends Component {
                     <p class="text-gray-500 text-xs md:text-sm">Final step of account recovery</p>
                 </div>
 
-                <div class="flex items-center justify-between mb-8 px-1">
+                <div class="flex items-center justify-between mb-4 mb-md-8 px-1">
                     <div class="flex flex-col items-center">
                         <div
                             class="w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center text-[10px] bg-green-100 text-[#108500]">
@@ -124,7 +124,7 @@ new #[Layout('layouts.guest')] class extends Component {
                         </div>
                         <span class="text-[9px] md:text-[10px] mt-1 font-bold uppercase text-gray-400">Details</span>
                     </div>
-                    <div class="flex-1 h-[2px] mx-2 bg-[#108500]"></div>
+                    <div class="flex-1 h-[2px] mx-2 bg-[#108500] mb-4 mb-md-0"></div>
                     <div class="flex flex-col items-center">
                         <div
                             class="w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center text-[10px] bg-green-100 text-[#108500]">
@@ -135,7 +135,7 @@ new #[Layout('layouts.guest')] class extends Component {
                         </div>
                         <span class="text-[9px] md:text-[10px] mt-1 font-bold uppercase text-gray-400">Verify</span>
                     </div>
-                    <div class="flex-1 h-[2px] mx-2 bg-[#108500]"></div>
+                    <div class="flex-1 h-[2px] mx-2 bg-[#108500] mb-4 mb-md-0"></div>
                     <div class="flex flex-col items-center">
                         <div
                             class="w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center text-xs font-bold bg-[#108500] text-white">
@@ -146,20 +146,21 @@ new #[Layout('layouts.guest')] class extends Component {
 
                 <form wire:submit="resetPassword" class="space-y-4 md:space-y-5">
                     <div>
-                        <label
-                            class="text-[10px] md:text-xs font-bold uppercase text-gray-500 mb-1 block ms-1">Resetting
-                            for Email</label>
+                        <label class="text-[10px] md:text-xs font-bold uppercase text-gray-500 mb-1 block ms-1">
+                            Registered Email
+                        </label>
                         <input wire:model="email" type="email" readonly
                             class="w-full px-4 py-2.5 md:py-3 rounded-lg border border-gray-100 bg-gray-50 text-gray-400 outline-none focus:ring-0 focus:border-gray-100 cursor-not-allowed text-sm font-semibold">
                         <x-input-error :messages="$errors->get('email')" class="mt-2 text-red-600 text-[10px]" />
                     </div>
 
                     <div x-data="{ show: false }" class="relative">
-                        <label class="text-[10px] md:text-xs font-bold uppercase text-gray-500 mb-1 block ms-1">New
-                            Password</label>
-                        <input :type="show ? 'text' : 'password'" wire:model="password" placeholder="••••••••" required
-                            autofocus
-                            class="w-full px-4 py-2.5 md:py-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-[#9cff00] focus:border-[#108500] outline-none transition-all text-[#252525] text-sm">
+                        <label class="text-[10px] md:text-xs font-bold uppercase text-gray-500 mb-1 block ms-1">
+                            New Password
+                        </label>
+                        <input :type="show ? 'text' : 'password'" wire:model="password"
+                            placeholder="At least 8 characters" required autofocus
+                            class="w-full px-4 py-2.5 md:py-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-[#9cff00]/30 focus:border-[#108500] outline-none transition-all text-[#252525] text-sm">
                         <button type="button" @click="show = !show"
                             class="absolute right-3 top-[32px] md:top-[38px] text-[9px] md:text-[10px] font-black text-[#108500] uppercase">
                             <span x-text="show ? 'Hide' : 'Show'"></span>
@@ -168,12 +169,12 @@ new #[Layout('layouts.guest')] class extends Component {
                     </div>
 
                     <div x-data="{ show: false }" class="relative">
-                        <label class="text-[10px] md:text-xs font-bold uppercase text-gray-500 mb-1 block ms-1">Confirm
-                            New
-                            Password</label>
+                        <label class="text-[10px] md:text-xs font-bold uppercase text-gray-500 mb-1 block ms-1">
+                            Confirm New Password
+                        </label>
                         <input :type="show ? 'text' : 'password'" wire:model="password_confirmation"
-                            placeholder="••••••••" required
-                            class="w-full px-4 py-2.5 md:py-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-[#9cff00] focus:border-[#108500] outline-none transition-all text-[#252525] text-sm">
+                            placeholder="Re-type new password" required
+                            class="w-full px-4 py-2.5 md:py-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-[#9cff00]/30 focus:border-[#108500] outline-none transition-all text-[#252525] text-sm">
                         <button type="button" @click="show = !show"
                             class="absolute right-3 top-[32px] md:top-[38px] text-[9px] md:text-[10px] font-black text-[#108500] uppercase">
                             <span x-text="show ? 'Hide' : 'Show'"></span>
@@ -181,13 +182,13 @@ new #[Layout('layouts.guest')] class extends Component {
                     </div>
 
                     <button type="submit"
-                        class="w-full bg-[#108500] hover:bg-[#0d6b00] text-white font-black py-3 md:py-4 rounded-lg shadow-lg shadow-green-200 transition-all uppercase tracking-widest text-xs md:text-sm">
+                        class="w-full bg-[#108500] hover:bg-[#0d6b00] text-white font-black py-3 rounded-lg transition-all uppercase tracking-widest text-xs md:text-sm">
                         <span wire:loading.remove>Update Password</span>
                         <span wire:loading>Processing...</span>
                     </button>
                 </form>
 
-                <div class="mt-6 md:mt-8 text-center">
+                <div class="mt-0 md:mt-3 pt-4 md:pt-6 border-t border-gray-50 text-center">
                     <a href="{{ route('login') }}" wire:navigate
                         class="text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest hover:text-[#108500] flex items-center justify-center transition-colors">
                         <svg class="w-4 h-4 me-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

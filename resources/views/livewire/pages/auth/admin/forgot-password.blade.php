@@ -37,15 +37,14 @@ new #[Layout('layouts.guest')] class extends Component {
                 <h2 class="text-xl md:text-3xl font-extrabold uppercase mb-1 md:mb-2 tracking-tighter text-white">
                     Access Recovery
                 </h2>
-                <div class="hidden md:block h-1 w-12 bg-white/30 mb-6 rounded-full mx-auto"></div>
-                <p class="hidden md:block text-white/90 leading-relaxed text-sm font-medium">
+                <p class="block text-white/90 leading-relaxed text-xs text-md-sm font-medium">
                     Secure password reset for <br> Election Management Administrators.
                 </p>
             </div>
         </div>
 
-        <div class="md:w-1/2 p-6 md:p-10 flex flex-col justify-center bg-white">
-            <div class="mb-6 md:mb-8 text-center md:text-left">
+        <div class="md:w-1/2 p-6 md:p-8 flex flex-col justify-center bg-white">
+            <div class="mb-4 md:mb-8 text-start">
                 <div
                     class="inline-block px-3 py-1 rounded-full bg-blue-50 text-[#1e3a8a] text-[9px] font-black uppercase tracking-widest mb-3">
                     Security Verification
@@ -56,7 +55,7 @@ new #[Layout('layouts.guest')] class extends Component {
 
             @if (session('status'))
                 <div
-                    class="mb-4 text-green-600 text-[10px] font-bold uppercase p-3 bg-green-50 rounded-lg border border-green-100">
+                    class="mb-2 text-green-600 text-[10px] font-bold uppercase p-3 bg-green-50 rounded-lg border border-green-100">
                     {{ session('status') }}
                 </div>
             @endif
@@ -64,21 +63,25 @@ new #[Layout('layouts.guest')] class extends Component {
             <form wire:submit="sendPasswordResetLink" class="space-y-4 md:space-y-6">
                 <div>
                     <label class="text-[10px] font-bold uppercase text-gray-500 mb-1 block ms-1">Admin Email</label>
-                    <input wire:model="email" type="email" placeholder="admin@gmail.com" required autofocus
+                    <input wire:model="email" type="email" placeholder="Admin@gmail.com" required autofocus
                         class="w-full px-4 py-2.5 md:py-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-blue-100 focus:border-[#1e3a8a] outline-none transition-all text-sm text-[#1e293b]">
                     <x-input-error :messages="$errors->get('email')" class="mt-2 text-red-600 text-[10px]" />
                 </div>
 
                 <button type="submit"
-                    class="w-full bg-[#1e3a8a] hover:bg-[#1e293b] text-white font-black py-3 md:py-4 rounded-lg shadow-lg shadow-blue-100 transition-all uppercase tracking-widest text-xs md:text-sm">
+                    class="w-full bg-[#1e3a8a] hover:bg-[#1e293b] text-white font-black py-3 rounded-lg transition-all uppercase tracking-widest text-xs md:text-sm">
                     <span wire:loading.remove>Send Reset Email</span>
                     <span wire:loading>Processing...</span>
                 </button>
             </form>
 
-            <div class="mt-6 md:mt-8 pt-4 md:pt-6 border-t border-gray-50 text-center">
+            <div class="mt-0 md:mt-3 pt-4 md:pt-6 border-t border-gray-50 text-center">
                 <a href="{{ route('admin.login') }}" wire:navigate
                     class="text-[10px] font-bold text-gray-400 uppercase tracking-widest hover:text-[#1e3a8a] inline-flex items-center transition-colors">
+                    <svg class="w-4 h-4 me-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                    </svg>
                     Back to Admin Login
                 </a>
             </div>
