@@ -26,6 +26,7 @@ A comprehensive web-based election management and real-time voting system. This 
 - **Frontend:** Tailwind CSS, Bootstrap 5, HTML5, CSS3, JavaScript (Vite)
 - **Backend:** PHP 8.2+, Laravel 13 (Eloquent ORM)
 - **Real-time:** Laravel Reverb (WebSockets)
+- **Queue Management:** Laravel Horizon (Redis-backed Queue Monitoring)
 - **Database:** MySQL / MariaDB (Complex Relational Schema)
 - **Security:** CSRF Protection, Middleware Authorization, and Bcrypt Password Hashing
 
@@ -110,6 +111,19 @@ REDIS_HOST=127.0.0.1
 REDIS_PORT=6379
 ```
 
+#### Mail Configuration (Required for OTP Verification)
+
+```env
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.gmail.com
+MAIL_PORT=587
+MAIL_USERNAME="your-gmail-username@gmail.com"
+MAIL_PASSWORD="your-gmail-app-password"
+MAIL_ENCRYPTION=tls
+MAIL_FROM_ADDRESS="your-gmail-username@gmail.com"
+MAIL_FROM_NAME="${APP_NAME}"
+```
+
 #### Laravel Reverb
 
 ```env
@@ -160,12 +174,13 @@ php artisan horizon
 ```
 
 ### 📥 Sample CSV Import Templates
+
 To test the Registrar import features, you can download and use these pre-formatted sample templates. Make sure to upload the student master list first before importing the candidates.
 
-| Template Type | Schema Description | Download Link |
-| :--- | :--- | :--- |
-| **Registrar Student Roster** | Contains complete student profile data, courses, year levels, and initial roles. | <a href="sample/sample-student.csv" download><img src="https://img.shields.io/badge/Download-sample--student.csv-blue?style=flat-square&logo=microsoft-excel" alt="Download Student CSV"></a> |
-| **Candidate Nominations** | Maps validated student IDs to specific election positions (e.g., President, VP). | <a href="sample/sample-candidate.csv" download><img src="https://img.shields.io/badge/Download-sample--candidate.csv-green?style=flat-square&logo=microsoft-excel" alt="Download Candidate CSV"></a> |
+| Template Type                | Schema Description                                                               | Download Link                                                                                                                                                                                        |
+| :--------------------------- | :------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Registrar Student Roster** | Contains complete student profile data, courses, year levels, and initial roles. | <a href="sample/sample-student.csv" download><img src="https://img.shields.io/badge/Download-sample--student.csv-blue?style=flat-square&logo=microsoft-excel" alt="Download Student CSV"></a>        |
+| **Candidate Nominations**    | Maps validated student IDs to specific election positions (e.g., President, VP). | <a href="sample/sample-candidate.csv" download><img src="https://img.shields.io/badge/Download-sample--candidate.csv-green?style=flat-square&logo=microsoft-excel" alt="Download Candidate CSV"></a> |
 
 ### 📊 Portals & Evaluation Access
 
