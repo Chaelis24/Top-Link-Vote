@@ -1,13 +1,5 @@
 <div x-data="{ mobileMenuOpen: false }">
 
-    <button class="admin-mobile-btn" @click="mobileMenuOpen = true" x-show="!mobileMenuOpen" x-cloak>
-        <i class="bi bi-list"></i>
-    </button>
-
-    <div class="admin-overlay-screen" :class="{ 'active': mobileMenuOpen }" x-show="mobileMenuOpen"
-        @click="mobileMenuOpen = false" x-cloak>
-    </div>
-
     <aside class="admin-side-wrapper" :class="{ 'show': mobileMenuOpen }">
         <div class="admin-brand-box">
             <div class="brand-wrapper">
@@ -74,10 +66,37 @@
                         <span>User Activities</span>
                     </a>
                 </li>
+                <li class="admin-nav-item d-md-none mobile-profile-item" x-data="{ adminOpen: false }"
+                    style="position: relative;">
+                    <button @click="adminOpen = !adminOpen"
+                        class="admin-nav-link border-0 bg-transparent w-100 h-100 p-0 m-0">
+                        <img src="https://ui-avatars.com/api/?name={{ urlencode(auth()->user()->name ?? 'Admin') }}&background=1e3a8a&color=fff"
+                            style="width: 28px; height: 28px; border-radius: 50%;" alt="Admin">
+                    </button>
+
+                    <div x-show="adminOpen" @click.away="adminOpen = false" x-cloak
+                        x-transition:enter="transition ease-out duration-100"
+                        x-transition:enter-start="opacity-0 transform scale-95"
+                        x-transition:enter-end="opacity-100 transform scale-100"
+                        class="admin-dropdown-box mobile-dropdown">
+
+                        <a href="/admin/settings" wire:navigate
+                            class="dropdown-item d-flex align-items-center gap-2 text-start"
+                            style="text-decoration: none; color: #4b5563; padding: 8px 12px; font-size: 0.8rem;">
+                            <i class="bi bi-gear-fill"></i> Settings
+                        </a>
+                        <hr style="margin: 4px 0; border-top: 1px solid #f3f4f6;">
+                        <button wire:click="logout"
+                            class="dropdown-item text-danger w-100 text-start border-0 bg-transparent d-flex align-items-center gap-2"
+                            style="padding: 8px 12px; font-size: 0.8rem;">
+                            <i class="bi bi-box-arrow-right"></i> Logout
+                        </button>
+                    </div>
+                </li>
             </ul>
         </nav>
 
-        <div class="admin-footer-sec" x-data="{ adminOpen: false }" style="position: relative;">
+        <div class="admin-footer-sec d-none d-lg-block" x-data="{ adminOpen: false }" style="position: relative;">
             <div class="d-flex align-items-center" @click="adminOpen = !adminOpen"
                 style="cursor: pointer; padding: 4px;">
                 <div class="d-flex align-items-center gap-2">
@@ -116,6 +135,5 @@
                     <i class="bi bi-box-arrow-right"></i> Logout
                 </button>
             </div>
-        </div>
     </aside>
 </div>

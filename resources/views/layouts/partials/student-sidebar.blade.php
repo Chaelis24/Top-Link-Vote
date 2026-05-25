@@ -39,16 +39,51 @@
                         <span>Cast Your Vote</span>
                     </a>
                 </li>
+
+                <li class="nav-item mobile-profile-item" x-data="{ open: false }" style="position: relative;">
+                    <a @click="open = !open" style="cursor: pointer;"
+                        class="nav-link {{ request()->is('students/profile*') ? 'active' : '' }}">
+
+                        @if ($profile_photo_path)
+                            <img src="{{ asset('storage/' . $profile_photo_path) }}" class="user-avatar-mobile"
+                                alt="User">
+                        @else
+                            <img src="https://ui-avatars.com/api/?name={{ urlencode(auth()->user()->name ?? 'Student') }}&background=10B981&color=fff"
+                                class="user-avatar-mobile" alt="User">
+                        @endif
+
+                        <span class="mobile-profile-text">Profile</span>
+                    </a>
+
+                    <div x-show="open" @click.away="open = false" x-cloak
+                        x-transition:enter="transition ease-out duration-100"
+                        x-transition:enter-start="opacity-0 transform scale-95"
+                        x-transition:enter-end="opacity-100 transform scale-100"
+                        class="dropdown-menu-custom mobile-dropdown">
+
+                        <a href="/students/profile" wire:navigate
+                            class="dropdown-item d-flex align-items-center gap-2 text-start"
+                            style="padding: 8px 12px; font-size: 0.8rem; color: #4b5563; text-decoration: none;">
+                            <i class="bi bi-person-circle"></i> My Profile
+                        </a>
+                        <hr style="margin: 4px 0; border-top: 1px solid #f3f4f6;">
+                        <button wire:click="logout"
+                            class="dropdown-item text-danger w-100 text-start border-0 bg-transparent d-flex align-items-center gap-2"
+                            style="padding: 8px 12px; font-size: 0.8rem;">
+                            <i class="bi bi-box-arrow-right"></i> Logout
+                        </button>
+                    </div>
+                </li>
             </ul>
         </nav>
 
-        <div class="sidebar-footer" x-data="{ open: false }" style="position: relative;">
-            <div class="footer-main-content d-flex align-items-center clickable-card" @click="open = !open"
-                style="cursor: pointer;">
+        <div class="sidebar-footer d-none d-lg-block" x-data="{ open: false }" style="position: relative;">
+            <div class="d-flex align-items-center" @click="open = !open" style="cursor: pointer;">
                 <div class="d-flex align-items-center gap-2">
                     <div class="avatar-wrapper" style="position: relative;">
                         @if ($profile_photo_path)
-                            <img src="{{ asset('storage/' . $profile_photo_path) }}" class="user-avatar" alt="User">
+                            <img src="{{ asset('storage/' . $profile_photo_path) }}" class="user-avatar" alt="User"
+                                style="object-fit: cover;">
                         @else
                             <img src="https://ui-avatars.com/api/?name={{ urlencode(auth()->user()->name ?? 'Student') }}&background=10B981&color=fff"
                                 class="user-avatar" alt="User">

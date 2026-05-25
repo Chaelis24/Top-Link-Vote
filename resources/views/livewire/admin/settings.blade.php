@@ -66,7 +66,7 @@ new #[Layout('layouts.admin')] #[Title('Settings')] class extends Component {
         return redirect()->route('admin.login');
     }
 }; ?>
-<div wire:poll.15s x-data="{
+<div x-data="{
     showCurrent: false,
     showNew: false,
     showConfirm: false,
@@ -153,14 +153,14 @@ new #[Layout('layouts.admin')] #[Title('Settings')] class extends Component {
                         </h6>
                     </div>
                     <div class="p-3 p-md-4">
-                        <form wire:submit="updatePassword">
+                        <form wire:submit.prevent="updatePassword">
                             {{-- Current Password --}}
                             <div class="mb-3">
                                 <label
                                     class="form-label fw-bold text-muted uppercase text-[10px] md:text-[11px]">Current
                                     Password</label>
                                 <div class="position-relative">
-                                    <input :type="showCurrent ? 'text' : 'password'" wire:model="current_password"
+                                    <input :type="showCurrent ? 'text' : 'password'" wire:model.blur="current_password"
                                         class="form-control-modern py-1 py-md-2 @error('current_password') is-invalid @enderror"
                                         style="font-size: 0.9rem;">
                                     <button type="button" @click="showCurrent = !showCurrent"
@@ -188,18 +188,21 @@ new #[Layout('layouts.admin')] #[Title('Settings')] class extends Component {
                                             style="font-size: 0.8rem;"></i>
                                     </button>
                                 </div>
-                                {{-- Password Strength Meter: Thinner for mobile --}}
+                                {{-- Password Strength Meter --}}
                                 <div class="mt-2 d-flex gap-1">
                                     <template x-for="i in 4">
                                         <div class="flex-fill rounded-pill" style="height: 3px;"
                                             :style="i <= strength ? {
-                                                background: ['#ef4444', '#f59e0b', '#3b82f6', '#10b981'][strength -
-                                                    1
+                                                background: ['#ef4444', '#f59e0b', '#3b82f6', '#10b981'][
+                                                    strength - 1
                                                 ]
                                             } : { background: '#e2e8f0' }">
                                         </div>
                                     </template>
                                 </div>
+                                @error('password')
+                                    <div class="text-danger mt-1 text-[10px] fw-bold">{{ $message }}</div>
+                                @enderror
                             </div>
 
                             {{-- Confirm Password --}}
@@ -208,8 +211,9 @@ new #[Layout('layouts.admin')] #[Title('Settings')] class extends Component {
                                     class="form-label fw-bold text-muted uppercase text-[10px] md:text-[11px]">Confirm
                                     Password</label>
                                 <div class="position-relative">
-                                    <input :type="showConfirm ? 'text' : 'password'" wire:model="password_confirmation"
-                                        class="form-control-modern py-1 py-md-2" style="font-size: 0.9rem;">
+                                    <input :type="showConfirm ? 'text' : 'password'"
+                                        wire:model.blur="password_confirmation" class="form-control-modern py-1 py-md-2"
+                                        style="font-size: 0.9rem;">
                                     <button type="button" @click="showConfirm = !showConfirm"
                                         class="btn-password-toggle py-1">
                                         <i class="bi" :class="showConfirm ? 'bi-eye-slash' : 'bi-eye'"
@@ -218,8 +222,10 @@ new #[Layout('layouts.admin')] #[Title('Settings')] class extends Component {
                                 </div>
                             </div>
 
-                            <button type="submit" class="btn-glow w-100 py-2 text-[13px] md:text-sm fw-bold">
-                                Change Password
+                            <button type="submit"
+                                class="btn-glow w-100 py-2 text-[13px] md:text-sm fw-bold mb-11 md:mb-0">
+                                <span wire:loading.remove wire:target="updatePassword">Change Password</span>
+                                <span wire:loading wire:target="updatePassword">Updating...</span>
                             </button>
                         </form>
                     </div>
