@@ -63,7 +63,8 @@ A comprehensive web-based election management and real-time voting system. This 
 
 ⚙️ Installation Steps
 
-A. Clone & Install
+### A. Clone & Install
+
 Open your terminal and run the following commands:
 
 ```cmd
@@ -71,53 +72,66 @@ git clone https://github.com/Chaelis24/Top-Link-Vote.git
 cd Top-Link-Vote
 ```
 
-B. Install Dependencies
+### B. Install Dependencies
+
 Run the all-in-one setup automation script to handle composer packages, npm packages, env creation, and key generation:
 
 ```cmd
 composer run setup
 ```
 
-C. Environment Configuration
-Open your newly generated .env file and configure your services:
+### C. Environment Configuration
 
-### Database Setup (Example on MySQL)
+Open your newly generated `.env` file and configure your services:
 
+#### Database Setup (Example on MySQL)
+
+```env
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_DATABASE=top_link_vote
 DB_USERNAME=root
 DB_PASSWORD=
+```
 
-### Queue and Broadcasting (Required for Horizon & Reverb)
+#### Queue and Broadcasting (Required for Horizon & Reverb)
 
+```
 QUEUE_CONNECTION=redis
 BROADCAST_CONNECTION=reverb
+```
 
-### Redis Configuration (Make sure your Redis Server is running)
+#### Redis Configuration (Make sure your Redis Server is running)
 
+```
 REDIS_CLIENT=phpredis
 REDIS_HOST=127.0.0.1
 REDIS_PORT=6379
+```
 
-### Laravel Reverb
+#### Laravel Reverb
 
+```
 REVERB_APP_ID=your-reverb-app-id
 REVERB_APP_KEY=your-reverb-app-key
 REVERB_APP_SECRET=your-reverb-app-secret
 REVERB_HOST="localhost"
 REVERB_PORT=8080
 REVERB_SCHEME=http
+```
 
-### Vite / Frontend Variables
+#### Vite / Frontend Variables
 
+```
 VITE_REVERB_APP_KEY="${REVERB_APP_KEY}"
 VITE_REVERB_HOST="${REVERB_HOST}"
 VITE_REVERB_PORT="${REVERB_PORT}"
 VITE_REVERB_SCHEME="${REVERB_SCHEME}"
+```
 
-D. Database & Assets
+### D. Database & Assets
+
 Seed the database with initial administrative data and link your storage directory:
 
 ```cmd
@@ -125,7 +139,7 @@ php artisan migrate --seed
 php artisan storage:link
 ```
 
-E. Run the System
+### E. Run the System
 
 ### Terminal 1: App Server
 
@@ -145,28 +159,30 @@ php artisan reverb:start
 php artisan horizon
 ```
 
-📊 Portals & Evaluation Access
+### 📊 Portals & Evaluation Access
+
 Use the following default accounts and test environment configurations to access and evaluate the platform after initial migrations and seeds are executed.
 
-1. 🛡️ Admin Portal (Elections Management)
-   The centralized administrative hub where system managers and registrars control student rosters, moderate candidate submissions, and initialize lifecycle timelines.
+#### 1. 🛡️ Admin Portal (Elections Management)
 
-URL: http://localhost:8000/admin-login
+The centralized administrative hub where system managers and registrars control student rosters, moderate candidate submissions, and initialize lifecycle timelines.
 
-Email Address: admin@gmail.com
+**URL: http://localhost:8000/admin-login**
 
-Password: admin
+**Email Address: admin@gmail.com**
+**Password: admin**
 
-2. 🗳️ Student Portal (Voting & Live Dashboard)
-   Student login identifiers are validated directly against rows imported from the Registrar's database ledger (students.csv). Use the target ranges below for sandbox execution:
+#### 2. 🗳️ Student Portal (Voting & Live Dashboard)
 
-URL: http://localhost:8000/ (Main Login Portal)
+Student login identifiers are validated directly against rows imported from the Registrar's database ledger (students.csv). Use the target ranges below for sandbox execution:
 
-Student ID: 23-0001 through 23-0099
+**URL: http://localhost:8000/ (Main Login Portal)**
 
-Password: P@ssword
+**Student ID: 23-0001 through 23-0099**
+**Password: P@ssword**
 
-3. 🏎️ Laravel Horizon Monitoring Dashboard
-   Review active transactional operations, asynchronous jobs, mail processing performance metrics, and system worker distributions.
+#### 3. 🏎️ Laravel Horizon Monitoring Dashboard
 
-URL: http://localhost:8000/horizon (Accessible in local development mode)
+Review active transactional operations, asynchronous jobs, mail processing performance metrics, and system worker distributions.
+
+**URL: http://localhost:8000/horizon (Accessible in local development mode)**
