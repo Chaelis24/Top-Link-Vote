@@ -97,14 +97,14 @@ DB_PASSWORD=
 
 #### Queue and Broadcasting (Required for Horizon & Reverb)
 
-```
+```env
 QUEUE_CONNECTION=redis
 BROADCAST_CONNECTION=reverb
 ```
 
 #### Redis Configuration (Make sure your Redis Server is running)
 
-```
+```env
 REDIS_CLIENT=phpredis
 REDIS_HOST=127.0.0.1
 REDIS_PORT=6379
@@ -112,7 +112,7 @@ REDIS_PORT=6379
 
 #### Laravel Reverb
 
-```
+```env
 REVERB_APP_ID=your-reverb-app-id
 REVERB_APP_KEY=your-reverb-app-key
 REVERB_APP_SECRET=your-reverb-app-secret
@@ -123,7 +123,7 @@ REVERB_SCHEME=http
 
 #### Vite / Frontend Variables
 
-```
+```env
 VITE_REVERB_APP_KEY="${REVERB_APP_KEY}"
 VITE_REVERB_HOST="${REVERB_HOST}"
 VITE_REVERB_PORT="${REVERB_PORT}"
@@ -159,6 +159,14 @@ php artisan reverb:start
 php artisan horizon
 ```
 
+### 📥 Sample CSV Import Templates
+To test the Registrar import features, you can download and use these pre-formatted sample templates. Make sure to upload the student master list first before importing the candidates.
+
+| Template Type | Schema Description | Download Link |
+| :--- | :--- | :--- |
+| **Registrar Student Roster** | Contains complete student profile data, courses, year levels, and initial roles. | <a href="sample/sample-student.csv" download><img src="https://img.shields.io/badge/Download-sample--student.csv-blue?style=flat-square&logo=microsoft-excel" alt="Download Student CSV"></a> |
+| **Candidate Nominations** | Maps validated student IDs to specific election positions (e.g., President, VP). | <a href="sample/sample-candidate.csv" download><img src="https://img.shields.io/badge/Download-sample--candidate.csv-green?style=flat-square&logo=microsoft-excel" alt="Download Candidate CSV"></a> |
+
 ### 📊 Portals & Evaluation Access
 
 Use the following default accounts and test environment configurations to access and evaluate the platform after initial migrations and seeds are executed.
@@ -170,6 +178,7 @@ The centralized administrative hub where system managers and registrars control 
 **URL: http://localhost:8000/admin-login**
 
 **Email Address: admin@gmail.com**
+
 **Password: admin**
 
 #### 2. 🗳️ Student Portal (Voting & Live Dashboard)
@@ -179,6 +188,7 @@ Student login identifiers are validated directly against rows imported from the 
 **URL: http://localhost:8000/ (Main Login Portal)**
 
 **Student ID: 23-0001 through 23-0099**
+
 **Password: P@ssword**
 
 #### 3. 🏎️ Laravel Horizon Monitoring Dashboard

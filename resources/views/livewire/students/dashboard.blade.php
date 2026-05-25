@@ -195,11 +195,12 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
                         </div>
 
                         @if ($this->isVotingOpen)
-                            <p class="text-success small">
+                            <p class="text-success small pb-2">
                                 <i class="bi bi-check-circle-fill me-1"></i> The election is live.
                             </p>
-                            <a href="{{ route('cast-vote') }}" class="btn btn-primary w-100 fw-bold">
-                                <i class="bi bi-box-seam me-2"></i> Proceed to Vote
+                            <a href="/students/cast-vote" wire:navigate
+                                class="btn btn-glow btn-sm w-100 py-2 d-inline-flex align-items-center justify-content-center">
+                                Vote Now
                             </a>
                         @else
                             @php
@@ -210,7 +211,7 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
                                 <p class="text-danger small" style="font-size: 0.80rem">
                                     <i class="bi bi-lock-fill me-1"></i> Voting is no longer active.
                                 </p>
-                                <button class="btn btn-secondary btn-sm w-100 w-md-75 fw-bold" disabled>
+                                <button class="btn btn-secondary btn-sm w-100 fw-bold" disabled>
                                     <i class="bi bi-slash-circle me-2"></i> Voting Closed
                                 </button>
 
@@ -225,7 +226,7 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
                                     style="font-size: 0.80rem">
                                     <i class="bi bi-exclamation-triangle-fill me-1"></i> No ongoing election.
                                 </p>
-                                <button class="btn btn-light btn-sm w-100 w-md-75 fw-bold text-muted border" disabled>
+                                <button class="btn btn-light btn-sm w-100 fw-bold text-muted border" disabled>
                                     <i class="bi bi-hourglass-top me-2"></i> Not Yet Available
                                 </button>
                                 <div class="mt-2 text-muted text-center text-md-start" style="font-size: 0.80rem">

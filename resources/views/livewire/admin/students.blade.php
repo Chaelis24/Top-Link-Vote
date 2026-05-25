@@ -1,12 +1,11 @@
 <?php
 
-use Livewire\Volt\Component;
-use Illuminate\Support\Facades\{Auth, Session, DB, Hash};
-use Livewire\Attributes\{Layout, Title, Url};
-use App\Models\{User, Student, Role, Vote, ElectionCycle};
-use Livewire\WithFileUploads;
-use Livewire\WithPagination;
 use Illuminate\Support\Str;
+use Livewire\Volt\Component;
+use Livewire\Attributes\{Layout, Title, Url};
+use Livewire\{WithFileUploads, WithPagination};
+use Illuminate\Support\Facades\{Auth, Session, DB, Hash};
+use App\Models\{User, Student, Role, Vote, ElectionCycle};
 
 new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Component {
     use WithFileUploads, WithPagination;
@@ -293,7 +292,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                 <button type="button" class="btn-glow btn-sm d-flex align-items-center justify-content-center"
                     @click="$refs.csvInput.click()" style="height: 38px; min-width: 38px; border-radius: 8px;"
                     title="Import CSV">
-                    <i class="bi bi-upload"></i>
+                    <i class="bi bi-upload fs-6 p-2"></i>
                     <span class="hidden md:block ms-1">Import CSV</span>
                 </button>
                 <input type="file" x-ref="csvInput" class="hidden" wire:model="csvFile" accept=".csv">
@@ -490,9 +489,10 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                 </table>
             </div>
 
-            <div class="md:hidden">
+            <div class="md:hidden mb-12">
                 @forelse($students as $student)
-                    <div wire:key="student-mobile-{{ $student->id }}" class="p-3 border-bottom">
+                    <div wire:key="student-mobile-{{ $student->id }}"
+                        class="p-3 mb-4 border-bottom {{ $loop->index >= 6 ? 'd-none' : '' }}">
                         <div class="d-flex justify-content-between align-items-start mb-2">
                             <div>
                                 <div class="text-xs text-muted fw-bold mb-1">ID: {{ $student->student_id }}</div>
@@ -501,20 +501,22 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                                 <div class="small text-muted">{{ $student->course }} - {{ $student->formatted_year }}
                                 </div>
                             </div>
-                            <div>=
+                            <div>
                                 @if ($student->has_voted)
-                                    <span class="badge-approved py-1 px-2" style="font-size: 0.7rem;">Voted</span>
+                                    <span class="badge-approved py-1 px-2 fs-6"
+                                        style="font-size: 0.7rem;">Voted</span>
                                 @elseif($student->status === 'active')
-                                    <span class="badge-approved py-1 px-2" style="font-size: 0.7rem;">Active</span>
+                                    <span class="badge-approved py-1 px-2 fs-6"
+                                        style="font-size: 0.7rem;">Active</span>
                                 @else
-                                    <span class="badge-danger-soft py-1 px-2"
+                                    <span class="badge-danger-soft py-1 px-2 fs-6"
                                         style="font-size: 0.7rem;">Disabled</span>
                                 @endif
                             </div>
                         </div>
 
                         <div class="d-flex justify-content-between align-items-center mt-3">
-                            <div class="small text-muted text-truncate" style="max-width: 150px;">
+                            <div class="small text-muted text-truncate" style="max-width: 250px;">
                                 <i class="bi bi-envelope me-1"></i>{{ $student->user->email ?? 'N/A' }}
                             </div>
                             <div class="d-flex gap-2">
@@ -538,8 +540,8 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                 @endforelse
             </div>
 
-            <div class="p-3 border-top bg-light custom-pagination">
-                {{ $students->links() }}
+            <div class="custom-pagination">
+                {{ $students->links('layouts.partials.custom-pagination') }}
             </div>
         </div>
     </main>

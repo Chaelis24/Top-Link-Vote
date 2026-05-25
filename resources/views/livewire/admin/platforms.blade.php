@@ -274,7 +274,6 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                         class="p-4 border-bottom flex flex-col gap-3 bg-white">
                         <div class="flex items-start justify-between">
                             <div class="flex items-center gap-3">
-                                <!-- Profile Avatar -->
                                 <div class="profile-avatar-sm shadow-sm flex-shrink-0"
                                     style="background: #1e3a8a; color: white; width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
                                     @if ($platform->candidate?->photo)
@@ -286,7 +285,6 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                                         </span>
                                     @endif
                                 </div>
-                                <!-- Candidate Info -->
                                 <div>
                                     <div class="fw-bold text-primary small">
                                         {{ $platform->candidate->student->first_name }}
@@ -298,12 +296,9 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                                     </div>
                                 </div>
                             </div>
-                            <!-- Status -->
                             <span class="{{ $badgeClass }}"
                                 style="font-size: 0.7rem;">{{ ucfirst($platform->status) }}</span>
                         </div>
-
-                        <!-- Platform Title and Agenda Box -->
                         <div class="p-3 rounded-lg" style="background-color: #f8f9fa; border: 1px solid #edf2f7;">
                             <div class="text-dark small fw-bold mb-1">
                                 {{ $platform->title ?? 'No Platform Title' }}
@@ -316,7 +311,6 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                             </div>
                         </div>
 
-                        <!-- Footer: Date and Actions -->
                         <div class="flex items-center justify-between mt-1">
                             <div class="text-muted" style="font-size: 0.7rem;">
                                 <i class="bi bi-calendar3 me-1"></i> {{ $platform->created_at->format('M d, Y') }}
@@ -350,8 +344,8 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                 @endforelse
             </div>
 
-            <div class="p-3 bg-light border-top">
-                {{ $this->platforms->links() }}
+            <div class="custom-pagination">
+                {{ $this->platforms->links('layouts.partials.custom-pagination') }}
             </div>
         </div>
     </main>

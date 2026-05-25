@@ -328,7 +328,7 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                 </div>
             </div>
         @else
-            <div class="d-flex align-items-center justify-content-center mb-4 px-md-5 pt-4">
+            <div class="d-flex align-items-center justify-content-center mb-0 px-md-5 pt-4 p-6 p-md-0">
                 @foreach ([1 => 'Select', 2 => 'Review', 3 => 'Confirm'] as $num => $label)
                     <div
                         class="step d-flex flex-column align-items-center {{ $currentStep == $num ? 'active' : ($currentStep > $num ? 'completed' : '') }}">
@@ -342,7 +342,8 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                     </div>
                     @if ($num < 3)
                         <div class="step-line"
-                            style="width: 40px; margin: 0 8px; height: 2px; position: relative; top: -10px;"></div>
+                            style="width: 40px; margin: 0 8px; height: 2px; position: relative; top: -10px;">
+                        </div>
                     @endif
                 @endforeach
             </div>
@@ -352,7 +353,7 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                     @forelse ($this->electionData as $position)
                         <div class="mb-6 text-center">
                             <h5
-                                class="text-lg md:text-xl font-bold text-gray-800 tracking-tight flex items-center justify-center gap-2">
+                                class="text-sm md:text-base font-bold text-gray-800 tracking-tight flex items-center justify-center gap-2 uppercase">
                                 <span class="h-px w-6 md:w-8 bg-[#10b981]"></span>
                                 {{ $position->name }}
                                 <span class="h-px w-6 md:w-8 bg-[#10b981]"></span>
@@ -415,7 +416,7 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                                             </h6>
                                             <p
                                                 class="text-[8px] md:text-[9px] font-bold text-[#10b981] uppercase tracking-[0.1em] md:tracking-[0.15em] truncate">
-                                                {{ $candidate->party_name ?? 'No Party' }}
+                                                {{ $candidate->party_name ?? 'No Party Name' }}
                                             </p>
                                         </div>
 
@@ -448,17 +449,19 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                     @endforelse
 
                     @if ($this->electionData->isNotEmpty())
-                        <div class="mt-12 flex justify-end pb-10 mb-2 md:mb-12">
+                        <div class="mt-12 flex justify-end pb-10 mb-3 md:mb-12">
                             <button wire:click="setStep(2)" wire:loading.attr="disabled" wire:target="setStep(2)"
-                                class="group relative inline-flex items-center justify-center px-6 py-2.5 font-bold text-white transition-all duration-200 bg-[#10b981] rounded-full shadow-lg hover:bg-emerald-600 active:scale-95 disabled:opacity-75">
+                                class="group relative inline-flex items-center justify-center px-4 md:px-6 py-1.5 md:py-2.5 font-bold text-white transition-all duration-200 bg-[#10b981] rounded-full shadow-lg hover:bg-emerald-600 active:scale-95 disabled:opacity-75">
+
                                 <span wire:loading.remove wire:target="setStep(2)"
-                                    class="flex items-center gap-2 uppercase tracking-wider text-[11px]">
+                                    class="flex items-center gap-1.5 md:gap-2 uppercase tracking-wider text-[9px] md:text-[11px]">
                                     Review Selections
                                     <i
-                                        class="bi bi-arrow-right group-hover:translate-x-1 transition-transform text-xs"></i>
+                                        class="bi bi-arrow-right group-hover:translate-x-1 transition-transform text-[10px] md:text-xs"></i>
                                 </span>
+
                                 <span wire:loading wire:target="setStep(2)"
-                                    class="flex items-center gap-2 uppercase tracking-wider text-[11px]">
+                                    class="flex items-center gap-1.5 md:gap-2 uppercase tracking-wider text-[9px] md:text-[11px]">
                                     <span class="spinner-border spinner-border-sm"></span>
                                     Preparing Review...
                                 </span>
@@ -519,11 +522,11 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                                         </h6>
                                         <p
                                             class="text-[8px] md:text-[9px] font-bold text-[#10b981] uppercase tracking-[0.1em] mb-3 truncate">
-                                            {{ $candidate->party_name ?? 'Independent' }}
+                                            {{ $candidate->party_name ?? 'No Party Name' }}
                                         </p>
 
                                         <div
-                                            class="inline-flex items-center gap-1 px-2 md:px-3 py-1 rounded-full bg-emerald-500 text-white text-[8px] md:text-[9px] font-black uppercase tracking-tighter shadow-sm">
+                                            class="inline-flex items-center gap-1 px-3 md:px-4 py-1 rounded-full bg-emerald-500 text-white text-[8px] md:text-[9px] font-black uppercase tracking-tighter shadow-sm">
                                             <i class="bi bi-check2-all"></i> Selected
                                         </div>
                                     </div>
@@ -548,24 +551,24 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                         @endforelse
                     </div>
 
-                    <div class="flex items-center justify-between mt-8 border-t pt-8 pb-10">
+                    <div class="flex items-center justify-between mt-4 pb-10">
                         <button wire:click="setStep(1)"
-                            class="group relative inline-flex items-center justify-center px-4 md:px-6 py-2.5 font-bold text-emerald-600 transition-all duration-200 bg-emerald-50 rounded-full focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm hover:bg-emerald-100 active:scale-95">
+                            class="group relative inline-flex items-center justify-center px-4 md:px-6 py-1.5 md:py-2.5 font-bold text-emerald-600 transition-all duration-200 bg-emerald-50 rounded-full focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm hover:bg-emerald-100 active:scale-95">
                             <span
                                 class="flex items-center gap-1.5 md:gap-2 uppercase tracking-wider text-[9px] md:text-[11px]">
                                 <i
-                                    class="bi bi-arrow-left group-hover:-translate-x-1 transition-transform text-xs"></i>
-                                <span class="hidden xs:inline">Change Votes</span>
+                                    class="bi bi-arrow-left group-hover:-translate-x-1 transition-transform text-[10px] md:text-xs"></i>
                                 <span class="xs:hidden">Back</span>
                             </span>
                         </button>
 
                         <button wire:click="setStep(3)" wire:loading.attr="disabled" wire:target="setStep(3)"
-                            class="group relative inline-flex items-center justify-center px-4 md:px-6 py-2.5 font-bold text-white transition-all duration-200 bg-[#10b981] rounded-full shadow-lg hover:bg-emerald-600 active:scale-95 disabled:opacity-75">
+                            class="group relative inline-flex items-center justify-center px-4 md:px-6 py-1.5 md:py-2.5 font-bold text-white transition-all duration-200 bg-[#10b981] rounded-full shadow-lg hover:bg-emerald-600 active:scale-95 disabled:opacity-75">
                             <span wire:loading.remove wire:target="setStep(3)"
                                 class="flex items-center gap-1.5 md:gap-2 uppercase tracking-wider text-[9px] md:text-[11px]">
-                                Confirm <span class="hidden xs:inline">& Submit</span>
-                                <i class="bi bi-shield-check group-hover:scale-110 transition-transform text-xs"></i>
+                                Confirm
+                                <i
+                                    class="bi bi-shield-check group-hover:scale-110 transition-transform text-[10px] md:text-xs"></i>
                             </span>
                             <span wire:loading wire:target="setStep(3)"
                                 class="flex items-center gap-1.5 md:gap-2 uppercase tracking-wider text-[9px] md:text-[11px]">

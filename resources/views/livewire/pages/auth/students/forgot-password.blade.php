@@ -144,7 +144,7 @@ new #[Layout('layouts.guest')] class extends Component {
                             <label class="text-[10px] md:text-xs font-bold uppercase text-gray-500 mb-1 block ms-1">
                                 Registered Email
                             </label>
-                            <input wire:model="email" type="email" placeholder="Example@email.com" required
+                            <input wire:model="email" type="email" placeholder="Example@gmail.com" required
                                 class="w-full px-4 py-2.5 md:py-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-[#9cff00]/30 focus:border-[#108500] outline-none transition-all text-[#252525] text-sm">
                             <x-input-error :messages="$errors->get('email')" class="mt-2 text-red-600 text-[10px]" />
                         </div>

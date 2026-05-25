@@ -489,9 +489,9 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                 <p class="text-muted mb-0 small">Configure election dates and live system controls</p>
             </div>
             @if ($this->active)
-                <div class="btn-glow d-flex align-items-center justify-content-center px-2 px-md-3 bg-success text-white"
+                <div class="btn-glow d-flex align-items-center justify-content-center px-2 px-md-0 px-2 px-md-3 bg-success text-white"
                     style="height: 38px; border-radius: 8px; cursor: default;" title="Election Process Ongoing">
-                    <i class="bi bi-clock-history"></i>
+                    <i class="bi bi-clock-history fs-5 p-2"></i>
                     <span class="fw-bold d-none d-md-inline ms-2" style="font-size: 14px;">Election Process
                         Ongoing</span>
                 </div>
@@ -766,23 +766,23 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                             </div>
                         @endforeach
 
-                        <div class="mt-3 mt-md-4 pt-3 border-top d-flex flex-column gap-2">
+                        <div class="mt-3 mt-md-4 pt-3 border-top d-flex flex-column gap-2 mb-12 mb-md-0">
                             <button class="btn btn-outline-primary btn-sm w-100 py-2 fw-bold text-[12px] md:text-sm"
                                 @click.prevent="
-                            Swal.fire({
-                                title: 'Update Schedule?',
-                                text: 'Changing the dates may affect the current election flow.',
-                                icon: 'info',
-                                showCancelButton: true,
-                                confirmButtonColor: '#3085d6',
-                                cancelButtonColor: '#6c757d',
-                                confirmButtonText: 'Yes, Open Editor'
-                            }).then((result) => {
-                                if (result.isConfirmed) {
-                                    new bootstrap.Modal(document.getElementById('updateDatesModal')).show();
-                                }
-                            })
-                        ">
+                                Swal.fire({
+                                    title: 'Update Schedule?',
+                                    text: 'Changing the dates may affect the current election flow.',
+                                    icon: 'info',
+                                    showCancelButton: true,
+                                    confirmButtonColor: '#3085d6',
+                                    cancelButtonColor: '#6c757d',
+                                    confirmButtonText: 'Yes, Open Editor'
+                                }).then((result) => {
+                                    if (result.isConfirmed) {
+                                        new bootstrap.Modal(document.getElementById('updateDatesModal')).show();
+                                    }
+                                })
+                                ">
                                 <i class="bi bi-calendar-check me-2"></i>Update Cycle Dates
                             </button>
                             <button class="btn btn-outline-danger btn-sm w-100 py-2 fw-bold text-[12px] md:text-sm"

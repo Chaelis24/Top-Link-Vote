@@ -30,7 +30,7 @@ class ImportStudentsJob implements ShouldQueue
                             ['email' => $row['email']],
                             [
                                 'name' => "{$row['first_name']} {$row['last_name']}",
-                                'password' => Hash::make('student'),
+                                'password' => Hash::make('P@ssword'),
                             ]
                         );
 

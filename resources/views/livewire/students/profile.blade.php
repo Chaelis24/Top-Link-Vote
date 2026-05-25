@@ -217,7 +217,7 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
 
                     <div class="d-flex flex-wrap justify-content-center justify-content-md-start gap-1 gap-md-2">
                         <span
-                            class="badge rounded-pill {{ $has_voted ? 'bg-success-subtle text-success border-success-subtle' : 'bg-primary-light text-primary border-primary-subtle' }} border px-2 py-1"
+                            class="badge rounded-pill {{ $has_voted ? 'bg-success-subtle text-success border-success-subtle' : 'bg-primary-light text-primary border-success-subtle' }} border px-2 py-1"
                             style="font-size: 0.7rem;">
                             {{ $has_voted ? 'Already Voted' : 'Eligible Voter' }}
                         </span>
@@ -227,7 +227,6 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                                 '1' => '1st Year',
                                 '2' => '2nd Year',
                                 '3' => '3rd Year',
-                                '4' => '4th Year',
                                 default => $year_level ?: 'Year Not Set',
                             };
                             $formattedCourse = match (strtolower((string) $course)) {
@@ -239,17 +238,18 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                             };
                         @endphp
 
-                        <span class="badge rounded-pill text-success border border-success-subtle px-2 py-1"
+                        <span class="badge rounded-pill text-primary border border-success-subtle px-2 py-1"
                             style="font-size: 0.7rem;">
                             SY : {{ $formattedYear }}
                         </span>
                     </div>
                 </div>
 
-                <div class="col-md-auto p-3 p-md-4 text-center position-relative" style="z-index: 1060;">
-                    <button class="btn btn-outline-glow btn-sm w-75 w-md-auto px-3" type="button"
-                        data-bs-toggle="modal" data-bs-target="#editProfileModal">
-                        <i class="bi bi-pencil-square me-1"></i>Edit Profile
+                <div class="w-full md:w-auto p-3 md:p-4 text-center relative z-[1060]">
+                    <button
+                        class="btn-outline-glow text-sm w-3/4 md:w-auto px-3 py-1.5 rounded 2xl:text-base 2xl:px-5 2xl:py-2 transition-all duration-200"
+                        type="button" data-bs-toggle="modal" data-bs-target="#editProfileModal">
+                        <i class="bi bi-pencil-square mr-1 2xl:mr-2"></i>Edit Profile
                     </button>
                 </div>
             </div>
@@ -473,112 +473,110 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                 </div>
             </div>
         </div>
+    </main>
+    <div class="modal fade" id="editProfileModal" tabindex="-1" wire:ignore.self aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-emerald-light px-4 py-2">
+                    <h6 class="modal-title fw-bold" style="color: #10b981;">Account Settings</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
 
-        <div class="modal fade" id="editProfileModal" tabindex="-1" wire:ignore.self aria-hidden="true">
-            <div class="modal-dialog modal-lg modal-dialog-centered">
-                <div class="modal-content border-0 shadow-lg">
-                    <div class="modal-header bg-emerald-light px-4 py-2">
-                        <h6 class="modal-title fw-bold" style="color: #10b981;">Account Settings</h6>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"
-                            aria-label="Close"></button>
-                    </div>
-
-                    <div class="modal-body p-4">
-                        <form wire:submit.prevent="saveProfile" class="mb-4">
-                            <div class="row align-items-center">
-                                <div class="col-auto">
-                                    <label for="photoUpload" class="position-relative" style="cursor: pointer;">
-                                        <div wire:loading wire:target="photo"
-                                            class="position-absolute top-50 start-50 translate-middle"
-                                            style="z-index: 10;">
-                                            <div class="spinner-border spinner-border-sm text-emerald" role="status">
-                                            </div>
+                <div class="modal-body p-4">
+                    <form wire:submit.prevent="saveProfile" class="mb-4">
+                        <div class="row align-items-center">
+                            <div class="col-auto">
+                                <label for="photoUpload" class="position-relative" style="cursor: pointer;">
+                                    <div wire:loading wire:target="photo"
+                                        class="position-absolute top-50 start-50 translate-middle"
+                                        style="z-index: 10;">
+                                        <div class="spinner-border spinner-border-sm text-emerald" role="status">
                                         </div>
-                                        @if ($photo)
-                                            <img src="{{ $photo->temporaryUrl() }}"
-                                                class="avatar-circle border border-2 shadow-sm"
-                                                style="width: 80px; height: 80px; object-fit: cover; border-color: #10b981 !important;">
-                                        @elseif($profile_photo_path)
-                                            <img src="{{ asset('storage/' . $profile_photo_path) }}"
-                                                class="avatar-circle border shadow-sm"
-                                                style="width: 80px; height: 80px; object-fit: cover;">
-                                        @else
-                                            <div class="avatar-circle d-flex align-items-center justify-content-center bg-emerald-light fs-4 fw-bold border"
-                                                style="width: 80px; height: 80px; color: #10b981;">
-                                                {{ strtoupper(substr($first_name ?: 'U', 0, 1)) }}
-                                            </div>
-                                        @endif
-                                        <div class="position-absolute bottom-0 end-0 text-white rounded-circle d-flex align-items-center justify-content-center shadow"
-                                            style="width: 25px; height: 25px; font-size: 10px; border: 2px solid white; background-color: #10b981;">
-                                            <i class="bi bi-camera-fill"></i>
-                                        </div>
-                                    </label>
-                                    <input type="file" id="photoUpload" wire:model="photo" class="d-none"
-                                        accept="image/*">
-                                </div>
-
-                                <div class="col">
-                                    <label class="form-label small fw-bold text-secondary mb-1">PHONE NUMBER</label>
-                                    <div class="input-group input-group-sm">
-                                        <span class="input-group-text bg-light border-end-0"><i
-                                                class="bi bi-telephone small" style="color: #10b981;"></i></span>
-                                        <input type="text" class="form-control border-start-0" wire:model="phone"
-                                            placeholder="09xxxxxxxxx">
-                                        <button type="submit" class="btn text-white"
-                                            style="background-color: #10b981; border-color: #10b981;"
-                                            wire:loading.attr="disabled">
-                                            <span wire:loading wire:target="saveProfile"
-                                                class="spinner-border spinner-border-sm"></span>
-                                            Update Profile
-                                        </button>
                                     </div>
-                                    @error('phone')
-                                        <div class="text-danger" style="font-size: 10px;">{{ $message }}</div>
-                                    @enderror
-                                </div>
+                                    @if ($photo)
+                                        <img src="{{ $photo->temporaryUrl() }}"
+                                            class="avatar-circle border border-2 shadow-sm"
+                                            style="width: 80px; height: 80px; object-fit: cover; border-color: #10b981 !important;">
+                                    @elseif($profile_photo_path)
+                                        <img src="{{ asset('storage/' . $profile_photo_path) }}"
+                                            class="avatar-circle border shadow-sm"
+                                            style="width: 80px; height: 80px; object-fit: cover;">
+                                    @else
+                                        <div class="avatar-circle d-flex align-items-center justify-content-center bg-emerald-light fs-4 fw-bold border"
+                                            style="width: 80px; height: 80px; color: #10b981;">
+                                            {{ strtoupper(substr($first_name ?: 'U', 0, 1)) }}
+                                        </div>
+                                    @endif
+                                    <div class="position-absolute bottom-0 end-0 text-white rounded-circle d-flex align-items-center justify-content-center shadow"
+                                        style="width: 25px; height: 25px; font-size: 10px; border: 2px solid white; background-color: #10b981;">
+                                        <i class="bi bi-camera-fill"></i>
+                                    </div>
+                                </label>
+                                <input type="file" id="photoUpload" wire:model="photo" class="d-none"
+                                    accept="image/*">
                             </div>
-                        </form>
 
-                        <hr class="text-secondary opacity-25">
-
-                        <form wire:submit.prevent="updatePassword">
-                            <label class="form-label small fw-bold text-secondary mb-2">CHANGE PASSWORD</label>
-                            <div class="row g-2 align-items-start">
-                                <div class="col-md-3">
-                                    <input type="password" class="form-control form-control-sm bg-light"
-                                        wire:model="current_password" placeholder="Current Password">
-                                    @error('current_password')
-                                        <div class="text-danger" style="font-size: 10px;">{{ $message }}</div>
-                                    @enderror
-                                </div>
-
-                                <div class="col-md-3">
-                                    <input type="password" class="form-control form-control-sm bg-light"
-                                        wire:model="new_password" placeholder="New Password">
-                                    @error('new_password')
-                                        <div class="text-danger" style="font-size: 10px;">{{ $message }}</div>
-                                    @enderror
-                                </div>
-
-                                <div class="col-md-3">
-                                    <input type="password" class="form-control form-control-sm bg-light"
-                                        wire:model="new_password_confirmation" placeholder="Confirm Password">
-                                </div>
-
-                                <div class="col-md-3">
-                                    <button type="submit" class="btn text-white btn-sm w-100 shadow-sm"
+                            <div class="col">
+                                <label class="form-label small fw-bold text-secondary mb-1">PHONE NUMBER</label>
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-light border-end-0"><i
+                                            class="bi bi-telephone small" style="color: #10b981;"></i></span>
+                                    <input type="text" class="form-control border-start-0" wire:model="phone"
+                                        placeholder="09xxxxxxxxx">
+                                    <button type="submit" class="btn text-white"
                                         style="background-color: #10b981; border-color: #10b981;"
                                         wire:loading.attr="disabled">
-                                        <span wire:loading wire:target="updatePassword"
-                                            class="spinner-border spinner-border-sm me-1"></span>
-                                        Save Password
+                                        <span wire:loading wire:target="saveProfile"
+                                            class="spinner-border spinner-border-sm"></span>
+                                        Update Profile
                                     </button>
                                 </div>
+                                @error('phone')
+                                    <div class="text-danger" style="font-size: 10px;">{{ $message }}</div>
+                                @enderror
                             </div>
-                        </form>
-                    </div>
+                        </div>
+                    </form>
+
+                    <hr class="text-secondary opacity-25">
+
+                    <form wire:submit.prevent="updatePassword">
+                        <label class="form-label small fw-bold text-secondary mb-2">CHANGE PASSWORD</label>
+                        <div class="row g-2 align-items-start">
+                            <div class="col-md-3">
+                                <input type="password" class="form-control form-control-sm bg-light"
+                                    wire:model="current_password" placeholder="Current Password">
+                                @error('current_password')
+                                    <div class="text-danger" style="font-size: 10px;">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="col-md-3">
+                                <input type="password" class="form-control form-control-sm bg-light"
+                                    wire:model="new_password" placeholder="New Password">
+                                @error('new_password')
+                                    <div class="text-danger" style="font-size: 10px;">{{ $message }}</div>
+                                @enderror
+                            </div>
+
+                            <div class="col-md-3">
+                                <input type="password" class="form-control form-control-sm bg-light"
+                                    wire:model="new_password_confirmation" placeholder="Confirm Password">
+                            </div>
+
+                            <div class="col-md-3">
+                                <button type="submit" class="btn text-white btn-sm w-100 shadow-sm"
+                                    style="background-color: #10b981; border-color: #10b981;"
+                                    wire:loading.attr="disabled">
+                                    <span wire:loading wire:target="updatePassword"
+                                        class="spinner-border spinner-border-sm me-1"></span>
+                                    Save Password
+                                </button>
+                            </div>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
-    </main>
+    </div>
 </div>

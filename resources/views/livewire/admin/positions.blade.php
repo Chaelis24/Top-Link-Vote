@@ -125,7 +125,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
                 <button class="btn-glow btn-sm d-flex align-items-center justify-content-center gap-1"
                     data-bs-toggle="modal" data-bs-target="#addPositionModal" wire:click="$set('editingId', null)"
                     style="height: 38px; min-width: 38px; border-radius: 8px;">
-                    <i class="bi bi-plus-lg"></i>
+                    <i class="bi bi-plus-lg fs-5 p-1"></i>
                     <span class="hidden md:block">Add Position</span>
                 </button>
             </div>

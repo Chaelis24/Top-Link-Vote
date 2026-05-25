@@ -376,7 +376,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                 <input type="file" x-ref="csvInput" class="d-none" accept=".csv" @change="confirmImport($event)">
 
                 <button class="btn-glow" @click="$refs.csvInput.click()" title="Import CSV">
-                    <i class="bi bi-file-earmark-arrow-up"></i>
+                    <i class="bi bi-file-earmark-arrow-up fs-7 p-1"></i>
                     <span class="d-none d-md-inline ms-1">Import CSV</span>
                 </button>
             </div>
@@ -568,12 +568,12 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                     </tbody>
                 </table>
             </div>
-            <div class="d-md-none">
+            <div class="md:hidden">
                 @forelse($candidates as $candidate)
                     <div class="p-3 border-bottom position-relative">
                         <div class="d-flex align-items-start gap-3">
                             <div class="d-flex align-items-center justify-content-center fw-bold text-white shadow-sm flex-shrink-0"
-                                style="background: {{ $this->getAvatarColor($candidate->id) }}; width: 45px; height: 45px; border-radius: 12px; overflow: hidden;">
+                                style="background: {{ $this->getAvatarColor($candidate->id) }}; width: 45px; height: 45px; border-radius: 50%; overflow: hidden;">
                                 @if ($candidate->photo)
                                     <img src="{{ asset('storage/' . $candidate->photo) }}"
                                         style="width: 100%; height: 100%; object-fit: cover;">
@@ -608,7 +608,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                                 <button type="button"
                                     class="btn btn-sm d-flex align-items-center justify-content-center"
                                     wire:click="editCandidate({{ $candidate->id }})"
-                                    style="background: rgba(13, 110, 253, 0.1); color: #0d6efd; border: none; width: 40px; height: 40px; border-radius: 10px;"
+                                    style="background: rgba(13, 110, 253, 0.1); color: #0d6efd; border: none; width: 39px; height: 39px; border-radius: 10px;"
                                     title="Edit">
                                     <i class="bi bi-pencil-square" style="font-size: 1.2rem;"></i>
                                 </button>
@@ -634,7 +634,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                                             $wire.deleteCandidate({{ $candidate->id }})
                                         }
                                     })"
-                                    style="background: rgba(220, 53, 69, 0.1); color: #dc3545; border: none; width: 40px; height: 40px; border-radius: 10px;"
+                                    style="background: rgba(220, 53, 69, 0.1); color: #dc3545; border: none; width: 39px; height: 39px; border-radius: 10px;"
                                     title="Delete">
                                     <i class="bi bi-trash" style="font-size: 1.2rem;"></i>
                                 </button>
@@ -645,15 +645,15 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                     <div class="text-center py-5 text-muted fst-italic">No records found.</div>
                 @endforelse
             </div>
-            <div class="p-3 border-top bg-light custom-pagination">
-                {{ $candidates->links() }}
+            <div class="custom-pagination">
+                {{ $candidates->links('layouts.partials.custom-pagination') }}
             </div>
         </div>
     </main>
 
     <div class="modal fade" id="editCandidateModal" tabindex="-1" wire:ignore.self>
-        <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable mx-3 mx-md-auto">
-            <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+        <div class="modal-dialog modal-dialog-centered modal-md modal-lg-lg modal-dialog-scrollable mx-2 mx-md-auto">
+            <div class="modal-content border-0 shadow-lg rounded-3 rounded-md-4 overflow-hidden">
                 <div class="modal-header bg-primary text-white border-0 pb-0 pt-3 px-3 px-md-4">
                     <div class="w-100">
                         <div class="d-flex justify-content-between align-items-center mb-2 mb-md-3">
@@ -689,128 +689,133 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                     <div class="modal-body p-3 p-md-4 bg-white">
                         <div class="tab-content" id="editTabsContent">
                             <div class="tab-pane fade show active" id="tab-basic" role="tabpanel">
-                                <div class="row g-3">
-                                    <div class="col-12 col-md-4 mb-2 text-center border-md-end">
-                                        <label class="small fw-bold text-primary d-block mb-2">CANDIDATE PHOTO</label>
-                                        <div class="text-center">
-                                            <input type="file" id="photoInput" wire:model="candidate_photo"
-                                                class="d-none" accept="image/*">
-                                            <label for="photoInput"
-                                                class="mx-auto shadow-sm d-flex align-items-center justify-content-center position-relative profile-upload-circle"
-                                                style="width: 110px; height: 110px; border-radius: 50%; overflow: hidden; cursor: pointer; border: 4px solid #e9ecef; background: #f8fafc;">
+                                <div class="modal-form-scrollable px-1"
+                                    style="max-height: 380px; overflow-y: auto; overflow-x: hidden;">
+                                    <div class="row g-2 md-g-3">
+                                        <div class="col-12 col-md-4 mb-2 text-center border-md-end">
+                                            <label class="small fw-bold text-primary d-block mb-2">CANDIDATE
+                                                PHOTO</label>
+                                            <div class="text-center">
+                                                <input type="file" id="photoInput" wire:model="candidate_photo"
+                                                    class="d-none" accept="image/*">
+                                                <label for="photoInput"
+                                                    class="mx-auto shadow-sm d-flex align-items-center justify-content-center position-relative profile-upload-circle"
+                                                    style="width: 110px; height: 110px; border-radius: 50%; overflow: hidden; cursor: pointer; border: 4px solid #e9ecef; background: #f8fafc;">
 
-                                                @if ($candidate_photo)
-                                                    <img src="{{ $photo->temporaryUrl() }}"
-                                                        class="w-100 h-100 object-fit-cover">
-                                                @elseif (isset($editForm['existing_photo']) && $editForm['existing_photo'])
-                                                    <img src="{{ asset('storage/' . $editForm['existing_photo']) }}"
-                                                        class="w-100 h-100 object-fit-cover">
-                                                @else
-                                                    <i class="bi bi-camera-fill fs-2 text-primary"></i>
-                                                @endif
-                                            </label>
-                                            <small class="text-primary d-block mt-2 fw-bold text-uppercase"
-                                                style="font-size: 9px;">Tap to change</small>
-                                            @error('photo')
-                                                <span class="text-danger d-block mt-1"
-                                                    style="font-size: 0.65rem;">{{ $message }}</span>
-                                            @enderror
+                                                    @if ($candidate_photo)
+                                                        <img src="{{ $photo->temporaryUrl() }}"
+                                                            class="w-100 h-100 object-fit-cover">
+                                                    @elseif (isset($editForm['existing_photo']) && $editForm['existing_photo'])
+                                                        <img src="{{ asset('storage/' . $editForm['existing_photo']) }}"
+                                                            class="w-100 h-100 object-fit-cover">
+                                                    @else
+                                                        <i class="bi bi-camera-fill fs-2 text-primary"></i>
+                                                    @endif
+                                                </label>
+                                                <small class="text-primary d-block mt-2 fw-bold text-uppercase"
+                                                    style="font-size: 9px;">Tap to change</small>
+                                                @error('photo')
+                                                    <span class="text-danger d-block mt-1"
+                                                        style="font-size: 0.65rem;">{{ $message }}</span>
+                                                @enderror
+                                            </div>
                                         </div>
-                                    </div>
 
-                                    <div class="col-12 col-md-8">
-                                        <div class="row g-2">
-                                            <div class="col-6 mb-2">
-                                                <label class="small fw-bold text-primary"
-                                                    style="font-size: 0.7rem;">FIRST NAME</label>
-                                                <input type="text" wire:model="editForm.first_name"
-                                                    class="form-control form-control-sm border-0 bg-light py-2"
-                                                    placeholder="Juan" readonly>
-                                            </div>
-                                            <div class="col-6 mb-2">
-                                                <label class="small fw-bold text-primary"
-                                                    style="font-size: 0.7rem;">LAST NAME</label>
-                                                <input type="text" wire:model="editForm.last_name"
-                                                    class="form-control form-control-sm border-0 bg-light py-2"
-                                                    placeholder="Dela Cruz" readonly>
-                                            </div>
-                                            <div class="col-6 mb-2">
-                                                <label class="small fw-bold text-primary"
-                                                    style="font-size: 0.7rem;">PARTY NAME</label>
-                                                <input type="text" wire:model="editForm.party_name"
-                                                    placeholder="e.g. Reform Party"
-                                                    class="form-control form-control-sm border-0 bg-light py-2">
-                                            </div>
-                                            <div class="col-6 mb-2">
-                                                <label class="small fw-bold text-primary"
-                                                    style="font-size: 0.7rem;">AVG
-                                                    GRADE (GWA)</label>
-                                                <input type="text" wire:model="editForm.average_grade"
-                                                    placeholder="e.g. 1.25"
-                                                    class="form-control form-control-sm border-0 bg-light py-2">
-                                            </div>
-                                            <div class="col-12">
-                                                <label class="small fw-bold text-primary"
-                                                    style="font-size: 0.7rem;">ACHIEVEMENTS</label>
-                                                <textarea wire:model="editForm.achievements" rows="3"
-                                                    placeholder="List down honors, awards, or recognitions..." class="form-control form-control-sm border-0 bg-light"></textarea>
-                                            </div>
-                                            <div class="row g-3 mt-2">
-                                                <div class="col-12 col-md-6">
-                                                    <label class="small fw-bold text-primary mb-1 d-block"
-                                                        style="font-size: 0.7rem;">PREVIOUS POSITIONS</label>
-
-                                                    @foreach ($editForm['previous_position'] as $index => $pos)
-                                                        <div class="d-flex gap-2 mb-2"
-                                                            wire:key="pos-{{ $index }}">
-                                                            <input type="text"
-                                                                wire:model="editForm.previous_position.{{ $index }}"
-                                                                class="form-control form-control-sm border-0 bg-light py-2"
-                                                                placeholder="e.g. Class President">
-
-                                                            @if (count($editForm['previous_position']) > 1)
-                                                                <button type="button"
-                                                                    wire:click="removeField('previous_position', {{ $index }})"
-                                                                    class="btn btn-sm text-danger p-0">
-                                                                    <i class="bi bi-x-circle-fill"></i>
-                                                                </button>
-                                                            @endif
-                                                        </div>
-                                                    @endforeach
-
-                                                    <button type="button" wire:click="addField('previous_position')"
-                                                        class="btn btn-sm btn-link text-primary p-0 text-decoration-none"
-                                                        style="font-size: 0.7rem;">
-                                                        <i class="bi bi-plus-lg"></i> Add Position
-                                                    </button>
+                                        <div class="col-12 col-md-8">
+                                            <div class="row g-2">
+                                                <div class="col-6 mb-1">
+                                                    <label class="small fw-bold text-primary"
+                                                        style="font-size: 0.7rem;">FIRST NAME</label>
+                                                    <input type="text" wire:model="editForm.first_name"
+                                                        class="form-control form-control-sm border-0 bg-light py-1"
+                                                        placeholder="Juan" readonly>
                                                 </div>
+                                                <div class="col-6 mb-1">
+                                                    <label class="small fw-bold text-primary"
+                                                        style="font-size: 0.7rem;">LAST NAME</label>
+                                                    <input type="text" wire:model="editForm.last_name"
+                                                        class="form-control form-control-sm border-0 bg-light py-1"
+                                                        placeholder="Dela Cruz" readonly>
+                                                </div>
+                                                <div class="col-6 mb-1">
+                                                    <label class="small fw-bold text-primary"
+                                                        style="font-size: 0.7rem;">PARTY NAME</label>
+                                                    <input type="text" wire:model="editForm.party_name"
+                                                        placeholder="e.g. Reform Party"
+                                                        class="form-control form-control-sm border-0 bg-light py-1">
+                                                </div>
+                                                <div class="col-6 mb-1">
+                                                    <label class="small fw-bold text-primary"
+                                                        style="font-size: 0.7rem;">AVG
+                                                        GRADE (GWA)</label>
+                                                    <input type="text" wire:model="editForm.average_grade"
+                                                        placeholder="e.g. 1.25"
+                                                        class="form-control form-control-sm border-0 bg-light py-2">
+                                                </div>
+                                                <div class="col-12">
+                                                    <label class="small fw-bold text-primary"
+                                                        style="font-size: 0.7rem;">ACHIEVEMENTS</label>
+                                                    <textarea wire:model="editForm.achievements" rows="3"
+                                                        placeholder="List down honors, awards, or recognitions..." class="form-control form-control-sm border-0 bg-light"></textarea>
+                                                </div>
+                                                <div class="row g-3 mt-2">
+                                                    <div class="col-12 col-md-6">
+                                                        <label class="small fw-bold text-primary mb-1 d-block"
+                                                            style="font-size: 0.7rem;">PREVIOUS POSITIONS</label>
 
-                                                <div class="col-12 col-md-6">
-                                                    <label class="small fw-bold text-primary mb-1 d-block"
-                                                        style="font-size: 0.7rem;">PREVIOUS SCHOOL PROJECTS</label>
+                                                        @foreach ($editForm['previous_position'] as $index => $pos)
+                                                            <div class="d-flex gap-2 mb-2"
+                                                                wire:key="pos-{{ $index }}">
+                                                                <input type="text"
+                                                                    wire:model="editForm.previous_position.{{ $index }}"
+                                                                    class="form-control form-control-sm border-0 bg-light py-2"
+                                                                    placeholder="e.g. Class President">
 
-                                                    @foreach ($editForm['previous_school_project'] as $index => $proj)
-                                                        <div class="d-flex gap-2 mb-2"
-                                                            wire:key="proj-{{ $index }}">
-                                                            <input type="text"
-                                                                wire:model="editForm.previous_school_project.{{ $index }}"
-                                                                class="form-control form-control-sm border-0 bg-light py-2"
-                                                                placeholder="e.g. Tree Planting Drive">
-                                                            @if (count($editForm['previous_school_project']) > 1)
-                                                                <button type="button"
-                                                                    wire:click="removeField('previous_school_project', {{ $index }})"
-                                                                    class="btn btn-sm text-danger p-0">
-                                                                    <i class="bi bi-x-circle-fill"></i>
-                                                                </button>
-                                                            @endif
-                                                        </div>
-                                                    @endforeach
-                                                    <button type="button"
-                                                        wire:click="addField('previous_school_project')"
-                                                        class="btn btn-sm btn-link text-primary p-0 text-decoration-none"
-                                                        style="font-size: 0.7rem;">
-                                                        <i class="bi bi-plus-lg"></i> Add Project
-                                                    </button>
+                                                                @if (count($editForm['previous_position']) > 1)
+                                                                    <button type="button"
+                                                                        wire:click="removeField('previous_position', {{ $index }})"
+                                                                        class="btn btn-sm text-danger p-0">
+                                                                        <i class="bi bi-x-circle-fill"></i>
+                                                                    </button>
+                                                                @endif
+                                                            </div>
+                                                        @endforeach
+
+                                                        <button type="button"
+                                                            wire:click="addField('previous_position')"
+                                                            class="btn btn-sm btn-link text-primary p-0 text-decoration-none"
+                                                            style="font-size: 0.7rem;">
+                                                            <i class="bi bi-plus-lg"></i> Add Position
+                                                        </button>
+                                                    </div>
+
+                                                    <div class="col-12 col-md-6">
+                                                        <label class="small fw-bold text-primary mb-1 d-block"
+                                                            style="font-size: 0.7rem;">PREVIOUS SCHOOL PROJECTS</label>
+
+                                                        @foreach ($editForm['previous_school_project'] as $index => $proj)
+                                                            <div class="d-flex gap-2 mb-2"
+                                                                wire:key="proj-{{ $index }}">
+                                                                <input type="text"
+                                                                    wire:model="editForm.previous_school_project.{{ $index }}"
+                                                                    class="form-control form-control-sm border-0 bg-light py-2"
+                                                                    placeholder="e.g. Tree Planting Drive">
+                                                                @if (count($editForm['previous_school_project']) > 1)
+                                                                    <button type="button"
+                                                                        wire:click="removeField('previous_school_project', {{ $index }})"
+                                                                        class="btn btn-sm text-danger p-0">
+                                                                        <i class="bi bi-x-circle-fill"></i>
+                                                                    </button>
+                                                                @endif
+                                                            </div>
+                                                        @endforeach
+                                                        <button type="button"
+                                                            wire:click="addField('previous_school_project')"
+                                                            class="btn btn-sm btn-link text-primary p-0 text-decoration-none"
+                                                            style="font-size: 0.7rem;">
+                                                            <i class="bi bi-plus-lg"></i> Add Project
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -852,7 +857,8 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                             wire:loading.attr="disabled">
                             <span wire:loading.remove wire:target="updateCandidate">Save Changes</span>
                             <span wire:loading wire:target="updateCandidate">
-                                <span class="spinner-border spinner-border-sm me-1" role="status"></span> Saving...
+                                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                Saving...
                             </span>
                         </button>
                     </div>

@@ -1,11 +1,11 @@
 <?php
 
-use Livewire\Volt\Component;
-use Livewire\Attributes\{Layout, On, Title};
-use App\Models\ActivityLog;
 use App\Models\User;
-use Livewire\WithPagination;
 use Illuminate\Support\Str;
+use App\Models\ActivityLog;
+use Livewire\Volt\Component;
+use Livewire\WithPagination;
+use Livewire\Attributes\{Layout, On, Title};
 
 new #[Layout('layouts.admin')] #[Title('User Activity')] class extends Component {
     use WithPagination;
@@ -80,7 +80,6 @@ new #[Layout('layouts.admin')] #[Title('User Activity')] class extends Component
             </div>
         </div>
 
-        {{-- Filters Section --}}
         <div class="flex flex-wrap items-center gap-3 w-full mt-4">
             <div class="relative w-full md:w-80 order-1">
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -167,7 +166,6 @@ new #[Layout('layouts.admin')] #[Title('User Activity')] class extends Component
                     </tbody>
                 </table>
 
-                {{-- Mobile View Cards --}}
                 <div class="md:hidden p-3 space-y-3">
                     @forelse($logs as $log)
                         <div class="border rounded-xl p-3 bg-white shadow-sm">
@@ -196,68 +194,9 @@ new #[Layout('layouts.admin')] #[Title('User Activity')] class extends Component
                 </div>
             </div>
 
-            @if ($logs->hasPages())
-                <div
-                    class="p-4 d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 border-top bg-light">
-                    <div class="text-muted small">
-                        Showing <b>{{ $logs->firstItem() }}</b> to <b>{{ $logs->lastItem() }}</b> of
-                        <b>{{ $logs->total() }}</b>
-                    </div>
-                    <div class="custom-pagination">
-                        {{ $logs->links() }}
-                    </div>
-                </div>
-            @endif
+            <div class="custom-pagination">
+                {{ $logs->links('layouts.partials.custom-pagination') }}
+            </div>
         </div>
     </main>
-
-    <style>
-        /* Soft Badges */
-        .bg-success-soft {
-            background-color: #d1e7dd;
-            color: #0f5132;
-        }
-
-        .bg-warning-soft {
-            background-color: #fff3cd;
-            color: #664d03;
-        }
-
-        .bg-danger-soft {
-            background-color: #f8d7da;
-            color: #842029;
-        }
-
-        .bg-info-soft {
-            background-color: #cff4fc;
-            color: #055160;
-        }
-
-        .bg-primary-soft {
-            background-color: #e2e3ff;
-            color: #0d6efd;
-        }
-
-        .x-small {
-            font-size: 0.7rem;
-        }
-
-        pre {
-            white-space: pre-wrap;
-            word-break: break-all;
-            font-family: 'Courier New', Courier, monospace;
-            background: transparent;
-            padding: 0;
-            color: #333;
-        }
-
-        .scrollbar-hide::-webkit-scrollbar {
-            display: none;
-        }
-
-        .glass-card {
-            border-radius: 15px;
-            background: white;
-        }
-    </style>
 </div>
