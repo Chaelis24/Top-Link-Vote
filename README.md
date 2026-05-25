@@ -1,4 +1,4 @@
-# Top Link-Vote
+## Top Link-Vote
 
 A comprehensive web-based election management and real-time voting system. This platform streamlines the school election process—from the Registrar's master list import to automated tallying and PDF reporting—ensuring a secure, transparent, and efficient voting experience.
 
@@ -6,20 +6,20 @@ A comprehensive web-based election management and real-time voting system. This 
 
 ### Student & Candidate Functions
 
-- **🔐 Account Security** – Secure Login/Logout, Email Verification, and Password Reset.
-- **👤 Profile Management** – Edit student profiles and manage personal settings.
+- **🔐 Account Security** – Features secure login/logout, multi-stage account verification, and email-based password resets.
+- **👤 Profile Management** – Allows students to update their profiles and securely change their passwords.
 - **📢 Candidate Showcasing** – Candidates can manage their own profiles, platforms, and agendas.
-- **🗳️ Secure Voting** – Cast votes with system checks for eligibility, voting windows, and "one-vote-per-student" enforcement.
-- **📊 Live Dashboard** – Access a personalized dashboard to view candidate profiles and election status.
+- **🗳️ Secure Voting** – Enforces "one-vote-per-student" policies with real-time checks for student eligibility and active voting windows, followed by an automated email voting receipt.
+- **📊 Live Dashboard** – Provides a personalized view of real-time election statistics and ongoing candidate standings.
 
 ### Admin & Registrar Functions
 
-- **📥 Master List Integration** – Import student data directly from Registrar CSV files.
-- **⚙️ Election Lifecycle Management** – Create and manage election cycles, including filing, campaigning, and voting periods.
-- **👥 Candidate & Position Control** – Approve or reject candidate applications and define organizational positions.
-- **🛠️ System Governance** – Global system settings management, including the ability to enable/disable voting.
-- **📑 Automated Reporting** – Real-time vote tallying with the ability to generate and download official PDF election reports.
-- **📜 Activity Logging** – Comprehensive audit trails tracking all user actions for transparency.
+- **📥 Master List Integration** – Streamlines student data management via direct CSV file imports from the Registrar.
+- **⚙️ Election Lifecycle Management** – Controls the entire election timeline, from application filing and campaigning to the final voting period.
+- **👥 Candidate & Position Control** – Allows admins to import candidate profiles, define organizational positions, and approve or reject applications.
+- **🛠️ System Governance** – Manages global configurations, including system maintenance toggles and visibility controls (Allow Voting, Show Candidate Profiles, Show Election Results, and Maintenance Mode).
+- **📑 Automated Reporting** – Tracks and tallies votes in real time, with automated PDF generation and downloads unlocked once the official results date is reached.
+- **📜 Activity Logging** – Maintains a comprehensive audit trail tracking all user and administrative actions to ensure total transparency.
 
 ## 🧱 Tech Stack
 
@@ -33,47 +33,140 @@ A comprehensive web-based election management and real-time voting system. This 
 
 ```text
 📁 Top-Link-Vote
-├── app/                # Models (User, Student, Candidate, etc.) & Controllers
-├── database/           # Migrations (Schema for Users, Roles, Votes, etc)
-├── resources/          # Views (Blade templates for Admin & Student portals)
-├── routes/             # Web routes protected by Role Middleware
-├── storage/            # Local storage for Photos and Generated PDF Reports
-└── public/             # Compiled assets and entry point
+├── app/
+│   ├── Events/         # Real-time WebSocket broadcast events (Laravel Reverb)
+│   ├── Http/           # App controllers, requests, and security middlewares
+│   ├── Jobs/           # Asynchronous queued tasks (e.g., imports student)
+│   ├── Livewire/       # Reactive UI components (e.g., forms)
+│   ├── Mail/           # Transactional mailables (e.g., OTPs verification)
+│   ├── Models/         # Database entities & relationships (User, Student, Candidate, Vote)
+│   ├── Notifications/  # Multi-channel system alerts (Web & Email event triggers)
+│   ├── Providers/      # Core application bootstrapping and system service bindings
+│   └── View/           # Custom blade dynamic UI components and layouts
+├── database/           # Schema migrations and seeders for master data setup
+├── resources/
+│   ├── css/            # Frontend styling configurations (Tailwind CSS / Bootstrap 5)
+│   ├── js/             # Client-side JavaScript entry points and WebSocket listeners
+│   └── views/          # Application UI templates
+│       ├── components/ # Reusable Blade layout elements (buttons, inputs, cards)
+│       ├── emails/     # Raw HTML/Blade layouts for email notifications and receipts
+│       ├── layouts/    # Master structure files (e.g., Admin and Student base templates)
+│       ├── livewire/   # Dynamic Livewire frontend UI components
+│       │   ├── admin/  # Administrative interfaces (election controls, candidate manager)
+│       │   ├── pages/  # Global application pages (login views, public landing)
+│       │   └── students/ # Student dashboard widgets and secure voting screens
+│       └── pdf/        # Specialized layout blueprints for downloadable election reports
+├── routes/             # Web and API routing protected by Role Middleware
+├── storage/            # System storage for Candidate Photos and generated PDF Reports
+└── public/             # Publicly accessible compiled assets and application entry point
 ```
 
 ⚙️ Installation Steps
 
-1. Clone & Install
+A. Clone & Install
+Open your terminal and run the following commands:
 
-git clone [https://github.com/Chaelis24/Top-Link-Vote.git](https://github.com/Chaelis24/Top-Link-Vote.git)
+```cmd
+git clone https://github.com/Chaelis24/Top-Link-Vote.git
 cd Top-Link-Vote
-composer install
-npm install
+```
 
-2. Environment Configuration
+B. Install Dependencies
+Run the all-in-one setup automation script to handle composer packages, npm packages, env creation, and key generation:
 
-cp .env.example .env
-php artisan key:generate
+```cmd
+composer run setup
+```
 
-Update your .env with your database credentials (DB_DATABASE=top_link_vote).
+C. Environment Configuration
+Open your newly generated .env file and configure your services:
 
-3. Database & Assets
+### Database Setup (Example on MySQL)
 
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=top_link_vote
+DB_USERNAME=root
+DB_PASSWORD=
+
+### Queue and Broadcasting (Required for Horizon & Reverb)
+
+QUEUE_CONNECTION=redis
+BROADCAST_CONNECTION=reverb
+
+### Redis Configuration (Make sure your Redis Server is running)
+
+REDIS_CLIENT=phpredis
+REDIS_HOST=127.0.0.1
+REDIS_PORT=6379
+
+### Laravel Reverb
+
+REVERB_APP_ID=your-reverb-app-id
+REVERB_APP_KEY=your-reverb-app-key
+REVERB_APP_SECRET=your-reverb-app-secret
+REVERB_HOST="localhost"
+REVERB_PORT=8080
+REVERB_SCHEME=http
+
+### Vite / Frontend Variables
+
+VITE_REVERB_APP_KEY="${REVERB_APP_KEY}"
+VITE_REVERB_HOST="${REVERB_HOST}"
+VITE_REVERB_PORT="${REVERB_PORT}"
+VITE_REVERB_SCHEME="${REVERB_SCHEME}"
+
+D. Database & Assets
+Seed the database with initial administrative data and link your storage directory:
+
+```cmd
 php artisan migrate --seed
 php artisan storage:link
-npm run build
+```
 
-4. Run the System
+E. Run the System
 
-# Terminal 1: App Server
+### Terminal 1: App Server
 
-php artisan serve
+```cmd
+composer run dev
+```
 
-# Terminal 2: Real-time Server
+### Terminal 2: Real-time Server
 
+```cmd
 php artisan reverb:start
+```
 
-🔑 System Access
-Admin Access: Login via the main portal (requires Admin role assigned in USER_ROLES).
+### Terminal 3: Asynchronous Queue Service
 
-Student Access: Registration is validated against the imported Registrar Master List.
+```cmd
+php artisan horizon
+```
+
+📊 Portals & Evaluation Access
+Use the following default accounts and test environment configurations to access and evaluate the platform after initial migrations and seeds are executed.
+
+1. 🛡️ Admin Portal (Elections Management)
+   The centralized administrative hub where system managers and registrars control student rosters, moderate candidate submissions, and initialize lifecycle timelines.
+
+URL: http://localhost:8000/admin-login
+
+Email Address: admin@gmail.com
+
+Password: admin
+
+2. 🗳️ Student Portal (Voting & Live Dashboard)
+   Student login identifiers are validated directly against rows imported from the Registrar's database ledger (students.csv). Use the target ranges below for sandbox execution:
+
+URL: http://localhost:8000/ (Main Login Portal)
+
+Student ID: 23-0001 through 23-0099
+
+Password: P@ssword
+
+3. 🏎️ Laravel Horizon Monitoring Dashboard
+   Review active transactional operations, asynchronous jobs, mail processing performance metrics, and system worker distributions.
+
+URL: http://localhost:8000/horizon (Accessible in local development mode)
