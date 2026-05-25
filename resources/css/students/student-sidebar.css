@@ -323,7 +323,6 @@
         display: flex;
     }
 
-    /* ITO ANG GENERAL STYLING NG LAHAT NG NAV LINKS MO */
     .nav-link {
         width: 100%;
         display: flex !important;
@@ -385,8 +384,10 @@
     .mobile-dropdown {
         position: absolute !important;
         bottom: 100% !important;
+        margin-right: 24px !important;
         left: 50% !important;
         transform: translateX(-50%) !important;
+        margin-left: -45px !important;
         width: 160px !important;
         box-shadow: 0 -4px 10px rgba(0, 0, 0, 0.1);
         border-radius: 8px !important;
