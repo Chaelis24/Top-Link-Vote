@@ -58,7 +58,8 @@ body {
 @media (min-width: 769px) and (max-width: 1024px) {
     .main-content {
         padding: 24px;
-        margin-left: var(--sidebar-width, 265px);
+        margin-left: 240px;
+        max-width: calc(100% - 240px);
     }
 }
 

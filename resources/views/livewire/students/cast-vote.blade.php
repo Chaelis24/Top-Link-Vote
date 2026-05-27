@@ -449,7 +449,7 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                     @endforelse
 
                     @if ($this->electionData->isNotEmpty())
-                        <div class="mt-12 flex justify-end pb-10 mb-3 md:mb-12">
+                        <div class="mt-12 flex justify-end pb-10 mb-3 md:mb-4">
                             <button wire:click="setStep(2)" wire:loading.attr="disabled" wire:target="setStep(2)"
                                 class="group relative inline-flex items-center justify-center px-4 md:px-6 py-1.5 md:py-2.5 font-bold text-white transition-all duration-200 bg-[#10b981] rounded-full shadow-lg hover:bg-emerald-600 active:scale-95 disabled:opacity-75">
 

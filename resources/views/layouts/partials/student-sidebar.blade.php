@@ -1,4 +1,7 @@
-<div x-data="{ studentMobileOpen: false }">
+<div x-data="{
+    studentMobileOpen: false,
+    currentPath: window.location.pathname
+}" x-on:livewire:navigated.window="currentPath = window.location.pathname">
     <aside class="sidebar-modern" :class="{ 'show': studentMobileOpen }">
         <div class="sidebar-brand">
             <div class="brand-wrapper">
@@ -17,32 +20,32 @@
         <nav class="sidebar-content">
             <ul class="nav-list">
                 <li class="nav-item">
-                    <a href="{{ url('students/dashboard') }}" wire:navigate
-                        class="nav-link {{ request()->is('students/dashboard*') ? 'active' : '' }}">
+                    <a href="{{ url('students/dashboard') }}" wire:navigate class="nav-link"
+                        :class="currentPath.includes('students/dashboard') ? 'active' : ''">
                         <i class="bi bi-grid-1x2-fill"></i>
                         <span>Dashboard</span>
                     </a>
                 </li>
 
                 <li class="nav-item">
-                    <a href="{{ url('students/profile-platforms') }}" wire:navigate
-                        class="nav-link {{ request()->is('students/profile-platforms*') ? 'active' : '' }}">
+                    <a href="{{ url('students/profile-platforms') }}" wire:navigate class="nav-link"
+                        :class="currentPath.includes('students/profile-platforms') ? 'active' : ''">
                         <i class="bi bi-person-vcard"></i>
                         <span>Profile & Platforms</span>
                     </a>
                 </li>
 
                 <li class="nav-item">
-                    <a href="{{ url('students/cast-vote') }}" wire:navigate
-                        class="nav-link {{ request()->is('students/cast-vote*') ? 'active' : '' }}">
+                    <a href="{{ url('students/cast-vote') }}" wire:navigate class="nav-link"
+                        :class="currentPath.includes('students/cast-vote') ? 'active' : ''">
                         <i class="bi bi-check2-square"></i>
                         <span>Cast Your Vote</span>
                     </a>
                 </li>
 
-                <li class="nav-item mobile-profile-item" x-data="{ open: false }" style="position: relative;">
-                    <a @click="open = !open" style="cursor: pointer;"
-                        class="nav-link {{ request()->is('students/profile*') ? 'active' : '' }}">
+                <li class="nav-item d-lg-none" x-data="{ open: false }" style="position: relative;">
+                    <a @click.prevent="open = !open" style="cursor: pointer;" class="nav-link"
+                        :class="currentPath.split('?')[0] === '/students/profile' ? 'active' : ''">
 
                         @if ($profile_photo_path)
                             <img src="{{ asset('storage/' . $profile_photo_path) }}" class="user-avatar-mobile"
@@ -52,10 +55,10 @@
                                 class="user-avatar-mobile" alt="User">
                         @endif
 
-                        <span class="mobile-profile-text">Profile</span>
+                        <span>Profile</span>
                     </a>
 
-                    <div x-show="open" @click.away="open = false" x-cloak
+                    <div x-show="open" @click.away="open = false" x-cloak style="display: none;"
                         x-transition:enter="transition ease-out duration-100"
                         x-transition:enter-start="opacity-0 transform scale-95"
                         x-transition:enter-end="opacity-100 transform scale-100"

@@ -1,4 +1,7 @@
-<div x-data="{ mobileMenuOpen: false }">
+<div x-data="{
+    mobileMenuOpen: false,
+    currentPath: window.location.pathname
+}" x-on:livewire:navigated.window="currentPath = window.location.pathname">
 
     <aside class="admin-side-wrapper" :class="{ 'show': mobileMenuOpen }">
         <div class="admin-brand-box">
@@ -18,58 +21,66 @@
         <nav class="sidebar-content">
             <ul class="admin-nav-list">
                 <li class="admin-nav-item">
-                    <a href="{{ url('admin/dashboard') }}" wire:navigate
-                        class="admin-nav-link {{ request()->is('admin/dashboard') ? 'active' : '' }}">
+                    <a href="{{ url('admin/dashboard') }}" wire:navigate class="admin-nav-link"
+                        :class="currentPath.includes('admin/dashboard') ? 'active' : ''">
                         <i class="bi bi-grid-1x2-fill"></i>
                         <span>Dashboard</span>
                     </a>
                 </li>
+
                 <li class="admin-nav-item">
-                    <a href="{{ url('admin/candidates') }}" wire:navigate
-                        class="admin-nav-link {{ request()->is('admin/candidates*') ? 'active' : '' }}">
+                    <a href="{{ url('admin/candidates') }}" wire:navigate class="admin-nav-link"
+                        :class="currentPath.includes('admin/candidates') ? 'active' : ''">
                         <i class="bi bi-person-badge-fill"></i>
                         <span>Candidates Profile</span>
                     </a>
                 </li>
+
                 <li class="admin-nav-item">
-                    <a href="{{ url('admin/platforms') }}" wire:navigate
-                        class="admin-nav-link {{ request()->is('admin/platforms*') ? 'active' : '' }}">
+                    <a href="{{ url('admin/platforms') }}" wire:navigate class="admin-nav-link"
+                        :class="currentPath.includes('admin/platforms') ? 'active' : ''">
                         <i class="bi bi-megaphone-fill"></i>
                         <span>Platforms</span>
                     </a>
                 </li>
+
                 <li class="admin-nav-item">
-                    <a href="{{ url('admin/positions') }}" wire:navigate
-                        class="admin-nav-link {{ request()->is('admin/positions*') ? 'active' : '' }}">
+                    <a href="{{ url('admin/positions') }}" wire:navigate class="admin-nav-link"
+                        :class="currentPath.includes('admin/positions') ? 'active' : ''">
                         <i class="bi bi-diagram-3-fill"></i>
                         <span>Positions</span>
                     </a>
                 </li>
+
                 <li class="admin-nav-item">
-                    <a href="{{ url('admin/students') }}" wire:navigate
-                        class="admin-nav-link {{ request()->is('admin/students*') ? 'active' : '' }}">
+                    <a href="{{ url('admin/students') }}" wire:navigate class="admin-nav-link"
+                        :class="currentPath.includes('admin/students') ? 'active' : ''">
                         <i class="bi bi-person-check-fill"></i>
                         <span>Students List</span>
                     </a>
                 </li>
+
                 <li class="admin-nav-item">
-                    <a href="{{ url('admin/election-cycle') }}" wire:navigate
-                        class="admin-nav-link {{ request()->is('admin/election-cycle*') ? 'active' : '' }}">
+                    <a href="{{ url('admin/election-cycle') }}" wire:navigate class="admin-nav-link"
+                        :class="currentPath.includes('admin/election-cycle') ? 'active' : ''">
                         <i class="bi bi-calendar-event-fill"></i>
                         <span>Election Cycle</span>
                     </a>
                 </li>
+
                 <li class="admin-nav-item">
-                    <a href="{{ url('admin/audit-trail') }}" wire:navigate
-                        class="admin-nav-link {{ request()->is('admin/audit-trail*') ? 'active' : '' }}">
+                    <a href="{{ url('admin/audit-trail') }}" wire:navigate class="admin-nav-link"
+                        :class="currentPath.includes('admin/audit-trail') ? 'active' : ''">
                         <i class="bi bi-clock-history"></i>
                         <span>User Activities</span>
                     </a>
                 </li>
+
                 <li class="admin-nav-item d-md-none mobile-profile-item" x-data="{ adminOpen: false }"
                     style="position: relative;">
                     <button @click="adminOpen = !adminOpen"
-                        class="admin-nav-link border-0 bg-transparent w-100 h-100 p-0 m-0">
+                        class="admin-nav-link border-0 bg-transparent w-100 h-100 p-0 m-0"
+                        :class="currentPath.includes('admin/settings') ? 'active' : ''">
                         <img src="https://ui-avatars.com/api/?name={{ urlencode(auth()->user()->name ?? 'Admin') }}&background=1e3a8a&color=fff"
                             style="width: 28px; height: 28px; border-radius: 50%;" alt="Admin">
                     </button>

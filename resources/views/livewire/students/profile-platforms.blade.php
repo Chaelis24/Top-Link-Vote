@@ -308,8 +308,7 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
                     @foreach ($this->positionsList as $pos)
                         <button wire:click="selectPosition('{{ $pos }}')"
                             @click="selectedPosition = '{{ $pos }}'"
-                            class="tab-custom {{ $selectedPosition === $pos ? 'active' : '' }}"
-                            style="font-size: 0.75rem; padding: 4px 8px;">
+                            class="tab-custom {{ $selectedPosition === $pos ? 'active' : '' }} text-xs md:text-base px-2 py-2 md:px-3 md:py-3">
                             {{ $pos }}
                         </button>
                     @endforeach
@@ -370,16 +369,16 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
                                         {{ $candidate->student?->first_name }} {{ $candidate->student?->last_name }}
                                     </h6>
                                     <p class="text-uppercase tracking-wider text-primary fw-bold mb-0"
-                                        style="font-size: 0.55rem;">
+                                        style="font-size: 0.60rem;">
                                         {{ $candidate->position?->name }}
                                     </p>
                                 </div>
 
                                 <div class="bg-light rounded-4 p-2 p-md-3 mb-2 mb-md-3 w-100">
-                                    <p class="text-secondary mb-0 fst-italic"
-                                        style="font-size: 0.6rem; line-height: 1.3; min-height: 30px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                                    <p class="text-primary mb-0 fst-italic"
+                                        style="font-size: 0.70rem; line-height: 1.3; min-height: 3px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
                                         @if ($isApproved)
-                                            "{{ $latestPlatform->tagline }}"
+                                            "{{ $latestPlatform?->tagline ?? 'No Tagline' }}"
                                         @else
                                             <span class="text-muted"><i class="bi bi-lock-fill me-1"></i> Hidden</span>
                                         @endif
@@ -473,139 +472,204 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
 
             <div class="modal fade" id="unifiedModal{{ $candidate->id }}" tabindex="-1" wire:ignore.self>
                 <div class="modal-dialog modal-dialog-centered modal-lg mx-3 mx-md-auto">
-                    <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-                        <div class="modal-header border-0 bg-emerald-light p-3 pb-0 flex-column align-items-start">
-                            <div class="d-flex justify-content-between w-100">
-                                <h6 class="fw-black text-primary mb-0">Candidate Details</h6>
+                    <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden min-h-[50vh] md:h-[10px]">
+
+                        <div class="modal-header border-0 p-3 pb-2 flex-column align-items-start bg-emerald-50">
+                            <div class="d-flex justify-content-between align-items-center w-100 mb-2">
+                                <span class="badge bg-white fw-bold px-2 py-1 shadow-sm text-emerald-600"
+                                    style="font-size: 0.7rem; letter-spacing: 0.5px;">
+                                    CANDIDATE PROFILE
+                                </span>
                                 <button type="button" class="btn-close" style="font-size: 0.7rem;"
                                     data-bs-dismiss="modal"></button>
                             </div>
-                            <ul class="nav nav-tabs border-0 mt-2 w-100" role="tablist">
-                                <li class="nav-item flex-fill text-center">
-                                    <button class="nav-link active fw-bold border-0 bg-transparent w-100 py-2 small"
+
+                            <ul class="nav nav-pills w-100 p-1 rounded-3 bg-transparent" role="tablist">
+                                <li class="nav-item flex-fill text-center" role="presentation">
+                                    <button
+                                        class="nav-link active fw-bold border-0 w-100 py-2 small rounded-3 !text-emerald-700 bg-transparent [&.active]:!bg-emerald-600 [&.active]:!text-white"
                                         id="profile-tab-{{ $candidate->id }}" data-bs-toggle="tab"
                                         data-bs-target="#profile-panel-{{ $candidate->id }}" type="button"
-                                        style="font-size: 0.75rem;">
-                                        Introductory Profile
+                                        style="font-size: 0.75rem; transition: all 0.2s ease;">
+                                        <i class="bi bi-person-badge me-1"></i> Introductory Profile
                                     </button>
                                 </li>
-                                <li class="nav-item flex-fill text-center">
-                                    <button class="nav-link fw-bold border-0 bg-transparent w-100 py-2 small"
+                                <li class="nav-item flex-fill text-center" role="presentation">
+                                    <button
+                                        class="nav-link fw-bold border-0 w-100 py-2 small rounded-3 !text-emerald-700 bg-transparent [&.active]:!bg-emerald-600 [&.active]:!text-white"
                                         id="platform-tab-{{ $candidate->id }}" data-bs-toggle="tab"
                                         data-bs-target="#platform-panel-{{ $candidate->id }}" type="button"
-                                        style="font-size: 0.75rem;">
-                                        Platform
+                                        style="font-size: 0.75rem; transition: all 0.2s ease;">
+                                        <i class="bi bi-megaphone me-1"></i> Platform & Agenda
                                     </button>
                                 </li>
                             </ul>
                         </div>
 
-                        <div class="modal-body p-3">
+                        <div class="modal-body p-3 pt-4">
                             <div class="tab-content">
-                                <div class="tab-pane fade show active" id="profile-panel-{{ $candidate->id }}">
-                                    <div class="row g-3">
-                                        <div class="col-12 col-md-4 text-center border-md-end">
-                                            <p class="text-primary fw-bold text-uppercase mb-2"
-                                                style="font-size: 0.80rem; letter-spacing: 1px;">
-                                                {{ $candidate->party_name }}
-                                            </p>
 
-                                            <div class="rounded-circle mx-auto mb-2 shadow-sm border border-2 border-white"
-                                                style="width:80px; height:80px; overflow:hidden; background: {{ $this->getAvatarColor($candidate->id) }}">
-                                                @if ($candidate->photo)
-                                                    <img src="{{ asset('storage/' . $candidate->photo) }}"
-                                                        class="w-100 h-100 object-fit-cover">
-                                                @elseif ($candidate->student?->photo)
-                                                    <img src="{{ asset('storage/' . $candidate->student->photo) }}"
-                                                        class="w-100 h-100 object-fit-cover">
-                                                @else
-                                                    <div
-                                                        class="w-100 h-100 d-flex align-items-center justify-content-center text-white fw-bold fs-4 fs-md-3">
-                                                        {{ strtoupper(substr($candidate->student?->first_name ?? 'A', 0, 1)) }}
-                                                    </div>
-                                                @endif
+                                <div class="tab-pane fade show active" id="profile-panel-{{ $candidate->id }}"
+                                    role="tabpanel">
+                                    <div class="row g-4 align-items-center">
+
+                                        <div class="col-12 col-md-4 text-center border-md-end pe-md-4">
+                                            <div class="position-relative d-inline-block mb-3">
+                                                <div class="rounded-circle mx-auto shadow border border-3 border-white"
+                                                    style="width:90px; height:90px; overflow:hidden; background: {{ $this->getAvatarColor($candidate->id) }}">
+                                                    @if ($candidate->photo)
+                                                        <img src="{{ asset('storage/' . $candidate->photo) }}"
+                                                            class="w-100 h-100 object-fit-cover">
+                                                    @elseif ($candidate->student?->photo)
+                                                        <img src="{{ asset('storage/' . $candidate->student->photo) }}"
+                                                            class="w-100 h-100 object-fit-cover">
+                                                    @else
+                                                        <div
+                                                            class="w-100 h-100 d-flex align-items-center justify-content-center text-white fw-black fs-3">
+                                                            {{ strtoupper(substr($candidate->student?->first_name ?? 'A', 0, 1)) }}
+                                                        </div>
+                                                    @endif
+                                                </div>
                                             </div>
 
-                                            <h6 class="fw-black text-dark mb-0" style="font-size: 0.9rem;">
+                                            <h5 class="fw-black text-dark mb-1"
+                                                style="font-size: 1rem; letter-spacing: -0.3px;">
                                                 {{ $candidate->student?->first_name }}
                                                 {{ $candidate->student?->middle_name ? substr($candidate->student->middle_name, 0, 1) . '.' : '' }}
                                                 {{ $candidate->student?->last_name }}
                                                 {{ $candidate->student?->suffix }}
-                                            </h6>
+                                            </h5>
 
-                                            <p class="text-primary fw-bold text-uppercase mb-2"
-                                                style="font-size: 0.90rem; letter-spacing: 1px;">
-                                                {{ $candidate->student?->course }} -
+                                            <p class="text-muted fw-semibold small mb-2" style="font-size: 0.75rem;">
+                                                {{ $candidate->student?->course }} — Year
                                                 {{ $candidate->student?->year_level }}
                                             </p>
+
+                                            <span
+                                                class="badge bg-white rounded-pill px-3 py-1 fw-bold text-uppercase text-emerald-600 border border-emerald-200"
+                                                style="font-size: 0.70rem; letter-spacing: 0.5px;">
+                                                {{ $candidate->party_name ?? 'Independent' }}
+                                            </span>
                                         </div>
-                                        <div class="col-12 col-md-8 px-md-3">
-                                            <h6 class="text-uppercase small fw-black text-primary mb-2"
-                                                style="font-size: 0.80rem;">Achievements</h6>
-                                            <div class="mb-3" style="max-height: 120px; overflow-y: auto;">
-                                                <div
-                                                    class="p-2 rounded-3 bg-light mb-1 border-0 d-flex align-items-center">
-                                                    <i class="bi bi-dot text-primary fs-4"></i>
-                                                    {{ is_array($candidate->achievements)
-                                                        ? (implode(', ', $candidate->achievements) ?:
-                                                            'No achievement listed')
-                                                        : $candidate->achievements ?? 'No achievement listed' }}
+
+                                        <div class="col-12 col-md-8 ps-md-4">
+                                            <div class="mb-3">
+                                                <h6 class="text-uppercase small fw-black mb-2 d-flex align-items-center text-emerald-600"
+                                                    style="font-size: 0.75rem; letter-spacing: 0.5px;">
+                                                    <i class="bi bi-trophy me-2"></i> Achievements
+                                                </h6>
+                                                <div style="max-height: 110px; overflow-y: auto; padding-right: 4px;">
+                                                    <div class="p-2.5 rounded-3 bg-white border border-emerald-600 shadow-sm"
+                                                        style="font-size: 0.82rem; line-height: 1.5;">
+                                                        {{ is_array($candidate->achievements)
+                                                            ? (implode(', ', $candidate->achievements) ?:
+                                                                'No achievements listed.')
+                                                            : $candidate->achievements ?? 'No achievements listed.' }}
+                                                    </div>
                                                 </div>
                                             </div>
 
-                                            <div class="row g-0 border-top pt-2">
-                                                <div class="col-6 text-center border-end">
-                                                    <span class="text-primary fw-bold d-block"
-                                                        style="font-size: 0.80rem;">GWA</span>
-                                                    <span
-                                                        class="text-dark small">{{ $candidate->average_grade ?: 'N/A' }}</span>
+                                            <div class="row g-2 pt-2 border-top">
+                                                <div class="col-6">
+                                                    <div
+                                                        class="bg-light p-2 rounded-3 text-center shadow-sm h-100 d-flex flex-column justify-content-center">
+                                                        <span
+                                                            class="fw-black text-uppercase d-block mb-1 text-emerald-600"
+                                                            style="font-size: 0.65rem; letter-spacing: 0.5px;">General
+                                                            Weighted Average</span>
+                                                        <span class="text-dark fw-bold" style="font-size: 0.95rem;">
+                                                            <i class="bi bi-star-fill text-warning me-1"
+                                                                style="font-size: 0.8rem;"></i>{{ $candidate->average_grade ?: 'N/A' }}
+                                                        </span>
+                                                    </div>
                                                 </div>
-                                                <div class="col-6 text-center">
-                                                    <span class="text-primary fw-bold d-block"
-                                                        style="font-size: 0.80rem;">Previous Project</span>
-                                                    <span class="text-black small">
-                                                        {{ is_array($candidate->previous_school_project)
-                                                            ? (implode(', ', $candidate->previous_school_project) ?:
-                                                                'No project listed')
-                                                            : $candidate->previous_school_project ?? 'No project listed' }}
-                                                    </span>
+                                                <div class="col-6">
+                                                    <div
+                                                        class="bg-light p-2 rounded-3 text-center shadow-sm h-100 d-flex flex-column justify-content-center">
+                                                        <span
+                                                            class="fw-black text-uppercase d-block mb-1 text-emerald-600"
+                                                            style="font-size: 0.65rem; letter-spacing: 0.5px;">Previous
+                                                            Project</span>
+                                                        <span
+                                                            class="text-dark fw-semibold small px-1 text-truncate d-block"
+                                                            style="font-size: 0.8rem;"
+                                                            title="{{ is_array($candidate->previous_school_project) ? implode(', ', $candidate->previous_school_project) : $candidate->previous_school_project }}">
+                                                            {{ is_array($candidate->previous_school_project)
+                                                                ? (implode(', ', $candidate->previous_school_project) ?:
+                                                                    'None')
+                                                                : $candidate->previous_school_project ?? 'None' }}
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
+
                                     </div>
                                 </div>
-                                <div class="tab-pane fade" id="platform-panel-{{ $candidate->id }}">
-                                    <div class="bg-light p-2 rounded-3 mb-2">
-                                        <h6 class="fw-black text-dark mb-1" style="font-size: 0.80rem;">
-                                            {{ $approvedPlatform->title ?? 'No Title' }}
+
+                                <div class="tab-pane fade" id="platform-panel-{{ $candidate->id }}" role="tabpanel">
+                                    <div
+                                        class="p-3 rounded-3 mb-3 border border-emerald-600 bg-emerald-50/30 shadow-sm">
+                                        <h6 class="fw-black text-dark mb-1"
+                                            style="font-size: 0.85rem; letter-spacing: -0.2px;">
+                                            {{ blank($approvedPlatform?->title) ? 'No Title Listed' : $approvedPlatform->title }}
                                         </h6>
-                                        <p class="text-primary small fst-italic mb-0" style="font-size: 0.65rem;">
-                                            "{{ $approvedPlatform->tagline ?? 'No Tagline' }}"
+                                        <p class="small fst-italic mb-0 opacity-80 text-emerald-600"
+                                            style="font-size: 0.72rem;">
+                                            <i
+                                                class="bi bi-quote me-1"></i>{{ $approvedPlatform?->tagline ?? 'No tagline provided.' }}
                                         </p>
                                     </div>
 
-                                    <div class="agenda-list" style="max-height: 150px; overflow-y: auto;">
+                                    <h6 class="text-uppercase small fw-black mb-2 px-1 text-emerald-600"
+                                        style="font-size: 0.75rem; letter-spacing: 0.5px;">
+                                        <i class="bi bi-journal-check me-2"></i> Key Agenda Points
+                                    </h6>
+
+                                    <div class="agenda-list pe-1" style="max-height: 140px; overflow-y: auto;">
                                         @php
-                                            $agenda = !empty($approvedPlatform->agenda)
-                                                ? (is_array($approvedPlatform->agenda)
-                                                    ? $approvedPlatform->agenda
-                                                    : explode("\n", $approvedPlatform->agenda))
+                                            $platformAgenda = $approvedPlatform?->agenda;
+                                            $agenda = !empty($platformAgenda)
+                                                ? (is_array($platformAgenda)
+                                                    ? $platformAgenda
+                                                    : explode("\n", $platformAgenda))
                                                 : [];
+                                            $filteredAgenda = array_filter(array_map('trim', $agenda));
                                         @endphp
 
-                                        @foreach (array_filter($agenda) as $point)
-                                            <div class="d-flex align-items-center mb-1 p-1">
-                                                <i class="bi bi-check2 text-primary me-2"></i>
-                                                <span class="small text-dark" style="font-size: 0.80rem;">
-                                                    {{ trim($point) }}
-                                                </span>
+                                        @if (count($filteredAgenda) > 0)
+                                            <div class="row g-2">
+                                                @foreach ($filteredAgenda as $point)
+                                                    <div class="col-12">
+                                                        <div
+                                                            class="d-flex align-items-start p-2 rounded-2 bg-light-subtle border border-light shadow-sm bg-white">
+                                                            <span
+                                                                class="me-2 mt-0.5 rounded-circle p-1 d-inline-flex align-items-center justify-content-center bg-emerald-50 text-emerald-600"
+                                                                style="width: 18px; height: 18px;">
+                                                                <i class="bi bi-check2 fw-bold"
+                                                                    style="font-size: 0.65rem;"></i>
+                                                            </span>
+                                                            <span class="text-dark"
+                                                                style="font-size: 0.80rem; line-height: 1.4;">
+                                                                {{ $point }}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                @endforeach
                                             </div>
-                                        @endforeach
+                                        @else
+                                            <div
+                                                class="text-muted small fst-italic p-3 text-center bg-light rounded-3">
+                                                <i class="bi bi-info-circle me-1"></i> No specific agenda details
+                                                listed for this platform.
+                                            </div>
+                                        @endif
                                     </div>
                                 </div>
 
                             </div>
                         </div>
+
                     </div>
                 </div>
             </div>

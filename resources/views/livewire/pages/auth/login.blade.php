@@ -39,13 +39,8 @@ new #[Layout('layouts.guest')] class extends Component {
 
         if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
             $seconds = RateLimiter::availableIn($throttleKey);
-            $this->addError('form.student_id', "Too many login attempts. Retry in $seconds seconds.");
 
-            session()->flash('swal', [
-                'icon' => 'error',
-                'title' => 'Account Locked Temporarily',
-                'text' => "Please wait for $seconds seconds before trying again.",
-            ]);
+            $this->addError('form.student_id', "Too many login attempts. Retry in $seconds seconds.");
             return;
         }
 
@@ -126,21 +121,11 @@ new #[Layout('layouts.guest')] class extends Component {
 
                 <div class="md:w-1/2 p-5 md:p-10 flex flex-col justify-center bg-white">
                     <div class="mb-3 md:mb-6">
-                        <h2 class="text-2xl md:text-3xl font-bold text-[#252525] mb-1 md:mb-2 tracking-tighter">Sign in
+                        <h2 class="text-2xl md:text-3xl font-bold text-[#252525] mb-1 md:mb-2 tracking-tighter">Sign
+                            in
                         </h2>
                         <p class="text-gray-500 text-xs md:text-sm">Log in with your Student Credentials.</p>
                     </div>
-
-                    @if (session()->has('swal'))
-                        <script>
-                            Swal.fire({
-                                icon: "{{ session('swal')['icon'] }}",
-                                title: "{{ session('swal')['title'] }}",
-                                text: "{{ session('swal')['text'] }}",
-                                confirmButtonColor: '#108500',
-                            });
-                        </script>
-                    @endif
 
                     <form wire:submit="login" class="space-y-4 md:space-y-5">
                         <div>
@@ -151,7 +136,8 @@ new #[Layout('layouts.guest')] class extends Component {
                                 class="w-full px-4 py-2.5 md:py-3 rounded-lg border transition-all text-sm outline-none focus:outline-none focus:ring-2
                                 {{ $errors->has('form.student_id') ? 'border-red-500 focus:ring-red-200 focus:border-red-500' : 'border-gray-200 focus:ring-[#9cff00]/30 focus:border-[#108500]' }}">
                             @error('form.student_id')
-                                <p class="text-[10px] text-red-500 font-bold mt-1 ms-1 uppercase italic">{{ $message }}
+                                <p class="text-[10px] text-red-500 font-bold mt-1 ms-1 uppercase italic">
+                                    {{ $message }}
                                 </p>
                             @enderror
                         </div>
@@ -171,12 +157,13 @@ new #[Layout('layouts.guest')] class extends Component {
                                 </button>
                             </div>
                             @error('form.password')
-                                <p class="text-[10px] text-red-500 font-bold mt-1 ms-1 uppercase italic">{{ $message }}
+                                <p class="text-[10px] text-red-500 font-bold mt-1 ms-1 uppercase italic">
+                                    {{ $message }}
                                 </p>
                             @enderror
                         </div>
 
-                        <div class="flex items-center justify-between text-[10px] md:text-xs font-bold uppercase">
+                        <div class="flex items-center justify-between text-[10px] md:text-xs font-bold">
                             <label class="flex items-center text-[#252525] cursor-pointer">
                                 <input type="checkbox" wire:model="form.remember"
                                     class="rounded border-gray-300 text-[#108500] shadow-sm focus:ring-[#9cff00]/30">
@@ -197,10 +184,10 @@ new #[Layout('layouts.guest')] class extends Component {
 
                     @if (Route::has('verify-account'))
                         <p
-                            class="text-center mt-4 md:mt-6 text-[10px] md:text-xs font-bold text-gray-500 uppercase tracking-widest">
+                            class="text-center mt-4 md:mt-6 text-[10px] md:text-xs font-bold text-gray-500 tracking-widest">
                             Don't have an account?
                             <a href="{{ route('verify-account') }}" wire:navigate
-                                class="text-[#108500] hover:text-[#0d6b00] underline">Verify Account</a>
+                                class="text-[#108500] hover:text-[#0d6b00] underline">Verify an Account</a>
                         </p>
                     @endif
                 </div>

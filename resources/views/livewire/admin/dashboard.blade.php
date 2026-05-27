@@ -30,13 +30,13 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
             $timerLabel = 'Days Remaining';
 
             if ($activeCycle) {
-                if ($now->lt($activeCycle->filing_end)) {
+                if ($activeCycle->filing_end && $now->lt($activeCycle->filing_end)) {
                     $targetDate = $activeCycle->filing_end;
                     $timerLabel = 'Filing Ends In';
-                } elseif ($now->lt($activeCycle->voting_start)) {
+                } elseif ($activeCycle->voting_start && $now->lt($activeCycle->voting_start)) {
                     $targetDate = $activeCycle->voting_start;
                     $timerLabel = 'Voting Starts In';
-                } elseif ($now->lt($activeCycle->voting_end)) {
+                } elseif ($activeCycle && $activeCycle->filing_start && $activeCycle->voting_end && now()->between($activeCycle->filing_start, $activeCycle->voting_end)) {
                     $targetDate = $activeCycle->voting_end;
                     $timerLabel = 'Election Ends In';
                 } else {
@@ -73,12 +73,17 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
                 ->count('student_id');
 
             $trends = Vote::whereHas('candidate', fn($q) => $q->where('election_cycle_id', $activeCycleId))
-                ->selectRaw('HOUR(created_at) as hour, COUNT(*) as count')
                 ->where('created_at', '>=', now()->subHours(6))
-                ->groupBy('hour')
-                ->orderBy('hour')
                 ->get()
-                ->map(fn($item) => ['hour' => $item->hour . ':00', 'count' => $item->count]);
+                ->groupBy(fn($vote) => $vote->created_at->format('H'))
+                ->map(function ($votes, $hour) {
+                    return [
+                        'hour' => (int) $hour . ':00',
+                        'count' => $votes->count(),
+                    ];
+                })
+                ->sortBy('hour')
+                ->values();
 
             $yearLevelData = Student::join('votes', 'students.id', '=', 'votes.student_id')
                 ->join('candidates', 'votes.candidate_id', '=', 'candidates.id')
@@ -171,12 +176,16 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
                 <h2 class="fw-bold text-primary">Admin <span class="text-accent">Dashboard</span></h2>
                 <p class="text-muted mb-0" style="font-size: 0.85rem;">Live Election Analytics & Overview</p>
             </div>
-            <div class="d-flex align-items-center gap-3">
+            <div>
                 @php
                     $active = $this->active;
                     $now = now();
                     $isFinished = $active && $now->gt($active->voting_end);
-                    $isOngoing = $active && $now->between($active->filing_start, $active->voting_end);
+                    $isOngoing =
+                        $active &&
+                        $active->filing_start &&
+                        $active->voting_end &&
+                        $now->between($active->filing_start, $active->voting_end);
                 @endphp
 
                 @if ($isFinished)
@@ -188,11 +197,10 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
                         <span class="fw-bold d-none d-md-inline ms-2" style="font-size: 12px;">Download Result</span>
                     </button>
                 @elseif ($isOngoing)
-                    <div class="btn-glow d-flex align-items-center justify-content-center px-2 px-md-0 px-2 px-md-3 bg-success text-white"
+                    <div class="btn-glow d-flex align-items-center justify-content-center w-[80px] md:w-[200px] mb-2 md:mb-0 p-2 md:p-3 bg-success text-white rounded-pill"
                         style="height: 38px; border-radius: 8px; cursor: default;" title="Election Process Ongoing">
-                        <i class="bi bi-clock-history fs-5 p-2"></i>
-                        <span class="fw-bold d-none d-md-inline ms-2" style="font-size: 14px;">Election Process
-                            Ongoing</span>
+                        <i class="bi bi-clock-history fs-7 p-1"></i>
+                        <span class="hidden md:inline ms-1" style="font-size: 14px;">Ongoing Election</span>
                     </div>
                 @else
                     <button type="button"
@@ -270,13 +278,13 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
                 <div class="stat-card p-2 p-md-3 shadow-sm h-100" x-data="{
                     remainingSeconds: {{ $targetDate ? now()->diffInSeconds($targetDate, false) : -1 }},
                     displayValue: '...',
-
+                
                     updateTimer() {
                         if (this.remainingSeconds <= 0) {
                             this.displayValue = 'Closed';
                             return;
                         }
-
+                
                         let s = this.remainingSeconds;
                         let d = Math.floor(s / (24 * 3600));
                         s %= (24 * 3600);
@@ -284,7 +292,7 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
                         s %= 3600;
                         let m = Math.floor(s / 60);
                         let sc = s % 60;
-
+                
                         this.displayValue = `${String(d).padStart(2, '0')}d ${String(h).padStart(2, '0')}h ${String(m).padStart(2, '0')}m`;
                     }
                 }" x-init="updateTimer();

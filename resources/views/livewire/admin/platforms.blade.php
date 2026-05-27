@@ -44,7 +44,7 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                     });
             })
             ->select('platforms.*')
-            ->orderByRaw("FIELD(platforms.status, 'pending') DESC")
+            ->orderByRaw("CASE WHEN platforms.status = 'pending' THEN 0 ELSE 1 END ASC")
             ->latest('platforms.created_at')
             ->paginate(10);
     }
@@ -199,21 +199,21 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                                 </td>
                                 <td class="text-end pe-4">
                                     <div class="d-flex justify-content-end gap-2">
-                                        <button wire:click="viewPlatform({{ $platform->id }})" class="btn"
-                                            title="Review Profile"
-                                            style="width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: none; border-radius: 8px; background-color: rgba(13, 110, 253, 0.1); color: #0d6efd;">
+                                        <x-icon-button variant="edit" wire:click="viewPlatform({{ $platform->id }})"
+                                            title="Review Profile" size="30px" borderRadius="8px">
                                             <i class="bi bi-eye"></i>
-                                        </button>
+                                        </x-icon-button>
 
                                         @if ($platform->status !== 'approved')
-                                            <button type="button"
-                                                x-on:click="
+                                            <x-icon-button variant="approve" title="Approve" size="30px"
+                                                borderRadius="8px" x-data
+                                                @click="
                                                     Swal.fire({
                                                         title: 'Approve this manifesto?',
                                                         text: 'This will publish the candidate profile live.',
                                                         icon: 'question',
                                                         showCancelButton: true,
-                                                        confirmButtonColor: '#198754',
+                                                        confirmButtonColor: 'var(--success-green, #198754)',
                                                         cancelButtonColor: '#6c757d',
                                                         confirmButtonText: 'Yes, Approve it!'
                                                     }).then((result) => {
@@ -221,21 +221,21 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                                                             $wire.publishPlatform({{ $platform->id }})
                                                         }
                                                     })
-                                                "
-                                                class="btn" title="Approve"
-                                                style="width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: none; border-radius: 8px; background-color: rgba(25, 135, 84, 0.1); color: #198754;">
+                                                ">
                                                 <i class="bi bi-check-lg"></i>
-                                            </button>
+                                            </x-icon-button>
                                         @endif
+
                                         @if ($platform->status !== 'rejected')
-                                            <button type="button"
-                                                x-on:click="
+                                            <x-icon-button variant="delete" title="Reject" size="30px"
+                                                borderRadius="8px" x-data
+                                                @click="
                                                     Swal.fire({
                                                         title: 'Reject this platform?',
                                                         text: 'This will mark the platform as rejected.',
                                                         icon: 'warning',
                                                         showCancelButton: true,
-                                                        confirmButtonColor: '#dc3545',
+                                                        confirmButtonColor: 'var(--danger-red, #dc3545)',
                                                         cancelButtonColor: '#6c757d',
                                                         confirmButtonText: 'Yes, Reject it!'
                                                     }).then((result) => {
@@ -243,11 +243,9 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                                                             $wire.rejectPlatform({{ $platform->id }})
                                                         }
                                                     })
-                                                "
-                                                class="btn" title="Reject"
-                                                style="width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: none; border-radius: 8px; background-color: rgba(220, 53, 69, 0.1); color: #dc3545;">
+                                                ">
                                                 <i class="bi bi-x-lg"></i>
-                                            </button>
+                                            </x-icon-button>
                                         @endif
                                     </div>
                                 </td>
@@ -316,25 +314,48 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                                 <i class="bi bi-calendar3 me-1"></i> {{ $platform->created_at->format('M d, Y') }}
                             </div>
                             <div class="flex gap-2">
-                                <button wire:click="viewPlatform({{ $platform->id }})" class="btn p-0"
-                                    style="width: 32px; height: 32px; border-radius: 6px; background-color: rgba(13, 110, 253, 0.1); color: #0d6efd; display: flex; align-items: center; justify-content: center; border: none;">
+                                <x-icon-button variant="edit" wire:click="viewPlatform({{ $platform->id }})">
                                     <i class="bi bi-eye"></i>
-                                </button>
-
+                                </x-icon-button>
                                 @if ($platform->status !== 'approved')
-                                    <button wire:click="publishPlatform({{ $platform->id }})"
-                                        wire:confirm="Approve this?" class="btn p-0"
-                                        style="width: 32px; height: 32px; border-radius: 6px; background-color: rgba(25, 135, 84, 0.1); color: #198754; display: flex; align-items: center; justify-content: center; border: none;">
+                                    <x-icon-button variant="approve" x-data
+                                        @click="
+                                            Swal.fire({
+                                                title: 'Approve this?',
+                                                text: 'This platform will be published.',
+                                                icon: 'question',
+                                                showCancelButton: true,
+                                                confirmButtonColor: 'var(--success-green, #198754)',
+                                                cancelButtonColor: '#6c757d',
+                                                confirmButtonText: 'Yes, approve it!'
+                                            }).then((result) => {
+                                                if (result.isConfirmed) {
+                                                    $wire.publishPlatform({{ $platform->id }})
+                                                }
+                                            })
+                                        ">
                                         <i class="bi bi-check-lg"></i>
-                                    </button>
+                                    </x-icon-button>
                                 @endif
-
                                 @if ($platform->status !== 'rejected')
-                                    <button wire:click="rejectPlatform({{ $platform->id }})"
-                                        wire:confirm="Reject this?" class="btn p-0"
-                                        style="width: 32px; height: 32px; border-radius: 6px; background-color: rgba(220, 53, 69, 0.1); color: #dc3545; display: flex; align-items: center; justify-content: center; border: none;">
+                                    <x-icon-button variant="delete" x-data
+                                        @click="
+                                            Swal.fire({
+                                                title: 'Reject this?',
+                                                text: 'This platform will be marked as rejected.',
+                                                icon: 'warning',
+                                                showCancelButton: true,
+                                                confirmButtonColor: 'var(--danger-red, #dc3545)',
+                                                cancelButtonColor: '#6c757d',
+                                                confirmButtonText: 'Yes, reject it!'
+                                            }).then((result) => {
+                                                if (result.isConfirmed) {
+                                                    $wire.rejectPlatform({{ $platform->id }})
+                                                }
+                                            })
+                                        ">
                                         <i class="bi bi-x-lg"></i>
-                                    </button>
+                                    </x-icon-button>
                                 @endif
                             </div>
                         </div>
@@ -464,14 +485,18 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                     </div>
 
                     <div class="modal-footer bg-light p-2 flex-row justify-content-end">
-                        <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal"
-                            style="height: 32px; font-size: 0.75rem;">Close</button>
-                        @if ($selectedPlatform->status === 'pending')
-                            <button wire:click="publishPlatform({{ $selectedPlatform->id }})"
-                                class="btn btn-primary btn-sm px-3" data-bs-dismiss="modal"
-                                style="height: 32px; font-size: 0.75rem; color: white;">
-                                Confirm Approval
-                            </button>
+                        <x-button type="button" variant="gray" data-bs-dismiss="modal" width="auto"
+                            height="32px" fontSize="0.75rem" padding="0 16px">
+                            Close
+                        </x-button>
+                        @if ($selectedPlatform && $selectedPlatform->status === 'pending')
+                            <x-button type="button" variant="glow"
+                                wire:click="publishPlatform({{ $selectedPlatform->id }})" data-bs-dismiss="modal"
+                                wire:target="publishPlatform" width="auto" height="32px" fontSize="0.75rem"
+                                padding="0 16px">
+                                <span wire:loading.remove wire:target="publishPlatform">Confirm Approval</span>
+                                <span wire:loading wire:target="publishPlatform">Approving...</span>
+                            </x-button>
                         @endif
                     </div>
                 @endif

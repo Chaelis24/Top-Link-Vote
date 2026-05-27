@@ -1,0 +1,32 @@
+<div>
+    @props([
+        'variant' => 'edit',
+        'size' => '32px',
+        'fontSize' => '1rem',
+        'borderRadius' => '6px',
+    ])
+
+    @php
+        $baseStyles =
+            'btn border-0 d-inline-flex align-items-center justify-content-center rounded-circle p-0 transition-all';
+
+        $variants = [
+            'edit' => 'btn-icon btn-edit',
+            'approve' => 'btn-icon btn-approve',
+            'delete' => 'btn-icon btn-delete',
+            'custom' => '',
+        ];
+
+        $classes = $variants[$variant] ?? $variants['edit'];
+    @endphp
+
+    <button {{ $attributes->merge([
+        'type' => 'button',
+        'class' => "$baseStyles $classes",
+    ]) }}
+        style="width: {{ $size }}; height: {{ $size }}; min-width: {{ $size }}; min-height: {{ $size }};">
+        <span wire:loading.remove wire:target="{{ $attributes->get('wire:click') }}">
+            {{ $slot }}
+        </span>
+    </button>
+</div>

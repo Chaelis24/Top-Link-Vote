@@ -78,14 +78,17 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
             $this->vEndIso = optional($active->voting_end)->toIso8601String() ?? '';
             $this->rDateIso = optional($active->results_date)->toIso8601String() ?? '';
 
-            $this->startTime = $this->vStartIso;
-            $this->endTime = $this->vEndIso;
+            $this->startTime = $this->vStartIso ?: now()->toIso8601String();
+            $this->endTime = $this->vEndIso ?: now()->toIso8601String();
 
             $this->campaign_start = optional($active->campaign_start)->format('Y-m-d') ?? '';
             $this->campaign_end = optional($active->campaign_end)->format('Y-m-d') ?? '';
             $this->results_date = optional($active->results_date)->format('Y-m-d\TH:i') ?? '';
 
             $this->updateProgress();
+        } else {
+            $this->startTime = now()->toIso8601String();
+            $this->endTime = now()->toIso8601String();
         }
 
         $isOver = $active && now()->gt($active->voting_end);
@@ -114,28 +117,34 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
 
         $now = now();
 
-        if ($now->between($active->filing_start, $active->filing_end)) {
-            $total = $active->filing_start->diffInSeconds($active->filing_end);
-            $elapsed = $active->filing_start->diffInSeconds($now);
-            $this->filingProgress = (int) (($elapsed / max($total, 1)) * 100);
-        } elseif ($now->gt($active->filing_end)) {
-            $this->filingProgress = 100;
+        if ($active->filing_start && $active->filing_end) {
+            if ($now->between($active->filing_start, $active->filing_end)) {
+                $total = $active->filing_start->diffInSeconds($active->filing_end);
+                $elapsed = $active->filing_start->diffInSeconds($now);
+                $this->filingProgress = (int) (($elapsed / max($total, 1)) * 100);
+            } elseif ($now->gt($active->filing_end)) {
+                $this->filingProgress = 100;
+            }
         }
 
-        if ($now->between($active->campaign_start, $active->campaign_end)) {
-            $total = $active->campaign_start->diffInSeconds($active->campaign_end);
-            $elapsed = $active->campaign_start->diffInSeconds($now);
-            $this->campaignProgress = (int) (($elapsed / max($total, 1)) * 100);
-        } elseif ($now->gt($active->campaign_end)) {
-            $this->campaignProgress = 100;
+        if ($active->campaign_start && $active->campaign_end) {
+            if ($now->between($active->campaign_start, $active->campaign_end)) {
+                $total = $active->campaign_start->diffInSeconds($active->campaign_end);
+                $elapsed = $active->campaign_start->diffInSeconds($now);
+                $this->campaignProgress = (int) (($elapsed / max($total, 1)) * 100);
+            } elseif ($now->gt($active->campaign_end)) {
+                $this->campaignProgress = 100;
+            }
         }
 
-        if ($now->between($active->voting_start, $active->voting_end)) {
-            $total = $active->voting_start->diffInSeconds($active->voting_end);
-            $elapsed = $active->voting_start->diffInSeconds($now);
-            $this->progress = (int) (($elapsed / max($total, 1)) * 100);
-        } elseif ($now->gt($active->voting_end)) {
-            $this->progress = 100;
+        if ($active->voting_start && $active->voting_end) {
+            if ($now->between($active->voting_start, $active->voting_end)) {
+                $total = $active->voting_start->diffInSeconds($active->voting_end);
+                $elapsed = $active->voting_start->diffInSeconds($now);
+                $this->progress = (int) (($elapsed / max($total, 1)) * 100);
+            } elseif ($now->gt($active->voting_end)) {
+                $this->progress = 100;
+            }
         }
     }
 
@@ -489,19 +498,17 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                 <p class="text-muted mb-0 small">Configure election dates and live system controls</p>
             </div>
             @if ($this->active)
-                <div class="btn-glow d-flex align-items-center justify-content-center px-2 px-md-0 px-2 px-md-3 bg-success text-white"
+                <div class="btn-glow d-flex align-items-center justify-content-center w-[80px] md:w-[200px] mb-2 md:mb-0 p-2 md:p-3 bg-success text-white rounded-pill"
                     style="height: 38px; border-radius: 8px; cursor: default;" title="Election Process Ongoing">
-                    <i class="bi bi-clock-history fs-5 p-2"></i>
-                    <span class="fw-bold d-none d-md-inline ms-2" style="font-size: 14px;">Election Process
-                        Ongoing</span>
+                    <i class="bi bi-clock-history fs-7 p-1"></i>
+                    <span class="hidden md:inline ms-1" style="font-size: 14px;">Ongoing Election</span>
                 </div>
             @else
-                <button class="btn-glow d-flex align-items-center justify-content-center gap-1" data-bs-toggle="modal"
-                    data-bs-target="#newCycleModal" style="height: 38px; min-width: 38px; border-radius: 8px;"
-                    title="New Election Cycle">
-                    <i class="bi bi-plus-lg"></i>
-                    <span class="fw-bold d-none d-md-inline ms-1">New Election Cycle</span>
-                </button>
+                <x-button variant="glow" class="w-full xs:w-auto px-4 md:px-6" data-bs-toggle="modal"
+                    data-bs-target="#newCycleModal" title="New Election Cycle">
+                    <i class="bi bi-plus-lg fs-7 p-1"></i>
+                    <span class="hidden md:inline ms-1">New Election Cycle</span>
+                </x-button>
             @endif
         </div>
 
@@ -550,7 +557,7 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                             <span x-show="dates.rD" class="pulse-dot" style="width: 6px; height: 6px;"
                                 :style="'background: ' + (now < dates.rD ? '#10b981' : '#ef4444')"></span>
                             <span class="fw-bold"
-                                x-text="!dates.rD ? 'No Cycle Active' : (now < dates.rD ? 'Election Process Ongoing' : 'Cycle Completed')">
+                                x-text="!dates.rD ? 'No Cycle Active' : (now < dates.rD ? 'Election Cycle Active' : 'Cycle Completed')">
                             </span>
                         </span>
                     </div>

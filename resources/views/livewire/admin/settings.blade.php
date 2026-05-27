@@ -135,10 +135,10 @@ new #[Layout('layouts.admin')] #[Title('Settings')] class extends Component {
                                 @enderror
                             </div>
 
-                            <button type="submit" class="btn-glow w-100 py-2 text-[13px] md:text-sm fw-bold">
+                            <x-button type="submit" variant="glow" class="w-100 py-2 text-[13px] md:text-sm fw-bold">
                                 <span wire:loading.remove wire:target="updateProfile">Update Profile</span>
                                 <span wire:loading wire:target="updateProfile">Updating...</span>
-                            </button>
+                            </x-button>
                         </form>
                     </div>
                 </div>
@@ -222,11 +222,11 @@ new #[Layout('layouts.admin')] #[Title('Settings')] class extends Component {
                                 </div>
                             </div>
 
-                            <button type="submit"
-                                class="btn-glow w-100 py-2 text-[13px] md:text-sm fw-bold mb-11 md:mb-0">
+                            <x-button type="submit" variant="glow"
+                                class="w-100 py-2 text-[13px] md:text-sm fw-bold mb-11 md:mb-0">
                                 <span wire:loading.remove wire:target="updatePassword">Change Password</span>
                                 <span wire:loading wire:target="updatePassword">Updating...</span>
-                            </button>
+                            </x-button>
                         </form>
                     </div>
                 </div>

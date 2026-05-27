@@ -277,10 +277,6 @@
     margin: 2px;
 }
 
-.btn-icon:hover {
-    transform: none !important;
-}
-
 .btn-edit {
     color: var(--accent-blue);
 }
@@ -297,6 +293,20 @@
     color: white;
 }
 
+.btn-approve {
+    color: var(
+        --success-green,
+        #198754
+    );
+}
+.btn-approve:hover {
+    background: var(--success-green, #198754);
+    color: white;
+}
+
+.btn-icon:hover {
+    transform: none !important;
+}
 .btn-icon-green {
     color: var(--success-green);
 }

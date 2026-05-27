@@ -289,13 +289,12 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
             </div>
             <div x-data="{ progress: 0 }" x-on:livewire-upload-progress="progress = $event.detail.progress">
                 <input type="file" x-ref="csvInput" wire:model.live="csvFile" class="d-none" accept=".csv">
-                <button type="button" class="btn-glow btn-sm d-flex align-items-center justify-content-center"
-                    @click="$refs.csvInput.click()" style="height: 38px; min-width: 38px; border-radius: 8px;"
+                <x-button variant="glow" class="w-full xs:w-auto px-4 md:px-6" @click="$refs.csvInput.click()"
                     title="Import CSV">
-                    <i class="bi bi-upload fs-6 p-2"></i>
-                    <span class="hidden md:block ms-1">Import CSV</span>
-                </button>
-                <input type="file" x-ref="csvInput" class="hidden" wire:model="csvFile" accept=".csv">
+                    <i class="bi bi-file-earmark-arrow-up fs-7 p-1"></i>
+
+                    <span class="hidden md:inline ms-1">Import CSV</span>
+                </x-button>
             </div>
         </div>
 
@@ -449,16 +448,21 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                                 </td>
                                 <td class="text-center pe-4">
                                     <div class="d-flex gap-2 justify-content-center">
-                                        <button wire:click="viewStudent({{ $student->id }})"
-                                            class="flex items-center justify-center w-[32px] h-[32px] rounded-lg border-none bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 transition-colors">
+
+                                        <x-icon-button variant="custom" wire:click="viewStudent({{ $student->id }})"
+                                            class="flex items-center justify-center border-none bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 transition-colors">
                                             <i class="bi bi-eye"></i>
-                                        </button>
-                                        <button wire:click="editStudent({{ $student->id }})"
-                                            class="flex items-center justify-center w-[32px] h-[32px] rounded-lg border-none bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20 transition-colors">
+                                        </x-icon-button>
+
+                                        <x-icon-button variant="custom" wire:click="editStudent({{ $student->id }})"
+                                            class="flex items-center justify-center border-none bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20 transition-colors">
                                             <i class="bi bi-pencil-square"></i>
-                                        </button>
-                                        <button type="button"
-                                            x-on:click="
+                                        </x-icon-button>
+
+                                        <x-icon-button variant="custom" type="button"
+                                            class="flex items-center justify-center border-none bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 transition-colors"
+                                            x-data
+                                            @click="
                                                 Swal.fire({
                                                     title: 'Deactivate Student?',
                                                     text: 'This will set the student status to inactive.',
@@ -473,10 +477,10 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                                                         $wire.deleteStudent({{ $student->id }})
                                                     }
                                                 })
-                                            "
-                                            class="flex items-center justify-center w-[32px] h-[32px] rounded-lg border-none bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 transition-colors">
+                                            ">
                                             <i class="bi bi-person-x"></i>
-                                        </button>
+                                        </x-icon-button>
+
                                     </div>
                                 </td>
                             </tr>
@@ -520,18 +524,35 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                                 <i class="bi bi-envelope me-1"></i>{{ $student->user->email ?? 'N/A' }}
                             </div>
                             <div class="d-flex gap-2">
-                                <button wire:click="viewStudent({{ $student->id }})"
+                                <x-icon-button variant="custom" wire:click="viewStudent({{ $student->id }})"
                                     style="background: rgba(59, 130, 246, 0.1); color: #3b82f6; border: none; width: 32px; height: 32px; border-radius: 6px;">
                                     <i class="bi bi-eye"></i>
-                                </button>
-                                <button wire:click="editStudent({{ $student->id }})"
+                                </x-icon-button>
+                                <x-icon-button variant="custom" wire:click="editStudent({{ $student->id }})"
                                     style="background: rgba(99, 102, 241, 0.1); color: #6366f1; border: none; width: 32px; height: 32px; border-radius: 6px;">
                                     <i class="bi bi-pencil-square"></i>
-                                </button>
-                                <button wire:click="deleteStudent({{ $student->id }})" wire:confirm="Deactivate?"
-                                    style="background: rgba(244, 63, 94, 0.1); color: #f43f5e; border: none; width: 32px; height: 32px; border-radius: 6px;">
+                                </x-icon-button>
+                                <x-icon-button variant="custom"
+                                    style="background: rgba(244, 63, 94, 0.1); color: #f43f5e; border: none; width: 32px; height: 32px; border-radius: 6px;"
+                                    x-data
+                                    @click="
+                                        Swal.fire({
+                                            title: 'Deactivate Student?',
+                                            text: 'This will set the student status to inactive.',
+                                            icon: 'warning',
+                                            showCancelButton: true,
+                                            confirmButtonColor: '#f43f5e',
+                                            cancelButtonColor: '#6c757d',
+                                            confirmButtonText: 'Yes, deactivate it!',
+                                            cancelButtonText: 'Cancel'
+                                        }).then((result) => {
+                                            if (result.isConfirmed) {
+                                                $wire.deleteStudent({{ $student->id }})
+                                            }
+                                        })
+                                    ">
                                     <i class="bi bi-person-x"></i>
-                                </button>
+                                </x-icon-button>
                             </div>
                         </div>
                     </div>
@@ -617,8 +638,9 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                     @endif
                 </div>
                 <div class="modal-footer border-0 p-3">
-                    <button type="button" class="btn btn-secondary btn-sm fw-bold px-4"
-                        data-bs-dismiss="modal">Close</button>
+                    <x-button variant="gray" type="button" class="btn btn-secondary btn-sm fw-bold px-4"
+                        data-bs-dismiss="modal">Close
+                    </x-button>
                 </div>
             </div>
         </div>
@@ -734,11 +756,11 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                     </div>
 
                     <div class="modal-footer bg-light p-2">
-                        <button type="submit" class="btn-glow px-4 py-2 fw-bold"
-                            style="font-size: 0.7rem; border-radius: 5px;" wire:loading.attr="disabled">
+                        <x-button type="submit" variant="glow" style="font-size: 0.7rem; border-radius: 5px;"
+                            wire:loading.attr="disabled">
                             <span wire:loading.remove>Update Profile</span>
                             <span wire:loading><span class="spinner-border spinner-border-sm"></span></span>
-                        </button>
+                        </x-button>
                     </div>
                 </form>
             </div>

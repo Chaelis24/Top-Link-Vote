@@ -12,6 +12,7 @@
     z-index: 1050;
     transition: transform 0.3s ease-in-out;
     border-right: 1px solid #e2e8f0;
+    overflow-x: hidden;
 }
 
 .sidebar-modern::-webkit-scrollbar {
@@ -296,6 +297,7 @@
         box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
         display: flex !important;
         align-items: stretch !important;
+        overflow: visible !important;
     }
 
     .sidebar-brand {
@@ -332,7 +334,7 @@
         padding: 0 !important;
         font-size: 0.65rem !important;
         border-radius: 0 !important;
-        gap: 2px !important;
+        gap: 5px !important;
         background: transparent !important;
         color: #64748b !important;
         text-decoration: none !important;
@@ -356,20 +358,27 @@
     }
 
     .mobile-profile-item {
+        width: 100%;
         display: flex !important;
-        flex: 1 !important;
+        flex-direction: column !important;
         justify-content: center !important;
         align-items: center !important;
+        padding: 0 !important;
+        font-size: 0.65rem !important;
+        border-radius: 0 !important;
+        gap: 2px !important;
+        background: transparent !important;
+        color: #64748b !important;
+        text-decoration: none !important;
     }
 
     .user-avatar-mobile {
-        width: 1.4rem !important;
+        width: 1.4rem !important; /* Mas maliit nang konti para kasya sa mobile bottom nav */
         height: 1.4rem !important;
         border-radius: 50% !important;
         object-fit: cover;
         display: block !important;
         margin: 0 auto !important;
-        margin-bottom: 3px !important;
     }
 
     .mobile-profile-text {

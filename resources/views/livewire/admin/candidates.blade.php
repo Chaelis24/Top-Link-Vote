@@ -39,6 +39,38 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
         'photo_url' => '',
     ];
 
+    protected function rules()
+    {
+        return [
+            'editForm.party_name' => 'required|string|max:255',
+            'editForm.position_id' => 'required|exists:positions,id',
+            'editForm.platform_title' => 'required|string|max:255',
+            'editForm.previous_position.*' => 'nullable|string|max:100',
+            'editForm.previous_school_project.*' => 'nullable|string|max:100',
+            'editForm.achievements' => 'nullable|string',
+            'editForm.average_grade' => 'nullable|string|max:10',
+            'editForm.tagline' => 'nullable|string|max:255',
+            'editForm.agenda' => 'nullable|string',
+            'candidate_photo' => 'nullable|image|max:2048',
+        ];
+    }
+
+    protected function validationAttributes()
+    {
+        return [
+            'editForm.party_name' => 'party name',
+            'editForm.position_id' => 'position',
+            'editForm.platform_title' => 'platform title',
+            'editForm.previous_position.*' => 'previous position',
+            'editForm.previous_school_project.*' => 'previous project',
+            'editForm.achievements' => 'achievements',
+            'editForm.average_grade' => 'average grade',
+            'editForm.tagline' => 'tagline',
+            'editForm.agenda' => 'agenda',
+            'candidate_photo' => 'candidate photo',
+        ];
+    }
+
     public function addField($property)
     {
         $this->editForm[$property][] = '';
@@ -64,7 +96,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
         $activeCycleId = $this->activeCycle ? $this->activeCycle->id : 0;
 
         $stats = cache()->remember("candidates_stats_{$activeCycleId}", 120, function () use ($activeCycleId) {
-            return Candidate::where('election_cycle_id', $activeCycleId) // Filter by cycle
+            return Candidate::where('election_cycle_id', $activeCycleId)
                 ->selectRaw(
                     "
                 count(*) as total,
@@ -123,6 +155,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
 
     public function editCandidate($id)
     {
+        $this->resetErrorBag();
         $candidate = Candidate::with(['student', 'platforms'])->findOrFail($id);
         $this->editingCandidateId = $id;
         $platform = $candidate->platforms->first();
@@ -150,18 +183,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
 
     public function updateCandidate()
     {
-        $this->validate([
-            'editForm.party_name' => 'required|string|max:255',
-            'editForm.position_id' => 'required|exists:positions,id',
-            'editForm.platform_title' => 'required|string|max:255',
-            'editForm.previous_position.*' => 'nullable|string|max:100',
-            'editForm.previous_school_project.*' => 'nullable|string|max:100',
-            'editForm.achievements' => 'nullable|string',
-            'editForm.average_grade' => 'nullable|string|max:10',
-            'editForm.tagline' => 'nullable|string|max:255',
-            'editForm.agenda' => 'nullable|string',
-            'candidate_photo' => 'nullable|image|max:2048',
-        ]);
+        $this->validate();
 
         try {
             DB::beginTransaction();
@@ -352,8 +374,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
         <div class="topbar">
             <div class="topbar-info">
                 <h2 class="fw-bold text-primary">Manage <span class="text-accent">Candidates Profile</span></h2>
-                <p class="text-muted mb-0" style="font-size: 0.85rem;">Import & Update Candidate Profile
-                </p>
+                <p class="text-muted mb-0" style="font-size: 0.85rem;">Import & Update Candidate Profile</p>
             </div>
             <div x-data="{
                 confirmImport(event) {
@@ -374,11 +395,12 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                 }
             }">
                 <input type="file" x-ref="csvInput" class="d-none" accept=".csv" @change="confirmImport($event)">
-
-                <button class="btn-glow" @click="$refs.csvInput.click()" title="Import CSV">
+                <x-button variant="glow" class="w-full xs:w-auto px-4 md:px-6" @click="$refs.csvInput.click()"
+                    title="Import CSV">
                     <i class="bi bi-file-earmark-arrow-up fs-7 p-1"></i>
-                    <span class="d-none d-md-inline ms-1">Import CSV</span>
-                </button>
+
+                    <span class="hidden md:inline ms-1">Import CSV</span>
+                </x-button>
             </div>
         </div>
 
@@ -406,34 +428,31 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                             placeholder="Search name or ID...">
                     </div>
                 </div>
-
                 <div class="col-4 col-md-3">
                     <select wire:model.live="departmentFilter" class="form-select-modern w-100"
                         style="font-size: 0.8rem; padding-left: 5px; padding-right: 5px;">
-                        <option value="All Departments">🏢 All Depts</option>
+                        <option value="All Departments">💼 All Depts</option>
                         @foreach ($availableDepartments as $dept)
                             <option value="{{ $dept }}">{{ $dept }}</option>
                         @endforeach
                     </select>
                 </div>
-
                 <div class="col-4 col-md-3">
                     <select wire:model.live="positionFilter" class="form-select-modern w-100"
                         style="font-size: 0.8rem; padding-left: 5px; padding-right: 5px;">
-                        <option value="All Positions">👔 Positions</option>
+                        <option value="All Positions">🗳️ Positions</option>
                         @foreach ($availablePositions as $name)
                             <option value="{{ $name }}">{{ $name }}</option>
                         @endforeach
                     </select>
                 </div>
-
                 <div class="col-4 col-md-3">
                     <select wire:model.live="selectedCycleId" class="form-select-modern w-100"
                         style="font-size: 0.8rem; padding-left: 5px; padding-right: 5px;">
                         <option value="active">📅 Current Active Cycle</option>
                         @foreach ($this->electionCycles as $cycle)
                             @if ($cycle->status !== 'active')
-                                <option value="{{ $cycle->id }}">📜 {{ $cycle->cycle_name }}</option>
+                                <option value="{{ $cycle->id }}">🔗 {{ $cycle->cycle_name }}</option>
                             @endif
                         @endforeach
                     </select>
@@ -474,7 +493,6 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                                                 style="font-size: 0.95rem;">
                                                 <span>{{ $candidate->student->first_name }}
                                                     {{ $candidate->student->last_name }}</span>
-
                                                 @if ($selectedCycleId !== 'active')
                                                     @php
                                                         $hasHigher = \App\Models\Candidate::where(
@@ -486,12 +504,10 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                                                             ->withCount('votes')
                                                             ->get()
                                                             ->max('votes_count');
-
                                                         $isWinner =
                                                             $candidate->votes_count >= $hasHigher &&
                                                             $candidate->votes_count > 0;
                                                     @endphp
-
                                                     @if ($isWinner)
                                                         <span
                                                             class="badge bg-success-soft text-success x-small d-inline-flex align-items-center"
@@ -532,30 +548,47 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                                 </td>
                                 <td class="text-center pe-4 text-nowrap">
                                     <div class="d-flex align-items-center justify-content-center gap-2">
-                                        <button type="button" class="btn-icon btn-edit"
-                                            wire:click="editCandidate({{ $candidate->id }})"
-                                            style="background: rgba(13, 110, 253, 0.1); color: #0d6efd; border: none; width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                                            <i class="bi bi-pencil-square" style="font-size: 0.90rem;"></i>
-                                        </button>
-                                        <button type="button" class="btn-icon btn-delete"
-                                            x-on:click="
-                                            Swal.fire({
-                                                title: 'Delete Candidate?',
-                                                text: 'This action is permanent. All data associated with this candidate will be removed.',
-                                                icon: 'warning',
-                                                showCancelButton: true,
-                                                confirmButtonColor: '#dc3545',
-                                                cancelButtonColor: '#6c757d',
-                                                confirmButtonText: 'Yes, delete permanently',
-                                                cancelButtonText: 'Cancel'
-                                            }).then((result) => {
-                                                if (result.isConfirmed) {
-                                                    $wire.deleteCandidate({{ $candidate->id }})
-                                                }
-                                            })"
-                                            style="background: rgba(220, 53, 69, 0.1); color: #dc3545; border: none; width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                                            <i class="bi bi-trash" style="font-size: 0.90rem;"></i>
-                                        </button>
+                                        @php
+                                            $active = $this->activeCycle;
+                                            $now = now();
+
+                                            $isVotingStarted = $active && $now->gt($active->voting_start);
+                                            $isVotingFinished = $active && $now->gt($active->voting_end);
+                                            $isLocked = $isVotingStarted || $isVotingFinished;
+                                        @endphp
+
+                                        @if ($isLocked)
+                                            <button type="button" class="btn-icon btn-edit"
+                                                style="background: rgba(108, 117, 125, 0.1); color: #6c757d; border: none; width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: not-allowed; opacity: 0.6;"
+                                                disabled title="Voting is ongoing or finished. Edits are locked.">
+                                                <i class="bi bi-lock-fill" style="font-size: 0.90rem;"></i>
+                                            </button>
+                                        @else
+                                            <x-icon-button variant="edit"
+                                                wire:click="editCandidate({{ $candidate->id }})">
+                                                <i class="bi bi-pencil-square"></i>
+                                            </x-icon-button>
+                                        @endif
+
+                                        <x-icon-button variant="delete" x-data
+                                            @click="
+                                                Swal.fire({
+                                                    title: 'Delete Candidate?',
+                                                    text: 'This action is permanent. All data associated with this candidate will be removed.',
+                                                    icon: 'warning',
+                                                    showCancelButton: true,
+                                                    confirmButtonColor: 'var(--danger-red, #dc3545)',
+                                                    cancelButtonColor: '#6c757d',
+                                                    confirmButtonText: 'Yes, delete permanently',
+                                                    cancelButtonText: 'Cancel'
+                                                }).then((result) => {
+                                                    if (result.isConfirmed) {
+                                                        $wire.deleteCandidate({{ $candidate->id }})
+                                                    }
+                                                })
+                                            ">
+                                            <i class="bi bi-trash"></i>
+                                        </x-icon-button>
                                     </div>
                                 </td>
                             </tr>
@@ -589,13 +622,11 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                                     {{ $candidate->student->first_name }} {{ $candidate->student->last_name }}
                                 </div>
                                 <div class="text-dark fw-medium small mb-1">{{ $candidate->position->name }}</div>
-
                                 <div class="d-flex flex-wrap gap-2 align-items-center mt-2">
                                     <span class="text-muted fw-bold" style="font-size: 0.75rem;">
                                         <i class="bi bi-person-badge me-1"></i>{{ $candidate->student->student_id }}
                                     </span>
-                                    @php $hasPlatform = $candidate->platforms->first()?->platform_title; @endphp
-                                    @if ($hasPlatform)
+                                    @if ($candidate->platforms->first()?->platform_title)
                                         <span class="badge-approved small px-2 py-1" style="font-size: 0.7rem;"><i
                                                 class="bi bi-check2-circle"></i> Complete</span>
                                     @else
@@ -605,39 +636,27 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                                 </div>
                             </div>
                             <div class="d-flex align-items-center gap-3">
-                                <button type="button"
-                                    class="btn btn-sm d-flex align-items-center justify-content-center"
-                                    wire:click="editCandidate({{ $candidate->id }})"
-                                    style="background: rgba(13, 110, 253, 0.1); color: #0d6efd; border: none; width: 39px; height: 39px; border-radius: 10px;"
-                                    title="Edit">
-                                    <i class="bi bi-pencil-square" style="font-size: 1.2rem;"></i>
-                                </button>
-                                <button type="button"
-                                    class="btn btn-sm d-flex align-items-center justify-content-center"
-                                    x-on:click="
-                                    Swal.fire({
-                                        title: 'Delete this candidate?',
-                                        text: 'This is permanent.',
-                                        icon: 'warning',
-                                        showCancelButton: true,
-                                        confirmButtonColor: '#dc3545',
-                                        cancelButtonColor: '#6c757d',
-                                        confirmButtonText: 'Delete',
-                                        cancelButtonText: 'No',
-                                        customClass: {
-                                            popup: 'rounded-4',
-                                            confirmButton: 'rounded-3',
-                                            cancelButton: 'rounded-3'
-                                        }
-                                    }).then((result) => {
-                                        if (result.isConfirmed) {
-                                            $wire.deleteCandidate({{ $candidate->id }})
-                                        }
-                                    })"
-                                    style="background: rgba(220, 53, 69, 0.1); color: #dc3545; border: none; width: 39px; height: 39px; border-radius: 10px;"
-                                    title="Delete">
-                                    <i class="bi bi-trash" style="font-size: 1.2rem;"></i>
-                                </button>
+                                <x-icon-button variant="edit" wire:click="editCandidate({{ $candidate->id }})">
+                                    <i class="bi bi-pencil-square"></i>
+                                </x-icon-button>
+                                <x-icon-button variant="delete" x-data
+                                    @click="
+                                        Swal.fire({
+                                            title: 'Delete this candidate?',
+                                            text: 'This is permanent.',
+                                            icon: 'warning',
+                                            showCancelButton: true,
+                                            confirmButtonColor: '#dc3545',
+                                            cancelButtonColor: '#6c757d',
+                                            confirmButtonText: 'Delete'
+                                        }).then((result) => {
+                                            if (result.isConfirmed) {
+                                                $wire.deleteCandidate({{ $candidate->id }})
+                                            }
+                                        })
+                                    ">
+                                    <i class="bi bi-trash"></i>
+                                </x-icon-button>
                             </div>
                         </div>
                     </div>
@@ -652,37 +671,36 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
     </main>
 
     <div class="modal fade" id="editCandidateModal" tabindex="-1" wire:ignore.self>
-        <div class="modal-dialog modal-dialog-centered modal-md modal-lg-lg modal-dialog-scrollable mx-2 mx-md-auto">
+        <div class="modal-dialog modal-dialog-centered modal-md modal-lg modal-dialog-scrollable mx-2 mx-md-auto">
             <div class="modal-content border-0 shadow-lg rounded-3 rounded-md-4 overflow-hidden">
-                <div class="modal-header bg-primary text-white border-0 pb-0 pt-3 px-3 px-md-4">
-                    <div class="w-100">
-                        <div class="d-flex justify-content-between align-items-center mb-2 mb-md-3">
-                            <h6 class="modal-title fw-bold mb-0">
-                                <i class="bi bi-person-badge-fill me-2"></i>Edit Candidate Details
-                            </h6>
-                            <button type="button" class="btn-close btn-close-white" style="font-size: 0.8rem;"
-                                data-bs-dismiss="modal"></button>
-                        </div>
-                        <ul class="nav nav-tabs border-0 nav-justified w-100" id="editTabs" role="tablist">
-                            <li class="nav-item" role="presentation">
-                                <button
-                                    class="nav-link active border-0 rounded-0 py-2 fw-bold text-white w-100 small opacity-75"
-                                    id="basic-tab" data-bs-toggle="tab" data-bs-target="#tab-basic" type="button"
-                                    role="tab"
-                                    style="background: transparent; border-bottom: 3px solid white !important;">
-                                    <i class="bi bi-person-circle me-1"></i>BASIC INFO
-                                </button>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <button
-                                    class="nav-link border-0 rounded-0 py-2 fw-bold text-white w-100 small opacity-75"
-                                    id="vision-tab" data-bs-toggle="tab" data-bs-target="#tab-vision" type="button"
-                                    role="tab" style="background: transparent;">
-                                    <i class="bi bi-megaphone me-1"></i>PLATFORM
-                                </button>
-                            </li>
-                        </ul>
+                <div class="modal-header border-0 p-3 pb-2 flex-column align-items-start bg-blue-50">
+                    <div class="d-flex justify-content-between align-items-center w-100 mb-2">
+                        <span class="badge bg-white fw-bold px-2 py-1 shadow-sm text-blue-600"
+                            style="font-size: 0.7rem; letter-spacing: 0.5px;">
+                            <i class="bi bi-person-badge-fill me-1"></i> EDIT CANDIDATE DETAILS
+                        </span>
+                        <button type="button" class="btn-close" style="font-size: 0.7rem;"
+                            data-bs-dismiss="modal"></button>
                     </div>
+
+                    <ul class="nav nav-pills w-100 p-1 rounded-3 bg-transparent" id="editTabs" role="tablist">
+                        <li class="nav-item flex-fill text-center" role="presentation">
+                            <button
+                                class="nav-link active fw-bold border-0 w-100 py-2 small rounded-3 !text-blue-700 bg-transparent [&.active]:!bg-blue-600 [&.active]:!text-white"
+                                id="basic-tab" data-bs-toggle="tab" data-bs-target="#tab-basic" type="button"
+                                role="tab" style="font-size: 0.75rem; transition: all 0.2s ease;">
+                                <i class="bi bi-person-circle me-1"></i> BASIC INFO
+                            </button>
+                        </li>
+                        <li class="nav-item flex-fill text-center" role="presentation">
+                            <button
+                                class="nav-link fw-bold border-0 w-100 py-2 small rounded-3 !text-blue-700 bg-transparent [&.active]:!bg-blue-600 [&.active]:!text-white"
+                                id="vision-tab" data-bs-toggle="tab" data-bs-target="#tab-vision" type="button"
+                                role="tab" style="font-size: 0.75rem; transition: all 0.2s ease;">
+                                <i class="bi bi-megaphone me-1"></i> PLATFORM
+                            </button>
+                        </li>
+                    </ul>
                 </div>
 
                 <form wire:submit.prevent="updateCandidate">
@@ -691,8 +709,8 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                             <div class="tab-pane fade show active" id="tab-basic" role="tabpanel">
                                 <div class="modal-form-scrollable px-1"
                                     style="max-height: 380px; overflow-y: auto; overflow-x: hidden;">
-                                    <div class="row g-2 md-g-3">
-                                        <div class="col-12 col-md-4 mb-2 text-center border-md-end">
+                                    <div class="row g-2 g-md-3">
+                                        <div class="col-12 col-md-4 mb-2 text-center border-0 border-md-end">
                                             <label class="small fw-bold text-primary d-block mb-2">CANDIDATE
                                                 PHOTO</label>
                                             <div class="text-center">
@@ -703,7 +721,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                                                     style="width: 110px; height: 110px; border-radius: 50%; overflow: hidden; cursor: pointer; border: 4px solid #e9ecef; background: #f8fafc;">
 
                                                     @if ($candidate_photo)
-                                                        <img src="{{ $photo->temporaryUrl() }}"
+                                                        <img src="{{ $candidate_photo->temporaryUrl() }}"
                                                             class="w-100 h-100 object-fit-cover">
                                                     @elseif (isset($editForm['existing_photo']) && $editForm['existing_photo'])
                                                         <img src="{{ asset('storage/' . $editForm['existing_photo']) }}"
@@ -714,7 +732,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                                                 </label>
                                                 <small class="text-primary d-block mt-2 fw-bold text-uppercase"
                                                     style="font-size: 9px;">Tap to change</small>
-                                                @error('photo')
+                                                @error('candidate_photo')
                                                     <span class="text-danger d-block mt-1"
                                                         style="font-size: 0.65rem;">{{ $message }}</span>
                                                 @enderror
@@ -742,79 +760,103 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                                                         style="font-size: 0.7rem;">PARTY NAME</label>
                                                     <input type="text" wire:model="editForm.party_name"
                                                         placeholder="e.g. Reform Party"
-                                                        class="form-control form-control-sm border-0 bg-light py-1">
+                                                        class="form-control form-control-sm border-0 bg-light py-1 @error('editForm.party_name') is-invalid @enderror">
+                                                    @error('editForm.party_name')
+                                                        <span class="text-danger d-block mt-1"
+                                                            style="font-size: 0.65rem;">{{ $message }}</span>
+                                                    @enderror
                                                 </div>
                                                 <div class="col-6 mb-1">
                                                     <label class="small fw-bold text-primary"
-                                                        style="font-size: 0.7rem;">AVG
-                                                        GRADE (GWA)</label>
+                                                        style="font-size: 0.7rem;">AVG GRADE (GWA)</label>
                                                     <input type="text" wire:model="editForm.average_grade"
                                                         placeholder="e.g. 1.25"
-                                                        class="form-control form-control-sm border-0 bg-light py-2">
+                                                        class="form-control form-control-sm border-0 bg-light py-2 @error('editForm.average_grade') is-invalid @enderror">
+                                                    @error('editForm.average_grade')
+                                                        <span class="text-danger d-block mt-1"
+                                                            style="font-size: 0.65rem;">{{ $message }}</span>
+                                                    @enderror
                                                 </div>
                                                 <div class="col-12">
                                                     <label class="small fw-bold text-primary"
                                                         style="font-size: 0.7rem;">ACHIEVEMENTS</label>
                                                     <textarea wire:model="editForm.achievements" rows="3"
-                                                        placeholder="List down honors, awards, or recognitions..." class="form-control form-control-sm border-0 bg-light"></textarea>
+                                                        placeholder="List down honors, awards, or recognitions..."
+                                                        class="form-control form-control-sm border-0 bg-light @error('editForm.achievements') is-invalid @enderror"></textarea>
+                                                    @error('editForm.achievements')
+                                                        <span class="text-danger d-block mt-1"
+                                                            style="font-size: 0.65rem;">{{ $message }}</span>
+                                                    @enderror
                                                 </div>
-                                                <div class="row g-3 mt-2">
-                                                    <div class="col-12 col-md-6">
-                                                        <label class="small fw-bold text-primary mb-1 d-block"
-                                                            style="font-size: 0.7rem;">PREVIOUS POSITIONS</label>
 
-                                                        @foreach ($editForm['previous_position'] as $index => $pos)
-                                                            <div class="d-flex gap-2 mb-2"
-                                                                wire:key="pos-{{ $index }}">
-                                                                <input type="text"
-                                                                    wire:model="editForm.previous_position.{{ $index }}"
-                                                                    class="form-control form-control-sm border-0 bg-light py-2"
-                                                                    placeholder="e.g. Class President">
+                                                <div class="col-12 mt-2">
+                                                    <div class="row g-3">
+                                                        <div class="col-12 col-md-6">
+                                                            <label class="small fw-bold text-primary mb-1 d-block"
+                                                                style="font-size: 0.7rem;">PREVIOUS POSITIONS</label>
+                                                            @foreach ($editForm['previous_position'] as $index => $pos)
+                                                                <div class="mb-2"
+                                                                    wire:key="pos-{{ $index }}">
+                                                                    <div class="d-flex gap-2">
+                                                                        <input type="text"
+                                                                            wire:model="editForm.previous_position.{{ $index }}"
+                                                                            class="form-control form-control-sm border-0 bg-light py-2 @error('editForm.previous_position.' . $index) is-invalid @enderror"
+                                                                            placeholder="e.g. Class President">
+                                                                        @if (count($editForm['previous_position']) > 1)
+                                                                            <button type="button"
+                                                                                wire:click="removeField('previous_position', {{ $index }})"
+                                                                                class="btn btn-sm text-danger p-0">
+                                                                                <i class="bi bi-x-circle-fill"></i>
+                                                                            </button>
+                                                                        @endif
+                                                                    </div>
+                                                                    @error("editForm.previous_position.$index")
+                                                                        <span class="text-danger d-block mt-1"
+                                                                            style="font-size: 0.65rem;">{{ $message }}</span>
+                                                                    @enderror
+                                                                </div>
+                                                            @endforeach
+                                                            <button type="button"
+                                                                wire:click="addField('previous_position')"
+                                                                class="btn btn-sm btn-link text-primary p-0 text-decoration-none"
+                                                                style="font-size: 0.7rem;">
+                                                                <i class="bi bi-plus-lg"></i> Add Position
+                                                            </button>
+                                                        </div>
 
-                                                                @if (count($editForm['previous_position']) > 1)
-                                                                    <button type="button"
-                                                                        wire:click="removeField('previous_position', {{ $index }})"
-                                                                        class="btn btn-sm text-danger p-0">
-                                                                        <i class="bi bi-x-circle-fill"></i>
-                                                                    </button>
-                                                                @endif
-                                                            </div>
-                                                        @endforeach
-
-                                                        <button type="button"
-                                                            wire:click="addField('previous_position')"
-                                                            class="btn btn-sm btn-link text-primary p-0 text-decoration-none"
-                                                            style="font-size: 0.7rem;">
-                                                            <i class="bi bi-plus-lg"></i> Add Position
-                                                        </button>
-                                                    </div>
-
-                                                    <div class="col-12 col-md-6">
-                                                        <label class="small fw-bold text-primary mb-1 d-block"
-                                                            style="font-size: 0.7rem;">PREVIOUS SCHOOL PROJECTS</label>
-
-                                                        @foreach ($editForm['previous_school_project'] as $index => $proj)
-                                                            <div class="d-flex gap-2 mb-2"
-                                                                wire:key="proj-{{ $index }}">
-                                                                <input type="text"
-                                                                    wire:model="editForm.previous_school_project.{{ $index }}"
-                                                                    class="form-control form-control-sm border-0 bg-light py-2"
-                                                                    placeholder="e.g. Tree Planting Drive">
-                                                                @if (count($editForm['previous_school_project']) > 1)
-                                                                    <button type="button"
-                                                                        wire:click="removeField('previous_school_project', {{ $index }})"
-                                                                        class="btn btn-sm text-danger p-0">
-                                                                        <i class="bi bi-x-circle-fill"></i>
-                                                                    </button>
-                                                                @endif
-                                                            </div>
-                                                        @endforeach
-                                                        <button type="button"
-                                                            wire:click="addField('previous_school_project')"
-                                                            class="btn btn-sm btn-link text-primary p-0 text-decoration-none"
-                                                            style="font-size: 0.7rem;">
-                                                            <i class="bi bi-plus-lg"></i> Add Project
-                                                        </button>
+                                                        <div class="col-12 col-md-6">
+                                                            <label class="small fw-bold text-primary mb-1 d-block"
+                                                                style="font-size: 0.7rem;">PREVIOUS SCHOOL
+                                                                PROJECTS</label>
+                                                            @foreach ($editForm['previous_school_project'] as $index => $proj)
+                                                                <div class="mb-2"
+                                                                    wire:key="proj-{{ $index }}">
+                                                                    <div class="d-flex gap-2">
+                                                                        <input type="text"
+                                                                            wire:model="editForm.previous_school_project.{{ $index }}"
+                                                                            class="form-control form-control-sm border-0 bg-light py-2 @error('editForm.previous_school_project.' . $index) is-invalid @enderror"
+                                                                            placeholder="e.g. Tree Planting Drive">
+                                                                        @if (count($editForm['previous_school_project']) > 1)
+                                                                            <button type="button"
+                                                                                wire:click="removeField('previous_school_project', {{ $index }})"
+                                                                                class="btn btn-sm text-danger p-0">
+                                                                                <i class="bi bi-x-circle-fill"></i>
+                                                                            </button>
+                                                                        @endif
+                                                                    </div>
+                                                                    @error("editForm.previous_school_project.$index")
+                                                                        <span class="text-danger d-block mt-1"
+                                                                            style="font-size: 0.65rem;">{{ $message }}</span>
+                                                                    @enderror
+                                                                </div>
+                                                            @endforeach
+                                                            <button type="button"
+                                                                wire:click="addField('previous_school_project')"
+                                                                class="btn btn-sm btn-link text-primary p-0 text-decoration-none"
+                                                                style="font-size: 0.7rem;">
+                                                                <i class="bi bi-plus-lg"></i> Add Project
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -829,38 +871,47 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                                         TITLE</label>
                                     <input type="text" wire:model="editForm.platform_title"
                                         placeholder="e.g. Educational Empowerment for All"
-                                        class="form-control form-control-sm border-0 bg-light py-2">
+                                        class="form-control form-control-sm border-0 bg-light py-2 @error('editForm.platform_title') is-invalid @enderror">
+                                    @error('editForm.platform_title')
+                                        <span class="text-danger d-block mt-1"
+                                            style="font-size: 0.65rem;">{{ $message }}</span>
+                                    @enderror
                                 </div>
                                 <div class="mb-3">
                                     <label class="small fw-bold text-primary" style="font-size: 0.7rem;">CAMPAIGN
                                         TAGLINE</label>
                                     <input type="text" wire:model="editForm.tagline"
                                         placeholder="e.g. 'A Leader Who Listens, A Voice for Students'"
-                                        class="form-control form-control-sm border-0 bg-light py-2 fst-italic">
+                                        class="form-control form-control-sm border-0 bg-light py-2 fst-italic @error('editForm.tagline') is-invalid @enderror">
+                                    @error('editForm.tagline')
+                                        <span class="text-danger d-block mt-1"
+                                            style="font-size: 0.65rem;">{{ $message }}</span>
+                                    @enderror
                                 </div>
                                 <div class="mb-2">
                                     <label class="small fw-bold text-primary" style="font-size: 0.7rem;">AGENDA
                                         DETAILS</label>
                                     <textarea wire:model="editForm.agenda" rows="6"
                                         placeholder="Describe your goals, plans, and strategies in detail..."
-                                        class="form-control form-control-sm border-0 bg-light"></textarea>
+                                        class="form-control form-control-sm border-0 bg-light @error('editForm.agenda') is-invalid @enderror"></textarea>
+                                    @error('editForm.agenda')
+                                        <span class="text-danger d-block mt-1"
+                                            style="font-size: 0.65rem;">{{ $message }}</span>
+                                    @enderror
                                 </div>
                             </div>
                         </div>
                     </div>
+
                     <div class="modal-footer border-0 bg-light p-3">
-                        <button type="button" class="btn btn-secondary btn-sm px-4 pill fw-bold shadow-sm"
-                            data-bs-dismiss="modal">
+                        <x-button type="button" variant="gray" data-bs-dismiss="modal" width="130px">
                             Cancel
-                        </button>
-                        <button type="submit" class="btn btn-primary btn-sm px-4 pill fw-bold shadow-sm"
-                            wire:loading.attr="disabled">
+                        </x-button>
+                        <x-button type="submit" variant="glow" wire:loading.attr="disabled"
+                            wire:target="updateCandidate" width="150px">
                             <span wire:loading.remove wire:target="updateCandidate">Save Changes</span>
-                            <span wire:loading wire:target="updateCandidate">
-                                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
-                                Saving...
-                            </span>
-                        </button>
+                            <span wire:loading wire:target="updateCandidate">Saving...</span>
+                        </x-button>
                     </div>
                 </form>
             </div>

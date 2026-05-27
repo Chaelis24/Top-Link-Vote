@@ -122,12 +122,11 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
                 <p class="text-muted mb-0" style="font-size: 0.85rem;">Add Position for Student Election</p>
             </div>
             <div class="d-flex align-items-center gap-3">
-                <button class="btn-glow btn-sm d-flex align-items-center justify-content-center gap-1"
-                    data-bs-toggle="modal" data-bs-target="#addPositionModal" wire:click="$set('editingId', null)"
-                    style="height: 38px; min-width: 38px; border-radius: 8px;">
-                    <i class="bi bi-plus-lg fs-5 p-1"></i>
-                    <span class="hidden md:block">Add Position</span>
-                </button>
+                <x-button variant="glow" class="w-full xs:w-auto px-4 md:px-6" data-bs-toggle="modal"
+                    data-bs-target="#addPositionModal" wire:click="$set('editingId', null)">
+                    <i class="bi bi-plus-lg fs-7"></i>
+                    <span class="hidden md:inline ms-1">Add Position</span>
+                </x-button>
             </div>
         </div>
 
@@ -186,14 +185,30 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
                         <div class="tiny text-muted uppercase fw-bold">Candidates</div>
                     </div>
                     <div class="d-flex gap-2">
-                        <button class="btn-icon btn-edit" wire:click="editPosition({{ $pos->id }})"
+                        <x-icon-button variant="edit" wire:click="editPosition({{ $pos->id }})"
                             data-bs-toggle="modal" data-bs-target="#addPositionModal">
                             <i class="bi bi-pencil-square"></i>
-                        </button>
-                        <button class="btn-icon btn-delete" wire:click="deletePosition({{ $pos->id }})"
-                            wire:confirm="Are you sure you want to delete this position?">
+                        </x-icon-button>
+
+                        <x-icon-button variant="delete" x-data
+                            @click="
+                                Swal.fire({
+                                    title: 'Are you sure?',
+                                    text: 'You won’t be able to revert this position once deleted!',
+                                    icon: 'warning',
+                                    showCancelButton: true,
+                                    confirmButtonColor: '#dc3545',
+                                    cancelButtonColor: '#6c757d',
+                                    confirmButtonText: 'Yes, delete it!',
+                                    cancelButtonText: 'Cancel'
+                                }).then((result) => {
+                                    if (result.isConfirmed) {
+                                        $wire.deletePosition({{ $pos->id }});
+                                    }
+                                })
+                            ">
                             <i class="bi bi-trash"></i>
-                        </button>
+                        </x-icon-button>
                     </div>
                 </div>
             @empty
@@ -238,11 +253,13 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
                     </form>
                 </div>
                 <div class="modal-footer bg-light p-3">
-                    <button type="button" class="btn btn-link text-muted text-decoration-none"
-                        data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" wire:click="savePosition" class="btn-glow px-4" data-bs-dismiss="modal">
+                    <x-button variant="gray" data-bs-dismiss="modal" width="100px">
+                        Cancel
+                    </x-button>
+                    <x-button variant="glow" wire:click="savePosition" data-bs-dismiss="modal" width="160px"
+                        height="42px">
                         {{ $editingId ? 'Save Changes' : 'Create Position' }}
-                    </button>
+                    </x-button>
                 </div>
             </div>
         </div>
