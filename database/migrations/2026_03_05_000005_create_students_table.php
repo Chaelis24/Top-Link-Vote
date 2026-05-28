@@ -14,13 +14,13 @@ return new class extends Migration
         Schema::create('students', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->unique()->constrained()->onDelete('cascade');
+            $table->foreignId('course_id')->constrained()->onDelete('cascade');
+            $table->foreignId('block_id')->nullable()->constrained()->onDelete('set null');
             $table->string('student_id', 50)->unique();
             $table->string('first_name', 100);
             $table->string('middle_name', 100)->nullable();
             $table->string('last_name', 100);
             $table->string('suffix', 10)->nullable();
-            $table->string('course');
-            $table->unsignedTinyInteger('year_level');
             $table->enum('status', ['active', 'inactive', 'suspended'])->default('active');
             $table->string('phone', 20)->nullable();
             $table->text('address')->nullable();
@@ -33,7 +33,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->index('student_id');
-            $table->index(['course', 'year_level']);
+            $table->index(['course_id', 'block_id']);
             $table->index('status');
             $table->index('has_voted');
         });

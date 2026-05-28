@@ -16,13 +16,13 @@ class Student extends Model
     protected $fillable = [
         'user_id',
         'student_id',
+        'course_id',
+        'block_id',
         'first_name',
         'middle_name',
         'last_name',
         'suffix',
-        'course',
         'status',
-        'year_level',
         'phone',
         'address',
         'birthday',
@@ -41,12 +41,13 @@ class Student extends Model
 
     public function getFormattedYearAttribute()
     {
-        return match ((string) $this->year_level) {
+        $year = $this->block ? $this->block->year_level : null;
+
+        return match ((string) $year) {
             '1' => '1st Year',
             '2' => '2nd Year',
             '3' => '3rd Year',
-            '4' => '4th Year',
-            default => $this->year_level ?: 'Year Not Set',
+            default => $year ? $year . ' Year' : 'Year Not Set',
         };
     }
 
@@ -67,5 +68,15 @@ class Student extends Model
     public function latestVote()
     {
         return $this->hasOne(Vote::class)->latestOfMany();
+    }
+
+    public function block()
+    {
+        return $this->belongsTo(Block::class);
+    }
+
+    public function course()
+    {
+        return $this->belongsTo(Course::class);
     }
 }

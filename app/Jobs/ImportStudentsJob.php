@@ -2,13 +2,14 @@
 
 namespace App\Jobs;
 
-use App\Models\{User, Student};
+use App\Models\{User, Student, Course, Block};
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\{DB, Hash, Log};
+use Carbon\Carbon;
 
 class ImportStudentsJob implements ShouldQueue
 {
@@ -26,6 +27,14 @@ class ImportStudentsJob implements ShouldQueue
             DB::transaction(function () use ($chunk) {
                 foreach ($chunk as $row) {
                     try {
+                        $course = Course::firstOrCreate(['name' => $row['course']]);
+
+                        $block = Block::firstOrCreate([
+                            'course_id'  => $course->id,
+                            'year_level' => $row['year_level'],
+                            'section'    => $row['section'],
+                        ]);
+
                         $user = User::firstOrCreate(
                             ['email' => $row['email']],
                             [
@@ -41,22 +50,22 @@ class ImportStudentsJob implements ShouldQueue
                         Student::updateOrCreate(
                             ['student_id' => $row['student_id']],
                             [
-                                'user_id' => $user->id,
+                                'user_id'    => $user->id,
+                                'course_id'  => $course->id,
+                                'block_id'   => $block->id,
                                 'first_name' => $row['first_name'],
                                 'middle_name' => $row['middle_name'],
-                                'last_name' => $row['last_name'],
-                                'suffix' => $row['suffix'],
-                                'course' => $row['course'],
-                                'year_level' => $row['year_level'],
-                                'phone' => $row['phone'],
-                                'address' => $row['address'],
-                                'birthday' => $row['birthday'] ? \Carbon\Carbon::parse($row['birthday'])->format('Y-m-d') : null,
-                                'gender' => $row['gender'],
-                                'status' => 'active',
+                                'last_name'  => $row['last_name'],
+                                'suffix'     => $row['suffix'],
+                                'phone'      => $row['phone'],
+                                'address'    => $row['address'],
+                                'birthday'   => $row['birthday'] ? Carbon::parse($row['birthday'])->format('Y-m-d') : null,
+                                'gender'     => $row['gender'],
+                                'status'     => $row['status'] ?? 'active',
                             ]
                         );
                     } catch (\Exception $e) {
-                        Log::error("Import Error for Student ID {$row['student_id']}: " . $e->getMessage());
+                        Log::error("Import Error for Student ID " . ($row['student_id'] ?? 'unknown') . ": " . $e->getMessage());
                         continue;
                     }
                 }

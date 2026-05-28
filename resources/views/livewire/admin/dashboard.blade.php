@@ -3,7 +3,7 @@
 use Livewire\Volt\Component;
 use Livewire\Attributes\{Layout, Title, On};
 use Illuminate\Support\Facades\{Auth, Session};
-use App\Models\{Vote, Candidate, Student, ElectionCycle};
+use App\Models\{Vote, Candidate, Student, ElectionCycle, Course};
 use Barryvdh\DomPDF\Facade\Pdf;
 
 new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component {
@@ -45,7 +45,7 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
                 }
             }
 
-            $departments = ['IT', 'HRMT', 'ECT', 'HST'];
+            $departments = Course::pluck('name')->toArray();
             $allCandidates = Candidate::with(['student', 'position'])
                 ->where('election_cycle_id', $activeCycleId)
                 ->withCount('votes')
@@ -54,7 +54,7 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
             $tallyByDept = [];
             foreach ($departments as $dept) {
                 $tallyByDept[$dept] = $allCandidates
-                    ->filter(fn($candidate) => optional($candidate->student)->course === $dept)
+                    ->filter(fn($candidate) => optional(optional($candidate->student)->block)->course->name === $dept)
                     ->map(
                         fn($candidate) => [
                             'label' => "{$candidate->student->first_name} {$candidate->student->last_name}",
@@ -85,13 +85,14 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
                 ->sortBy('hour')
                 ->values();
 
-            $yearLevelData = Student::join('votes', 'students.id', '=', 'votes.student_id')
+            $yearLevelData = Student::join('blocks', 'students.block_id', '=', 'blocks.id')
+                ->join('votes', 'students.id', '=', 'votes.student_id')
                 ->join('candidates', 'votes.candidate_id', '=', 'candidates.id')
                 ->where('candidates.election_cycle_id', $activeCycleId)
-                ->selectRaw('students.year_level, COUNT(DISTINCT students.id) as total')
-                ->whereIn('students.year_level', [1, 2, 3])
-                ->groupBy('students.year_level')
-                ->orderBy('students.year_level', 'asc')
+                ->selectRaw('blocks.year_level, COUNT(DISTINCT students.id) as total')
+                ->whereIn('blocks.year_level', [1, 2, 3])
+                ->groupBy('blocks.year_level')
+                ->orderBy('blocks.year_level', 'asc')
                 ->get();
 
             return [

@@ -17,9 +17,9 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
     // 2. LIFECYCLE HOOKS
     public function mount()
     {
-        $user = Auth::user()?->load('student');
+        $user = Auth::user()?->load('student.block.course');
         $this->student = $user?->student;
-        $this->studentCourse = $this->student->course ?? 'General';
+        $this->studentCourse = $this->student?->block?->course?->name ?? 'No Course Assigned';
 
         if ($this->student) {
             $this->profile_photo_path = $this->student->photo ?? ($this->student->profile_photo_path ?? null);
@@ -250,12 +250,12 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
                         <span class="badge px-3 py-2 rounded-pill shadow-sm w-fit"
                             style="background-color: #10b981; color: white; border: none; font-size: 0.85rem;">
                             <i class="bi bi-mortarboard-fill me-1"></i>
-                            {{ match ($student->course ?? 'General') {
+                            {{ match ($student->block->course->name ?? 'General') {
                                 'IT' => 'Information Technology',
-                                'HRTM' => 'Hotel and Restaurant Management',
+                                'HRMT' => 'Hotel and Restaurant Management',
                                 'HST' => 'Hospitality Service Technology',
                                 'ECT' => 'Electronic Computer Technology',
-                                default => $student->course ?? 'General',
+                                default => $student->block->course->name ?? 'General',
                             } }}
                         </span>
                     </div>

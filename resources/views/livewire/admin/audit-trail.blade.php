@@ -13,12 +13,13 @@ new #[Layout('layouts.admin')] #[Title('User Activity')] class extends Component
     public $search = '';
     public $filterAction = '';
     public $filterCourse = '';
+    public $filterBlock = '';
 
     public function with()
     {
         return [
             'logs' => ActivityLog::query()
-                ->with(['user', 'student'])
+                ->with(['user', 'student.block.course']) // Eager load related user and student with block and course
                 ->when($this->search, function ($query) {
                     $query->where(function ($q) {
                         $q->where('description', 'like', '%' . $this->search . '%')
@@ -31,16 +32,21 @@ new #[Layout('layouts.admin')] #[Title('User Activity')] class extends Component
                 })
                 ->when($this->filterAction, fn($q) => $q->where('action', $this->filterAction))
                 ->when($this->filterCourse, function ($q) {
-                    $q->whereHas('student', function ($studentQuery) {
-                        $studentQuery->where('course', $this->filterCourse);
+                    $q->whereHas('student.block.course', function ($sQuery) {
+                        $sQuery->where('name', $this->filterCourse);
+                    });
+                })
+                ->when($this->filterBlock, function ($q) {
+                    $q->whereHas('student.block', function ($sQuery) {
+                        $sQuery->where('id', $this->filterBlock);
                     });
                 })
                 ->latest()
                 ->paginate(15),
 
             'actions' => cache()->remember('audit_actions', 60, fn() => ActivityLog::select('action')->distinct()->get()),
-
-            'courses' => \App\Models\Student::select('course')->distinct()->whereNotNull('course')->pluck('course'),
+            'courses' => \App\Models\Course::select('name')->distinct()->whereNotNull('name')->pluck('name'),
+            'blocks' => \App\Models\Block::all(),
         ];
     }
 
@@ -56,6 +62,10 @@ new #[Layout('layouts.admin')] #[Title('User Activity')] class extends Component
         $this->resetPage();
     }
     public function updatingFilterAction()
+    {
+        $this->resetPage();
+    }
+    public function updatingFilterBlock()
     {
         $this->resetPage();
     }
@@ -90,6 +100,22 @@ new #[Layout('layouts.admin')] #[Title('User Activity')] class extends Component
             </div>
 
             <div class="flex gap-3 w-full md:w-auto order-2">
+                <select wire:model.live="filterCourse"
+                    class="block px-3 py-2.5 bg-white border-0 shadow-sm rounded-xl text-sm cursor-pointer focus:ring-2 focus:ring-blue-500 h-[42px]">
+                    <option value="">All Courses</option>
+                    @foreach ($courses as $course)
+                        <option value="{{ $course }}">{{ $course }}</option>
+                    @endforeach
+                </select>
+                <select wire:model.live="filterBlock"
+                    class="block px-3 py-2.5 bg-white border-0 shadow-sm rounded-xl text-sm cursor-pointer focus:ring-2 focus:ring-blue-500 h-[42px]">
+                    <option value="">All Blocks</option>
+                    @foreach ($blocks as $block)
+                        <option value="{{ $block->id }}">
+                            {{ $block->year_level }} - {{ $block->section }}
+                        </option>
+                    @endforeach
+                </select>
                 <select wire:model.live="filterAction"
                     class="block px-3 py-2.5 bg-white border-0 shadow-sm rounded-xl text-sm cursor-pointer focus:ring-2 focus:ring-blue-500 h-[42px]">
                     <option value="">All Actions</option>
@@ -98,13 +124,6 @@ new #[Layout('layouts.admin')] #[Title('User Activity')] class extends Component
                     @endforeach
                 </select>
 
-                <select wire:model.live="filterCourse"
-                    class="block px-3 py-2.5 bg-white border-0 shadow-sm rounded-xl text-sm cursor-pointer focus:ring-2 focus:ring-blue-500 h-[42px]">
-                    <option value="">All Courses</option>
-                    @foreach ($courses as $course)
-                        <option value="{{ $course }}">{{ $course }}</option>
-                    @endforeach
-                </select>
             </div>
         </div>
 

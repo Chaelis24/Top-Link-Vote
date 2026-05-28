@@ -4,7 +4,7 @@ use Livewire\Volt\Component;
 use Livewire\{WithFileUploads, WithPagination};
 use Livewire\Attributes\{Layout, Title, Url, Computed};
 use Illuminate\Support\Facades\{Auth, Session, DB, Storage};
-use App\Models\{Student, User, Candidate, Position, ElectionCycle, Platform};
+use App\Models\{Student, User, Candidate, Position, ElectionCycle, Platform, Course};
 
 new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class extends Component {
     use WithFileUploads, WithPagination;
@@ -21,8 +21,6 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
     public string $departmentFilter = 'All Departments';
     #[Url(history: true)]
     public string $selectedCycleId = 'active';
-
-    public const DEPARTMENTS = ['IT', 'HRMT', 'ECT', 'HST'];
 
     public $editForm = [
         'first_name' => '',
@@ -113,7 +111,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
             'approvedCount' => $stats->approved ?? 0,
             'pendingCount' => $stats->pending ?? 0,
             'availablePositions' => $this->activeCycle ? Position::where('election_cycle_id', $this->activeCycle->id)->distinct()->pluck('name') : collect(),
-            'availableDepartments' => self::DEPARTMENTS,
+            'availableDepartments' => Course::pluck('name')->toArray(),
         ];
     }
 
@@ -128,7 +126,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
         $cycleId = $this->selectedCycleId === 'active' ? ($this->activeCycle ? $this->activeCycle->id : 0) : $this->selectedCycleId;
 
         return Candidate::query()
-            ->with(['student', 'position', 'platforms'])
+            ->with(['student.block.course', 'position', 'platforms'])
             ->withCount('votes')
             ->join('positions', 'candidates.position_id', '=', 'positions.id')
             ->where('candidates.election_cycle_id', $cycleId)
@@ -145,7 +143,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                 $query->where('positions.name', $this->positionFilter);
             })
             ->when($this->departmentFilter !== 'All Departments', function ($query) {
-                $query->whereHas('student', fn($q) => $q->where('course', $this->departmentFilter));
+                $query->whereHas('student.block.course', fn($q) => $q->where('name', $this->departmentFilter));
             })
             ->orderBy('positions.priority', 'asc')
             ->orderBy('candidates.created_at', 'desc')
@@ -276,7 +274,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                         [
                             'name' => $positionName,
                             'election_cycle_id' => $activeCycle?->id,
-                            'student_department' => $student->course,
+                            'student_department' => $student->block->course->name ?? 'Unknown',
                         ],
                         [
                             'max_candidate' => 10,
@@ -520,7 +518,10 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                                             </div>
                                             <div class="small text-muted fw-bold">
                                                 {{ $candidate->student->student_id }} |
-                                                {{ $candidate->student->course }}
+                                                {{ $candidate->student->block->course->name ?? 'N/A' }}
+                                                <span class="text-muted">
+                                                    {{ $candidate->student->block->year_level ?? '' }}-{{ $candidate->student->block->section ?? '' }}
+                                                </span>
                                             </div>
                                         </div>
                                     </div>

@@ -40,7 +40,7 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
     // 2. LIFECYCLE HOOKS
     public function mount()
     {
-        $user = Auth::user()?->load('student');
+        $user = Auth::user()?->load('student.block');
         $profile = $user?->student;
 
         $activeCycle = \App\Models\ElectionCycle::where('status', 'active')->first();
@@ -61,9 +61,9 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
             $this->middle_name = $profile->middle_name;
             $this->last_name = $profile->last_name;
             $this->suffix = $profile->suffix;
-            $this->course = $profile->course;
+            $this->course = $profile->block->course->name ?? 'N/A';
+            $this->year_level = $profile->block->year_level ?? 'N/A';
             $this->status = $profile->status;
-            $this->year_level = $profile->year_level;
             $this->phone = $profile->phone;
             $this->address = $profile->address;
             $this->birthday = $profile->birthday ? date('Y-m-d', strtotime($profile->birthday)) : '';

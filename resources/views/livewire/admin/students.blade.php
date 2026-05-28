@@ -5,7 +5,7 @@ use Livewire\Volt\Component;
 use Livewire\Attributes\{Layout, Title, Url};
 use Livewire\{WithFileUploads, WithPagination};
 use Illuminate\Support\Facades\{Auth, Session, DB, Hash};
-use App\Models\{User, Student, Role, Vote, ElectionCycle};
+use App\Models\{User, Student, Role, Vote, ElectionCycle, Block, Course};
 
 new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Component {
     use WithFileUploads, WithPagination;
@@ -28,8 +28,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
         'middle_name' => '',
         'last_name' => '',
         'suffix' => '',
-        'course' => '',
-        'year_level' => '',
+        'block_id' => '',
         'status' => '',
         'phone' => '',
         'address' => '',
@@ -68,7 +67,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
     public function loadStudents()
     {
         return Student::query()
-            ->with(['user'])
+            ->with(['user', 'block.course'])
             ->when($this->search, function ($query) {
                 $query->where(function ($q) {
                     $q->where('first_name', 'like', '%' . $this->search . '%')
@@ -76,8 +75,12 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                         ->orWhere('student_id', 'like', '%' . $this->search . '%');
                 });
             })
-            ->when($this->course !== 'All Courses' && $this->course !== '', fn($q) => $q->where('course', $this->course))
-            ->when($this->year !== 'All Years' && $this->year !== '', fn($q) => $q->where('year_level', $this->year))
+            ->when($this->course !== 'All Courses' && $this->course !== '', function ($q) {
+                $q->whereHas('block.course', fn($sub) => $sub->where('name', $this->course));
+            })
+            ->when($this->year !== 'All Years' && $this->year !== '', function ($q) {
+                $q->whereHas('block', fn($sub) => $sub->where('year_level', $this->year));
+            })
             ->when($this->status !== 'All Status' && $this->status !== '', function ($q) {
                 if ($this->status === 'Voted') {
                     $q->where('has_voted', true);
@@ -108,6 +111,12 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
         $this->resetPage();
     }
 
+    public function viewStudent($id)
+    {
+        $this->selectedStudent = Student::with(['user', 'latestVote'])->findOrFail($id);
+        $this->dispatch('open-modal', id: 'viewStudentModal');
+    }
+
     public function updatedCsvFile()
     {
         $this->importCSV();
@@ -132,11 +141,15 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                     'suffix' => trim($row[4] ?? ''),
                     'course' => trim($row[5]),
                     'year_level' => (int) $row[6],
-                    'phone' => trim($row[8] ?? ''),
-                    'address' => trim($row[9] ?? ''),
-                    'birthday' => trim($row[10] ?? ''),
-                    'gender' => trim($row[11] ?? ''),
-                    'email' => trim($row[13] ?? ''),
+                    'section' => trim($row[7] ?? ''),
+                    'status' => trim($row[8] ?? ''),
+                    'phone' => trim($row[9] ?? ''),
+                    'address' => trim($row[10] ?? ''),
+                    'birthday' => trim($row[11] ?? ''),
+                    'gender' => trim($row[12] ?? ''),
+                    'user_id' => trim($row[13] ?? ''),
+                    'email' => trim($row[14] ?? ''),
+                    'role' => trim($row[15] ?? ''),
                 ];
             }
             fclose($file);
@@ -163,23 +176,17 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
         }
     }
 
-    public function viewStudent($id)
-    {
-        $this->selectedStudent = Student::with(['user', 'latestVote'])->findOrFail($id);
-        $this->dispatch('open-modal', id: 'viewStudentModal');
-    }
-
     public function editStudent($id)
     {
-        $student = Student::findOrFail($id);
+        $student = Student::with('block')->findOrFail($id);
         $this->editingStudentId = $id;
+
         $this->editForm = [
             'first_name' => $student->first_name,
             'middle_name' => $student->middle_name,
             'last_name' => $student->last_name,
             'suffix' => $student->suffix,
-            'course' => $student->course,
-            'year_level' => $student->year_level,
+            'block_id' => $student->block_id,
             'status' => $student->status,
             'phone' => $student->phone,
             'address' => $student->address,
@@ -196,8 +203,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
             'editForm.middle_name' => 'nullable|string|max:255',
             'editForm.last_name' => 'required|string|max:255',
             'editForm.suffix' => 'nullable|string|max:10',
-            'editForm.course' => 'required|string',
-            'editForm.year_level' => 'required',
+            'editForm.block_id' => 'required|exists:blocks,id',
             'editForm.status' => 'required|in:active,inactive,suspended',
             'editForm.phone' => 'nullable|numeric',
             'editForm.birthday' => 'nullable|date',
@@ -209,8 +215,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
             $student->update([
                 'first_name' => $this->editForm['first_name'],
                 'last_name' => $this->editForm['last_name'],
-                'course' => $this->editForm['course'],
-                'year_level' => $this->editForm['year_level'],
+                'block_id' => $this->editForm['block_id'],
                 'status' => $this->editForm['status'],
                 'phone' => $this->editForm['phone'],
                 'address' => $this->editForm['address'],
@@ -255,14 +260,14 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
 
     public function exportStudents()
     {
-        $students = Student::with('user')->get();
+        $students = Student::with('user.block.course')->get();
         $fileName = 'students_export.csv';
         $headers = ['Content-type' => 'text/csv', 'Content-Disposition' => "attachment; filename=$fileName"];
         $callback = function () use ($students) {
             $file = fopen('php://output', 'w');
             fputcsv($file, ['ID', 'Name', 'Course', 'Year', 'Status']);
             foreach ($students as $s) {
-                fputcsv($file, [$s->student_id, $s->first_name . ' ' . $s->last_name, $s->course, $s->year_level, $s->status]);
+                fputcsv($file, [$s->student_id, $s->first_name . ' ' . $s->last_name, $s->block->course->name ?? 'N/A', $s->block->year_level ?? 'N/A', $s->status]);
             }
             fclose($file);
         };
@@ -278,7 +283,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
     }
 }; ?>
 
-<div wire:poll.15s>
+<div>
     @include('layouts.partials.admin-sidebar')
 
     <main class="main-content">
@@ -370,23 +375,20 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                 </div>
 
                 <div class="col-4 col-md-2">
-                    <select wire:model.live="course" class="form-select-modern py-2 w-100"
-                        style="font-size: 0.8rem; padding-left: 4px; padding-right: 4px;">
+                    <select wire:model.live="course" class="form-select-modern py-2 w-100">
                         <option value="All Courses">🏢 All Courses</option>
-                        <option>IT</option>
-                        <option>HRMT</option>
-                        <option>HST</option>
-                        <option>ECT</option>
+                        @foreach (\App\Models\Course::all() as $c)
+                            <option value="{{ $c->name }}">{{ $c->name }}</option>
+                        @endforeach
                     </select>
                 </div>
 
                 <div class="col-4 col-md-2">
-                    <select wire:model.live="year" class="form-select-modern py-2 w-100"
-                        style="font-size: 0.8rem; padding-left: 4px; padding-right: 4px;">
+                    <select wire:model.live="year" class="form-select-modern py-2 w-100">
                         <option value="All Years">🎓 All Years</option>
-                        <option value="1">1st Year</option>
-                        <option value="2">2nd Year</option>
-                        <option value="3">3rd Year</option>
+                        @foreach (\App\Models\Block::distinct()->pluck('year_level')->sort() as $y)
+                            <option value="{{ $y }}">{{ $y }}st/nd/rd Year</option>
+                        @endforeach
                     </select>
                 </div>
 
@@ -425,7 +427,10 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                                     {{ $student->middle_name ? substr($student->middle_name, 0, 1) . '.' : '' }}
                                     {{ $student->last_name }}{{ $student->suffix ? ', ' . $student->suffix : '' }}
                                 </td>
-                                <td>{{ $student->course }} - {{ $student->formatted_year }}</td>
+                                <td>
+                                    {{ $student->block->course->name ?? 'N/A' }} -
+                                    {{ $student->block->year_level ?? 'N/A' }}{{ $student->block->section ?? '' }}
+                                </td>
                                 <td>{{ $student->user->email ?? 'N/A' }}</td>
                                 <td>
                                     @if ($student->has_voted)
@@ -502,8 +507,8 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                                 <div class="text-xs text-muted fw-bold mb-1">ID: {{ $student->student_id }}</div>
                                 <div class="fw-bold text-dark">{{ $student->first_name }} {{ $student->last_name }}
                                 </div>
-                                <div class="small text-muted">{{ $student->course }} - {{ $student->formatted_year }}
-                                </div>
+                                <div class="small text-muted">{{ $student->block->course->name ?? 'N/A' }} -
+                                    {{ $student->block->year_level ?? 'N/A' }}</div>
                             </div>
                             <div>
                                 @if ($student->has_voted)
@@ -687,26 +692,17 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                             </div>
 
                             <div class="col-md-4 col-4">
-                                <label class="form-label mb-0 text-primary fw-bold"
-                                    style="font-size: 0.65rem;">COURSE</label>
-                                <select wire:model="editForm.course"
-                                    class="form-select-modern py-1 @error('editForm.course') is-invalid @enderror"
-                                    style="font-size: 0.8rem;">
-                                    <option value="">Select</option>
-                                    <option>IT</option>
-                                    <option>HRMT</option>
-                                    <option>HST</option>
-                                    <option>ECT</option>
-                                </select>
-                            </div>
-                            <div class="col-md-4 col-4">
-                                <label class="form-label mb-0 text-primary fw-bold" style="font-size: 0.65rem;">YEAR
-                                    LEVEL</label>
-                                <select wire:model="editForm.year_level" class="form-select-modern py-1"
-                                    style="font-size: 0.8rem;">
-                                    <option value="1">1st Yr</option>
-                                    <option value="2">2nd Yr</option>
-                                    <option value="3">3rd Yr</option>
+                                <label class="form-label mb-0 text-primary fw-bold" style="font-size: 0.65rem;">COURSE
+                                    & BLOCK</label>
+                                <select wire:model="editForm.block_id" class="form-select-modern py-1"
+                                    style="font-size: 0.8rem;" disabled>
+                                    <option value="">Select Course & Block</option>
+                                    @foreach (Block::with('course')->get() as $block)
+                                        <option value="{{ $block->id }}">
+                                            {{ $block->course->name ?? 'N/A' }} -
+                                            {{ $block->year_level }} {{ $block->section }}
+                                        </option>
+                                    @endforeach
                                 </select>
                             </div>
                             <div class="col-md-4 col-4">

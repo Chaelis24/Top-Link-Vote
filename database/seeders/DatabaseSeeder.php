@@ -2,10 +2,11 @@
 
 namespace Database\Seeders;
 
+use App\Models\Block;
 use App\Models\User;
-use Spatie\Permission\Models\Role;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Spatie\Permission\Models\Role;
 
 class DatabaseSeeder extends Seeder
 {
@@ -15,8 +16,6 @@ class DatabaseSeeder extends Seeder
         foreach ($roles as $role) {
             Role::firstOrCreate(['name' => $role]);
         }
-
-        // $adminRole = Role::where('name', 'admin')->first();
 
         $admin = User::updateOrCreate(
             ['email' => 'admin@gmail.com'],
@@ -28,12 +27,17 @@ class DatabaseSeeder extends Seeder
 
         $admin->assignRole('admin');
 
-        // $studentRole = Role::where('name', 'student')->first();
         $candidateRole = Role::where('name', 'candidate')->first();
 
         if (!$candidateRole) {
             $this->command->error("Role 'candidate' not found!");
         }
+
+        $this->call([
+            CourseAndBlockSeeder::class,
+        ]);
+
+        $block = Block::where('year_level', 3)->where('section', 'A')->first();
 
         $michael = User::updateOrCreate(
             ['email' => 'michaelfarinas112@gmail.com'],
@@ -52,8 +56,8 @@ class DatabaseSeeder extends Seeder
                 'middle_name' => 'Buena',
                 'last_name'   => 'Farinas',
                 'suffix'      => 'Jr',
-                'course'      => 'IT',
-                'year_level'  => 3,
+                'course_id'   => $block->course_id,
+                'block_id'    => $block->id,
                 'phone'       => '09515430735',
                 'address'     => 'Cabanatuan City',
                 'birthday'    => '2004-09-24',
@@ -61,13 +65,5 @@ class DatabaseSeeder extends Seeder
                 'status'      => 'active',
             ]
         );
-
-        // $this->call([
-        //     ElectionCycleSeeder::class,
-        //     PositionSeeder::class,
-        //     UserAndStudentSeeder::class,
-        //     CandidateSeeder::class,
-        //     // VoteSeeder::class,
-        // ]);
     }
 }
