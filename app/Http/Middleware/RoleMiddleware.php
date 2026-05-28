@@ -21,12 +21,14 @@ class RoleMiddleware
 
         if (! $request->user()->hasRole($role)) {
 
-            if ($request->user()->hasRole('student')) {
-                abort(403, 'Access Denied: Students are not allowed in the Admin area.');
+            $user = $request->user();
+
+            if ($user->hasRole('student')) {
+                abort(403, 'Unauthorized Access: The administrative portal is restricted to authorized personnel only.');
             }
 
-            if ($request->user()->hasRole('admin')) {
-                abort(403, 'Access Denied: Admins should not be in the Voting area.');
+            if ($user->hasRole('admin')) {
+                abort(403, 'Unauthorized Access: Administrative accounts are not authorized to participate in the voting process.');
             }
 
             abort(403, 'Unauthorized Access.');
