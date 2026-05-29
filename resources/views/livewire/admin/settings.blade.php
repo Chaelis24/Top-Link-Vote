@@ -8,7 +8,6 @@ use Illuminate\Validation\Rules\Password;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 new #[Layout('layouts.admin')] #[Title('Settings')] class extends Component {
-    public \App\Models\User $user;
     public string $name = '';
     public string $email = '';
 
