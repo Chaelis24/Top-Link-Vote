@@ -1,28 +1,30 @@
 <?php
 
-use App\Models\User;
+use App\Models\Course;
 use App\Models\ElectionCycle;
-use Livewire\Volt\Volt;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Volt\Volt;
+use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'admin']);
-
+    Role::firstOrCreate(['name' => 'admin']);
     $this->admin = \App\Models\User::factory()->create();
-
     $this->admin->assignRole('admin');
-
     $this->actingAs($this->admin);
 });
 
 test('admin can view dashboard and see charts', function () {
-    // 1. Setup
     ElectionCycle::factory()->create(['status' => 'active']);
     $this->actingAs($this->admin);
 
-    // 2. Test
+    Course::create(['name' => 'IT Department']);
+    Course::create(['name' => 'HRMT Department']);
+    Course::create(['name' => 'ECT Department']);
+    Course::create(['name' => 'HST Department']);
+
     Volt::test('admin.dashboard')
         ->assertStatus(200)
         ->assertSee('Total Voters')

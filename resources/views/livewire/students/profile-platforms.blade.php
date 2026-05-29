@@ -3,11 +3,13 @@
 use Illuminate\Support\Str;
 use Livewire\Volt\Component;
 use Livewire\WithFileUploads;
+use App\Traits\ChecksMaintenance;
 use Livewire\Attributes\{Layout, Title, Computed, Url};
 use Illuminate\Support\Facades\{Auth, Session, Storage, Log};
 use App\Models\{Candidate, Position, ElectionCycle, Platform, Setting, ActivityLog};
 
 new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Component {
+    use ChecksMaintenance;
     use WithFileUploads;
 
     // 1. STATE PROPERTIES
@@ -227,19 +229,6 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
     }
 
     // 5. HELPER / UTILITY METHODS
-    public function checkMaintenance()
-    {
-        $isMaintenance = Setting::where('key', 'maintenanceMode')->value('value');
-
-        if ($isMaintenance == '1' || $isMaintenance === true) {
-            $this->dispatch('swal-maintenance', [
-                'icon' => 'warning',
-                'title' => 'System Maintenance',
-                'text' => 'The system is undergoing maintenance. You will be logged out.',
-            ]);
-        }
-    }
-
     public function getAvatarColor($id)
     {
         $colors = ['#10b981', '#1976D2', '#D32F2F', '#FBC02D', '#8E24AA', '#E64A19'];
@@ -255,7 +244,7 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
     }
 }; ?>
 
-<div wire:poll.10s="checkMaintenance">
+<div>
     @include('layouts.partials.student-sidebar')
     <main class="main-content">
         <div class="topbar">

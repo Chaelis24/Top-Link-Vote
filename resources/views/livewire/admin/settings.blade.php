@@ -5,8 +5,10 @@ use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 new #[Layout('layouts.admin')] #[Title('Settings')] class extends Component {
+    public \App\Models\User $user;
     public string $name = '';
     public string $email = '';
 
@@ -16,18 +18,31 @@ new #[Layout('layouts.admin')] #[Title('Settings')] class extends Component {
 
     public function mount()
     {
-        $this->name = auth()->user()->name;
-        $this->email = auth()->user()->email;
+        $user = auth()->user();
+
+        if (!$user) {
+            return redirect()->route('admin.login');
+        }
+
+        $this->user = $user;
+        $this->name = $this->user->name;
+        $this->email = $this->user->email;
     }
 
     public function updateProfile()
     {
+        if (!auth()->user()->hasRole('admin')) {
+            abort(403, 'Unauthorized access.');
+        }
+
+        $this->authorize('admin');
+
         $validated = $this->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,' . auth()->id()],
         ]);
 
-        auth()->user()->update($validated);
+        $this->user->update($validated);
 
         $this->dispatch('swal', [
             'title' => 'Admin Profile Updated',
@@ -38,16 +53,20 @@ new #[Layout('layouts.admin')] #[Title('Settings')] class extends Component {
 
     public function updatePassword()
     {
+        if (!auth()->user()->hasRole('admin')) {
+            abort(403, 'Unauthorized access.');
+        }
+
+        $this->authorize('admin');
+
         $validated = $this->validate([
             'current_password' => ['required', 'current_password'],
             'password' => ['required', 'confirmed', Password::defaults()],
         ]);
 
-        auth()
-            ->user()
-            ->update([
-                'password' => Hash::make($validated['password']),
-            ]);
+        $this->user->update([
+            'password' => Hash::make($validated['password']),
+        ]);
 
         $this->reset(['current_password', 'password', 'password_confirmation']);
 
@@ -66,6 +85,7 @@ new #[Layout('layouts.admin')] #[Title('Settings')] class extends Component {
         return redirect()->route('admin.login');
     }
 }; ?>
+
 <div x-data="{
     showCurrent: false,
     showNew: false,
@@ -105,7 +125,19 @@ new #[Layout('layouts.admin')] #[Title('Settings')] class extends Component {
                         </h6>
                     </div>
                     <div class="p-3 p-md-4">
-                        <form wire:submit="updateProfile">
+                        <form
+                            @submit.prevent="
+                                Swal.fire({
+                                    title: 'Update Profile?',
+                                    text: 'Are you sure you want to change your account details?',
+                                    icon: 'question',
+                                    showCancelButton: true,
+                                    confirmButtonColor: '#0d6efd',
+                                    confirmButtonText: 'Yes, Save'
+                                }).then((result) => {
+                                    if (result.isConfirmed) $wire.updateProfile()
+                                })
+                            ">
                             <div class="text-center mb-3 mb-md-4">
                                 <div class="profile-avatar-lg mx-auto"
                                     style="width: 60px; height: 60px; font-size: 1.2rem;">
@@ -144,7 +176,6 @@ new #[Layout('layouts.admin')] #[Title('Settings')] class extends Component {
                 </div>
             </div>
 
-            {{-- Security / Password Card --}}
             <div class="col-lg-6">
                 <div class="glass-card p-0 border-0 shadow-sm bg-white h-100 overflow-hidden">
                     <div class="p-3 p-md-4 border-bottom bg-light">
@@ -153,8 +184,19 @@ new #[Layout('layouts.admin')] #[Title('Settings')] class extends Component {
                         </h6>
                     </div>
                     <div class="p-3 p-md-4">
-                        <form wire:submit.prevent="updatePassword">
-                            {{-- Current Password --}}
+                        <form
+                            @submit.prevent="
+                                Swal.fire({
+                                    title: 'Change Password?',
+                                    text: 'You will be required to re-authenticate if this is a sensitive session.',
+                                    icon: 'warning',
+                                    showCancelButton: true,
+                                    confirmButtonColor: '#0d6efd',
+                                    confirmButtonText: 'Yes, Change'
+                                }).then((result) => {
+                                    if (result.isConfirmed) $wire.updatePassword()
+                                })
+                            ">
                             <div class="mb-3">
                                 <label
                                     class="form-label fw-bold text-muted uppercase text-[10px] md:text-[11px]">Current
@@ -174,7 +216,6 @@ new #[Layout('layouts.admin')] #[Title('Settings')] class extends Component {
                                 @enderror
                             </div>
 
-                            {{-- New Password --}}
                             <div class="mb-3">
                                 <label class="form-label fw-bold text-muted uppercase text-[10px] md:text-[11px]">New
                                     Password</label>
@@ -188,7 +229,6 @@ new #[Layout('layouts.admin')] #[Title('Settings')] class extends Component {
                                             style="font-size: 0.8rem;"></i>
                                     </button>
                                 </div>
-                                {{-- Password Strength Meter --}}
                                 <div class="mt-2 d-flex gap-1">
                                     <template x-for="i in 4">
                                         <div class="flex-fill rounded-pill" style="height: 3px;"
@@ -205,7 +245,6 @@ new #[Layout('layouts.admin')] #[Title('Settings')] class extends Component {
                                 @enderror
                             </div>
 
-                            {{-- Confirm Password --}}
                             <div class="mb-3 mb-md-4">
                                 <label
                                     class="form-label fw-bold text-muted uppercase text-[10px] md:text-[11px]">Confirm

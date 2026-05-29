@@ -2,11 +2,13 @@
 
 use App\Mail\VoteConfirmed;
 use Livewire\Volt\Component;
+use App\Traits\ChecksMaintenance;
 use Livewire\Attributes\{Layout, Title, Computed};
 use Illuminate\Support\Facades\{Auth, Mail, DB, Session, Log};
 use App\Models\{Position, Candidate, Vote, ElectionCycle, ActivityLog, Setting};
 
 new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component {
+    use ChecksMaintenance;
     // 1. STATE PROPERTIES
     public $profile_photo_path = '';
     public int $currentStep = 1;
@@ -226,19 +228,6 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
     }
 
     // 5. HELPER / UTILITY METHODS
-    public function checkMaintenance()
-    {
-        $isMaintenance = Setting::where('key', 'maintenanceMode')->value('value');
-
-        if ($isMaintenance == '1' || $isMaintenance === true) {
-            $this->dispatch('swal-maintenance', [
-                'icon' => 'warning',
-                'title' => 'System Maintenance',
-                'text' => 'The system is undergoing maintenance. You will be logged out.',
-            ]);
-        }
-    }
-
     public function getAvatarColor($id)
     {
         $colors = ['#10b981', '#3b82f6', '#6366f1', '#f59e0b', '#ef4444'];
@@ -254,7 +243,7 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
     }
 }; ?>
 
-<div wire:poll.10s="checkMaintenance">
+<div>
     @include('layouts.partials.student-sidebar')
     <main class="main-content">
         <div class="topbar">

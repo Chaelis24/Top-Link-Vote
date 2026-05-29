@@ -2,10 +2,11 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Cache;
 
 class ElectionCycle extends Model
 {
@@ -33,6 +34,13 @@ class ElectionCycle extends Model
         'voting_end' => 'datetime',
         'results_date' => 'datetime',
     ];
+
+    public static function getActiveCycle()
+    {
+        return Cache::remember('active_election_cycle', 3600, function () {
+            return self::where('status', 'active')->latest()->first();
+        });
+    }
 
     public function positions(): HasMany
     {

@@ -14,4 +14,11 @@ class Setting extends Model
     protected $casts = [
         'value' => 'boolean',
     ];
+
+    public static function isMaintenanceMode()
+    {
+        return cache()->remember('maintenanceMode', 3600, function () {
+            return Setting::where('key', 'maintenanceMode')->value('value') === '1';
+        });
+    }
 }

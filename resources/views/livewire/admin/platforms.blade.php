@@ -15,7 +15,7 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
     #[Computed]
     public function activeCycle()
     {
-        return ElectionCycle::where('status', 'active')->latest()->first();
+        return ElectionCycle::getActiveCycle();
     }
 
     public function getPlatformsProperty()

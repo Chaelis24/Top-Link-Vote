@@ -1,6 +1,7 @@
 <?php
 
 use Livewire\Volt\Component;
+use Intervention\Image\Laravel\Facades\Image;
 use Livewire\{WithFileUploads, WithPagination};
 use Livewire\Attributes\{Layout, Title, Url, Computed};
 use Illuminate\Support\Facades\{Auth, Session, DB, Storage};
@@ -49,7 +50,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
             'editForm.average_grade' => 'nullable|string|max:10',
             'editForm.tagline' => 'nullable|string|max:255',
             'editForm.agenda' => 'nullable|string',
-            'candidate_photo' => 'nullable|image|max:2048',
+            'candidate_photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048|dimensions:min_width=100,min_height=100',
         ];
     }
 
@@ -118,7 +119,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
     #[Computed]
     public function activeCycle()
     {
-        return ElectionCycle::where('status', 'active')->latest()->first();
+        return ElectionCycle::getActiveCycle();
     }
 
     public function loadCandidates()
@@ -197,7 +198,14 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                 if ($candidate->photo) {
                     Storage::disk('public')->delete($candidate->photo);
                 }
-                $photoPath = $this->candidate_photo->store('candidates-picture', 'public');
+
+                $img = Image::read($this->candidate_photo->getRealPath());
+                $img->cover(400, 400);
+
+                $filename = 'candidates-picture/' . uniqid() . '.jpg';
+                Storage::disk('public')->put($filename, (string) $img->toJpeg(80));
+
+                $photoPath = $filename;
             }
 
             $candidateData = [

@@ -60,10 +60,8 @@ test('admin can search for candidates', function () {
 test('admin can import candidates via csv', function () {
     Storage::fake('public');
 
-    // Kailangan ng student na may specific ID na babasahin ng import script
     $student = Student::factory()->create(['student_id' => '1234567890']);
 
-    // CSV format base sa logic ng iyong import: $row[0] = student_id, $row[1] = position_name
     $csvContent = "student_id,position_name\n1234567890,President";
     $file = UploadedFile::fake()->createWithContent('candidates.csv', $csvContent);
 
@@ -72,7 +70,6 @@ test('admin can import candidates via csv', function () {
         ->call('importCandidates')
         ->assertHasNoErrors();
 
-    // I-verify sa database base sa ginawa ng import logic
     $this->assertDatabaseHas('candidates', [
         'student_id' => $student->id,
         'election_cycle_id' => $this->cycle->id,

@@ -2,7 +2,10 @@
 
 namespace Database\Factories;
 
+use App\Models\Block;
+use App\Models\Course;
 use App\Models\Student;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -18,12 +21,12 @@ class StudentFactory extends Factory
     public function definition(): array
     {
         return [
-            'user_id' => \App\Models\User::factory(), // Connects to a user
+            'user_id' => User::factory(),
             'student_id' => fake()->unique()->numerify('##########'),
+            'course_id' => Course::factory(),
+            'block_id' => Block::factory(),
             'first_name' => fake()->firstName(),
             'last_name' => fake()->lastName(),
-            'course' => 'BSIT',
-            'year_level' => 1,
             'status' => 'active',
             'has_voted' => false,
         ];

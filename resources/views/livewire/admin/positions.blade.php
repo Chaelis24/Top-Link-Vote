@@ -15,7 +15,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
     #[Computed]
     public function activeCycle()
     {
-        return ElectionCycle::where('status', 'active')->latest()->first();
+        return ElectionCycle::getActiveCycle();
     }
 
     #[Computed]
@@ -52,13 +52,17 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
     public function savePosition()
     {
         if (!$this->activeCycle) {
-            $this->dispatch('swal', title: 'Error', text: 'No election cycle found.', icon: 'error');
+            $this->dispatch('swal', [
+                'title' => 'Error',
+                'text' => 'No election cycle found.',
+                'icon' => 'error',
+            ]);
             return;
         }
 
         $this->validate([
             'name' => 'required|string|max:255',
-            'max_winners' => 'required|integer|min:1',
+            'max_winners' => 'required|integer|min:1|max:50',
             'priority' => 'required|integer|min:1',
             'student_department' => 'nullable|string|max:255',
         ]);
@@ -74,6 +78,19 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
                 'is_active' => true,
             ],
         );
+
+        if ($this->editingId) {
+            $existingCandidatesCount = Candidate::where('position_id', $this->editingId)->where('status', 'approved')->count();
+
+            if ($this->max_winners < $existingCandidatesCount) {
+                $this->dispatch('swal', [
+                    'title' => 'Error',
+                    'text' => 'The Max Winners cannot be set lower than the current number of approved candidates.',
+                    'icon' => 'error',
+                ]);
+                return;
+            }
+        }
 
         $this->reset(['name', 'max_winners', 'priority', 'editingId', 'student_department']);
         $this->dispatch('swal', [
@@ -243,11 +260,12 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
                             <div class="col-6">
                                 <label class="form-label small fw-bold text-muted uppercase">Max Winners</label>
                                 <input type="number" wire:model="max_winners" class="form-control-modern"
-                                    min="1">
+                                    min="1" max="10" required>
                             </div>
                             <div class="col-6">
                                 <label class="form-label small fw-bold text-muted uppercase">Priority Order</label>
-                                <input type="number" wire:model="priority" class="form-control-modern" min="1">
+                                <input type="number" wire:model="priority" class="form-control-modern" min="1"
+                                    required>
                             </div>
                         </div>
                     </form>

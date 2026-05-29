@@ -5,33 +5,15 @@ use Illuminate\Support\Str;
 use Livewire\Volt\Component;
 use Livewire\Attributes\Layout;
 use App\Livewire\Forms\LoginForm;
+use App\Traits\ChecksMaintenance;
 use Illuminate\Support\Facades\DB;
 use App\Events\UserLoggedInElsewhere;
 use Illuminate\Support\Facades\{Session, RateLimiter};
 
 new #[Layout('layouts.guest')] class extends Component {
+    use ChecksMaintenance;
+
     public LoginForm $form;
-    public bool $isMaintenance = false;
-
-    public function mount()
-    {
-        if (session()->has('swal')) {
-            $this->dispatch('swal', session('swal'));
-        }
-
-        $settings = Setting::pluck('value', 'key')->toArray();
-        $this->isMaintenance = isset($settings['maintenanceMode']) && (bool) $settings['maintenanceMode'];
-    }
-
-    public function checkMaintenance(): void
-    {
-        if (!$this->isMaintenance) {
-            return;
-        }
-
-        $settings = Setting::pluck('value', 'key')->toArray();
-        $this->isMaintenance = isset($settings['maintenanceMode']) && (bool) $settings['maintenanceMode'];
-    }
 
     public function login(): void
     {
@@ -67,6 +49,13 @@ new #[Layout('layouts.guest')] class extends Component {
             $this->redirectIntended(route('student.dashboard'));
         } catch (\Illuminate\Validation\ValidationException $e) {
             RateLimiter::hit($throttleKey, 60);
+            if (RateLimiter::tooManyAttempts($throttleKey, 3)) {
+                $this->dispatch('swal', [
+                    'icon' => 'warning',
+                    'title' => 'Too many attempts!',
+                    'text' => 'Having trouble with your password? You may reset it to regain access.',
+                ]);
+            }
             $this->form->password = '';
             throw $e;
         }
@@ -80,8 +69,7 @@ new #[Layout('layouts.guest')] class extends Component {
         class="relative z-10 max-w-4xl w-full bg-white shadow-2xl rounded-2xl overflow-hidden border border-gray-100 mx-2 md:mx-0">
 
         @if ($isMaintenance)
-            <div wire:poll.15s="checkMaintenance"
-                class="bg-gray-50 py-16 px-6 w-full flex flex-col justify-center items-center min-h-[400px]">
+            <div class="bg-gray-50 py-16 px-6 w-full flex flex-col justify-center items-center min-h-[400px]">
                 <div class="p-8 bg-gray-50 inline-block rounded-xl">
                     <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"
                         class="overflow-visible w-24 h-24 md:w-44 md:h-44">
@@ -151,7 +139,7 @@ new #[Layout('layouts.guest')] class extends Component {
                                     placeholder="Enter your password" required
                                     class="w-full px-4 py-2.5 md:py-3 rounded-lg border transition-all text-sm outline-none focus:outline-none focus:ring-2
                                 {{ $errors->has('form.password') ? 'border-red-500 focus:ring-red-200 focus:border-red-500' : 'border-gray-200 focus:ring-[#9cff00]/30 focus:border-[#108500]' }}">
-                                <button type="button" @click="show = !show"
+                                <button type="button" @click="show = !show" aria-label="Toggle password visibility"
                                     class="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black {{ $errors->has('form.password') ? 'text-red-500' : 'text-[#108500]' }} uppercase">
                                     <span x-text="show ? 'Hide' : 'Show'"></span>
                                 </button>
@@ -175,7 +163,7 @@ new #[Layout('layouts.guest')] class extends Component {
                             @endif
                         </div>
 
-                        <button type="submit"
+                        <button type="submit" wire:loading.attr="disabled"
                             class="w-full bg-[#108500] hover:bg-[#0d6b00] text-white font-black py-3 rounded-lg shadow-lg transition-all uppercase tracking-widest text-xs md:text-sm">
                             <span wire:loading.remove>Log in to Vote</span>
                             <span wire:loading>Authenticating...</span>

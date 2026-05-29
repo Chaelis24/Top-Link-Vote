@@ -4,10 +4,12 @@ use Livewire\Volt\Component;
 use Illuminate\Support\Facades\{Hash, Auth, Cache, Mail};
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\{Layout, Validate};
+use App\Traits\ChecksMaintenance;
 use App\Mail\OtpVerificationMail;
 use App\Models\{Student, User, Setting};
 
 new #[Layout('layouts.guest')] class extends Component {
+    use ChecksMaintenance;
     public string $student_id = '';
     public string $code = '';
     public string $password = '';
@@ -16,16 +18,6 @@ new #[Layout('layouts.guest')] class extends Component {
 
     public int $step = 1;
     public string $maskedEmail = '';
-
-    public function mount()
-    {
-        if (session()->has('swal')) {
-            $this->dispatch('swal', session('swal'));
-        }
-
-        $settings = Setting::pluck('value', 'key')->toArray();
-        $this->isMaintenance = isset($settings['maintenanceMode']) && (bool) $settings['maintenanceMode'];
-    }
 
     public function sendOtp()
     {

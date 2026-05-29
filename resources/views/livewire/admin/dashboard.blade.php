@@ -9,7 +9,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component {
     public function getActiveProperty()
     {
-        return ElectionCycle::where('status', 'active')->first();
+        return ElectionCycle::getActiveCycle();
     }
 
     private function getDashboardData($forceRefresh = false): array
@@ -21,7 +21,7 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
             cache()->forget('admin_dashboard_data');
         }
 
-        return cache()->remember('admin_dashboard_data', 3600, function () {
+        return cache()->remember($cacheKey, now()->addMinutes(10), function () use ($activeCycle) {
             $activeCycle = $this->active;
             $activeCycleId = $activeCycle ? $activeCycle->id : 0;
 
@@ -116,8 +116,13 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
     #[On('echo:election-results,VoteUpdated')]
     public function refreshAdminStats()
     {
-        cache()->forget('admin_dashboard_data');
+        $activeCycle = $this->active;
+        $cacheKey = 'admin_dashboard_data_' . ($activeCycle ? $activeCycle->id : 'none');
+
+        cache()->forget($cacheKey);
+
         $data = $this->getDashboardData();
+
         $this->dispatch('update-admin-charts', [
             'tally' => $data['tallyByDept'],
             'totalVotes' => $data['totalVotes'],
