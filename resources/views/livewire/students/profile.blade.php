@@ -4,11 +4,14 @@ use Carbon\Carbon;
 use App\Models\Setting;
 use Livewire\Volt\Component;
 use Livewire\WithFileUploads;
+use App\Traits\ChecksMaintenance;
 use Livewire\Attributes\{Layout, Title};
 use Illuminate\Validation\Rules\Password;
+use Intervention\Image\Laravel\Facades\Image;
 use Illuminate\Support\Facades\{Hash, Auth, Session, Storage, DB, Log};
 
 new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
+    use ChecksMaintenance;
     use WithFileUploads;
 
     // 1. STATE PROPERTIES
@@ -82,7 +85,7 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
         $this->validate([
             'email' => 'nullable|email|unique:users,email,' . $user?->id,
             'phone' => 'nullable|numeric',
-            'photo' => 'nullable|image|max:2048',
+            'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ]);
 
         try {
@@ -99,9 +102,15 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                     if ($this->profile_photo_path) {
                         Storage::disk('public')->delete($this->profile_photo_path);
                     }
-                    $path = $this->photo->store('student-profile', 'public');
-                    $data['photo'] = $path;
-                    $this->profile_photo_path = $path;
+
+                    $img = Image::read($this->photo->getRealPath());
+                    $img->cover(300, 300);
+
+                    $filename = 'student-profile/' . uniqid() . '.jpg';
+                    Storage::disk('public')->put($filename, (string) $img->toJpeg(75));
+
+                    $data['photo'] = $filename;
+                    $this->profile_photo_path = $filename;
                     $this->reset('photo');
                 }
                 $user->student->update($data);
@@ -147,19 +156,6 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
     }
 
     // 4. HELPER / UTILITY METHODS
-    public function checkMaintenance()
-    {
-        $isMaintenance = Setting::where('key', 'maintenanceMode')->value('value');
-
-        if ($isMaintenance == '1' || $isMaintenance === true) {
-            $this->dispatch('swal-maintenance', [
-                'icon' => 'warning',
-                'title' => 'System Maintenance',
-                'text' => 'The system is undergoing maintenance. You will be logged out.',
-            ]);
-        }
-    }
-
     public function logout()
     {
         Auth::guard('web')->logout();
@@ -169,7 +165,7 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
     }
 }; ?>
 
-<div wire:poll.10s="checkMaintenance">
+<div>
     @include('layouts.partials.student-sidebar')
 
     <main class="main-content">

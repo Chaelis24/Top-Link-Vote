@@ -39,7 +39,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
     #[Computed]
     public function activeCycle()
     {
-        return ElectionCycle::where('status', 'active')->latest()->first();
+        return ElectionCycle::getActiveCycle();
     }
 
     public function with(): array

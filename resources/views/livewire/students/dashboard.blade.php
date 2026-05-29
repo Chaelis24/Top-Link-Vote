@@ -3,10 +3,13 @@
 use App\Models\Setting;
 use Livewire\Volt\Component;
 use App\Models\ElectionCycle;
+use App\Traits\ChecksMaintenance;
 use Illuminate\Support\Facades\{Auth, Session};
 use Livewire\Attributes\{Layout, On, Title, Computed};
 
 new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Component {
+    use ChecksMaintenance;
+
     // 1. STATE PROPERTIES
     public $student;
     public $profile_photo_path;
@@ -90,20 +93,6 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
         $this->dispatch('update-chart', ['tally' => $this->tallyData()]);
     }
 
-    // 5. ACTION / HELPER METHODS
-    public function checkMaintenance()
-    {
-        $isMaintenance = Setting::where('key', 'maintenanceMode')->value('value');
-
-        if ($isMaintenance == '1' || $isMaintenance === true) {
-            $this->dispatch('swal-maintenance', [
-                'icon' => 'warning',
-                'title' => 'System Maintenance',
-                'text' => 'The system is undergoing maintenance. You will be logged out.',
-            ]);
-        }
-    }
-
     public function logout()
     {
         Auth::guard('web')->logout();
@@ -113,7 +102,7 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
     }
 }; ?>
 
-<div wire:poll.10s="checkMaintenance">
+<div>
     @include('layouts.partials.student-sidebar')
     <main class="main-content">
         <div class="topbar" wire:key="persistent-topbar-header">

@@ -1,11 +1,10 @@
 <?php
 
-use App\Models\User;
 use Illuminate\Support\Str;
-use App\Models\ActivityLog;
 use Livewire\Volt\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\{Layout, On, Title};
+use App\Models\{ActivityLog, User, Course, Block};
 
 new #[Layout('layouts.admin')] #[Title('User Activity')] class extends Component {
     use WithPagination;
@@ -19,7 +18,7 @@ new #[Layout('layouts.admin')] #[Title('User Activity')] class extends Component
     {
         return [
             'logs' => ActivityLog::query()
-                ->with(['user', 'student.block.course']) // Eager load related user and student with block and course
+                ->with(['user', 'student.block.course'])
                 ->when($this->search, function ($query) {
                     $query->where(function ($q) {
                         $q->where('description', 'like', '%' . $this->search . '%')
@@ -45,8 +44,8 @@ new #[Layout('layouts.admin')] #[Title('User Activity')] class extends Component
                 ->paginate(15),
 
             'actions' => cache()->remember('audit_actions', 60, fn() => ActivityLog::select('action')->distinct()->get()),
-            'courses' => \App\Models\Course::select('name')->distinct()->whereNotNull('name')->pluck('name'),
-            'blocks' => \App\Models\Block::all(),
+            'courses' => Course::select('name')->distinct()->whereNotNull('name')->pluck('name'),
+            'blocks' => Block::all(),
         ];
     }
 

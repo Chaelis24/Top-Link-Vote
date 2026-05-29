@@ -2,9 +2,12 @@
 
 namespace App\Providers;
 
+use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -27,11 +30,19 @@ class AppServiceProvider extends ServiceProvider
         }
 
         Gate::define('admin', function (User $user) {
-            return $user->role === 'admin';
+            return $user->hasRole('admin');
         });
 
         Gate::define('student', function (User $user) {
-            return $user->role === 'student';
+            return $user->hasRole('student');
+        });
+
+        View::composer('*', function ($view) {
+            $isMaintenance = Cache::remember('maintenanceMode', 3600, function () {
+                return (bool) Setting::where('key', 'maintenanceMode')->value('value');
+            });
+
+            $view->with('isMaintenance', $isMaintenance);
         });
     }
 }

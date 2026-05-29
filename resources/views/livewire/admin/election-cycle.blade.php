@@ -1,10 +1,10 @@
 <?php
 
+use Illuminate\Support\Str;
 use Livewire\Volt\Component;
 use Livewire\Attributes\{Layout, Title, Computed};
 use Illuminate\Support\Facades\{Auth, Session, DB};
-use Illuminate\Support\Str;
-use App\Models\{ElectionCycle, Setting};
+use App\Models\{ElectionCycle, Setting, Student};
 
 new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Component {
     public bool $allowVoting = false;
@@ -43,12 +43,12 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
     #[Computed]
     public function active()
     {
-        return ElectionCycle::where('status', 'active')->latest()->first();
+        return ElectionCycle::getActiveCycle();
     }
 
     public function with(): array
     {
-        $active = ElectionCycle::where('status', 'active')->first();
+        $active = ElectionCycle::getActiveCycle();
         return [
             'active' => $active,
             'vEndIso' => $active?->voting_end?->format('Y-m-d\TH:i:s'),
@@ -250,6 +250,7 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
             ]);
 
             if ($setting === 'maintenanceMode') {
+                Cache::forget('maintenanceMode');
                 return;
             }
         }
@@ -257,7 +258,7 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
 
     public function createNewCycle()
     {
-        $studentCount = \App\Models\Student::where('status', 'active')->count();
+        $studentCount = Student::where('status', 'active')->count();
 
         if ($studentCount === 0) {
             $missing = [];
@@ -287,9 +288,9 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
 
         try {
             DB::transaction(function () {
-                \App\Models\ElectionCycle::where('status', 'active')->update(['status' => 'completed']);
+                ElectionCycle::where('status', 'active')->update(['status' => 'completed']);
 
-                \App\Models\ElectionCycle::create([
+                ElectionCycle::create([
                     'name' => $this->cycle_name,
                     'academic_year' => $this->academic_year,
                     'filing_start' => $this->filing_start,
@@ -304,6 +305,7 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
             });
 
             cache()->forget('admin_dashboard_data');
+            Cache::forget('active_election_cycle');
 
             unset($this->active);
             $this->reset(['cycle_name', 'academic_year', 'filing_start', 'filing_end', 'campaign_start', 'campaign_end', 'start_date', 'end_date', 'results_date']);
@@ -349,6 +351,8 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                     'voting_start' => $this->start_date,
                     'voting_end' => $this->end_date,
                 ]);
+
+                Cache::forget('active_election_cycle');
 
                 unset($this->active);
                 $this->mount();
@@ -432,6 +436,8 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                     break;
             }
 
+            Cache::forget('active_election_cycle');
+
             unset($this->active);
             $this->mount();
 
@@ -457,10 +463,12 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
             if ($active) {
                 $active->update(['status' => 'completed']);
 
-                App\Models\Student::where('status', 'active')
+                Student::where('status', 'active')
                     ->where('has_voted', false)
                     ->update(['status' => 'inactive']);
             }
+
+            Cache::forget('active_election_cycle');
 
             unset($this->active);
             $this->mount();

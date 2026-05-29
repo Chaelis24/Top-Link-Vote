@@ -1,25 +1,18 @@
 <?php
 
 use Illuminate\Support\Facades\Password;
+use App\Traits\ChecksMaintenance;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 use App\Models\{Setting, Student};
+use Illuminate\Support\Facades\Cache;
 
 new #[Layout('layouts.guest')] class extends Component {
+    use ChecksMaintenance;
+
     public string $email = '';
     public string $student_id = '';
     public bool $isSent = false;
-    public bool $isMaintenance = false;
-
-    public function mount()
-    {
-        if (session()->has('swal')) {
-            $this->dispatch('swal', session('swal'));
-        }
-
-        $settings = Setting::pluck('value', 'key')->toArray();
-        $this->isMaintenance = isset($settings['maintenanceMode']) && (bool) $settings['maintenanceMode'];
-    }
 
     public function sendPasswordResetLink(): void
     {
@@ -28,12 +21,12 @@ new #[Layout('layouts.guest')] class extends Component {
             'email' => ['required', 'string', 'email'],
         ]);
 
-        $student = Student::where('student_id', $this->student_id)->first();
+        $student = Student::where('student_id', $this->student_id)->whereHas('user', fn($q) => $q->where('email', $this->email))->first();
 
-        if (!$student || $student->user?->email !== $this->email) {
-            $this->dispatch('swal:modal', [
+        if (!$student) {
+            $this->dispatch('swal:toast', [
                 'icon' => 'error',
-                'title' => 'Oops!',
+                'title' => 'Verification failed',
                 'text' => 'The provided details do not match our records.',
             ]);
             return;
@@ -41,7 +34,7 @@ new #[Layout('layouts.guest')] class extends Component {
 
         $status = Password::sendResetLink(['email' => $this->email]);
 
-        if ($status != Password::RESET_LINK_SENT) {
+        if ($status !== Password::RESET_LINK_SENT) {
             $this->addError('email', __($status));
             return;
         }
@@ -49,7 +42,8 @@ new #[Layout('layouts.guest')] class extends Component {
         $this->isSent = true;
         $this->dispatch('swal:toast', [
             'icon' => 'success',
-            'title' => 'Reset link sent to your email!',
+            'title' => 'Reset link sent!',
+            'text' => 'Please check your inbox.',
         ]);
     }
 }; ?>

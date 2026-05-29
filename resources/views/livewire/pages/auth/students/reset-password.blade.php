@@ -3,29 +3,22 @@
 use Illuminate\Support\Facades\{Hash, Password, Session};
 use Illuminate\Auth\Events\PasswordReset;
 use Livewire\Attributes\{Layout, Locked};
+use App\Traits\ChecksMaintenance;
 use Illuminate\Validation\Rules;
 use Livewire\Volt\Component;
 use Illuminate\Support\Str;
 use App\Models\Setting;
 
 new #[Layout('layouts.guest')] class extends Component {
+    use ChecksMaintenance;
     #[Locked]
     public string $token = '';
     public string $email = '';
     public string $password = '';
     public string $password_confirmation = '';
 
-    public bool $isMaintenance = false;
-
     public function mount(string $token): void
     {
-        if (session()->has('swal')) {
-            $this->dispatch('swal', session('swal'));
-        }
-
-        $settings = Setting::pluck('value', 'key')->toArray();
-        $this->isMaintenance = isset($settings['maintenanceMode']) && (bool) $settings['maintenanceMode'];
-
         $this->token = $token;
         $this->email = request()->string('email');
     }
