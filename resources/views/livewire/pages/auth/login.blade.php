@@ -41,11 +41,6 @@ new #[Layout('layouts.guest')] class extends Component {
                 DB::table('sessions')->where('user_id', $user->id)->where('id', '!=', $currentSessionId)->delete();
             }
 
-            if ($user->roles()->where('name', 'admin')->exists()) {
-                $this->redirectIntended(route('admin.dashboard'));
-                return;
-            }
-
             $this->redirectIntended(route('student.dashboard'));
         } catch (\Illuminate\Validation\ValidationException $e) {
             RateLimiter::hit($throttleKey, 60);
@@ -60,8 +55,7 @@ new #[Layout('layouts.guest')] class extends Component {
             throw $e;
         }
     }
-};
-?>
+};?>
 <div class="fixed inset-0 z-[9999] overflow-y-auto bg-white flex items-center justify-center p-4 m-0 w-full h-full">
     <div class="absolute inset-0 bg-white"></div>
 

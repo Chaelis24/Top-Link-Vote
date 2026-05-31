@@ -25,7 +25,5 @@
 ]) }}
     style="{{ $attributes->has('class') && str_contains($attributes->get('class'), 'w-') ? '' : 'width: ' . $width . ';' }}
            {{ $attributes->has('class') && str_contains($attributes->get('class'), 'h-') ? '' : 'height: ' . $height . ';' }}">
-    <span wire:loading class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-
     <span>{{ $slot }}</span>
 </button>

@@ -4,15 +4,16 @@ use Carbon\Carbon;
 use App\Models\Setting;
 use Livewire\Volt\Component;
 use Livewire\WithFileUploads;
-use App\Traits\ChecksMaintenance;
 use Livewire\Attributes\{Layout, Title};
 use Illuminate\Validation\Rules\Password;
 use Intervention\Image\Laravel\Facades\Image;
+use App\Http\Requests\Students\UpdateProfileRequest;
+use App\Http\Requests\Students\UpdatePasswordRequest;
+use App\Traits\{ChecksMaintenance, AuthenticatesLogout};
 use Illuminate\Support\Facades\{Hash, Auth, Session, Storage, DB, Log};
 
 new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
-    use ChecksMaintenance;
-    use WithFileUploads;
+    use ChecksMaintenance, AuthenticatesLogout, WithFileUploads;
 
     // 1. STATE PROPERTIES
     public $name = '';
@@ -78,32 +79,27 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
     }
 
     // 3. ACTION METHODS
-    public function saveProfile()
+    public function saveProfile(UpdateProfileRequest $request)
     {
+        $validated = $request->validated();
         $user = Auth::user();
-
-        $this->validate([
-            'email' => 'nullable|email|unique:users,email,' . $user?->id,
-            'phone' => 'nullable|numeric',
-            'photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-        ]);
 
         try {
             DB::beginTransaction();
 
-            if ($this->email) {
-                $user?->update(['email' => $this->email]);
+            if (!empty($validated['email'])) {
+                $user->update(['email' => $validated['email']]);
             }
 
             if ($user?->student) {
-                $data = ['phone' => $this->phone];
+                $data = ['phone' => $validated['phone'] ?? $this->phone];
 
-                if ($this->photo && !is_string($this->photo)) {
+                if ($request->hasFile('photo')) {
                     if ($this->profile_photo_path) {
                         Storage::disk('public')->delete($this->profile_photo_path);
                     }
 
-                    $img = Image::read($this->photo->getRealPath());
+                    $img = Image::read($validated['photo']->getRealPath());
                     $img->cover(300, 300);
 
                     $filename = 'student-profile/' . uniqid() . '.jpg';
@@ -115,6 +111,7 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                 }
                 $user->student->update($data);
             }
+
             DB::commit();
 
             $this->dispatch('swal', [
@@ -136,15 +133,14 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
         }
     }
 
-    public function updatePassword()
+    public function updatePassword(UpdatePasswordRequest $request)
     {
-        $this->validate([
-            'current_password' => ['required', 'current_password'],
-            'new_password' => ['required', 'confirmed', Password::defaults()],
+        $validated = $request->validated();
+
+        Auth::user()->update([
+            'password' => Hash::make($validated['new_password']),
         ]);
 
-        $user = Auth::user();
-        $user->update(['password' => Hash::make($this->new_password)]);
         $this->reset(['current_password', 'new_password', 'new_password_confirmation']);
 
         $this->dispatch('swal', [
@@ -153,15 +149,6 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
             'icon' => 'success',
             'timer' => 3000,
         ]);
-    }
-
-    // 4. HELPER / UTILITY METHODS
-    public function logout()
-    {
-        Auth::guard('web')->logout();
-        Session::invalidate();
-        Session::regenerateToken();
-        return redirect()->route('login');
     }
 }; ?>
 

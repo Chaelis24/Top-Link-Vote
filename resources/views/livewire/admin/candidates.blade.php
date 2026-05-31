@@ -1,14 +1,16 @@
 <?php
 
 use Livewire\Volt\Component;
+use App\Traits\AuthenticatesLogout;
 use Intervention\Image\Laravel\Facades\Image;
 use Livewire\{WithFileUploads, WithPagination};
+use App\Http\Requests\Admin\UpdateCandidateRequest;
 use Livewire\Attributes\{Layout, Title, Url, Computed};
 use Illuminate\Support\Facades\{Auth, Session, DB, Storage};
 use App\Models\{Student, User, Candidate, Position, ElectionCycle, Platform, Course};
 
 new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class extends Component {
-    use WithFileUploads, WithPagination;
+    use WithFileUploads, WithPagination, AuthenticatesLogout;
 
     public $csvFile;
     public $candidate_photo;
@@ -38,37 +40,37 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
         'photo_url' => '',
     ];
 
-    protected function rules()
-    {
-        return [
-            'editForm.party_name' => 'required|string|max:255',
-            'editForm.position_id' => 'required|exists:positions,id',
-            'editForm.platform_title' => 'required|string|max:255',
-            'editForm.previous_position.*' => 'nullable|string|max:100',
-            'editForm.previous_school_project.*' => 'nullable|string|max:100',
-            'editForm.achievements' => 'nullable|string',
-            'editForm.average_grade' => 'nullable|string|max:10',
-            'editForm.tagline' => 'nullable|string|max:255',
-            'editForm.agenda' => 'nullable|string',
-            'candidate_photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048|dimensions:min_width=100,min_height=100',
-        ];
-    }
+    // protected function rules()
+    // {
+    //     return [
+    //         'editForm.party_name' => 'required|string|max:255',
+    //         'editForm.position_id' => 'required|exists:positions,id','editForm.position_id' => 'required|exists:positions,id',
+    //         'editForm.platform_title' => 'required|string|max:255',
+    //         'editForm.previous_position.*' => 'nullable|string|max:100',
+    //         'editForm.previous_school_project.*' => 'nullable|string|max:100',
+    //         'editForm.achievements' => 'nullable|string',
+    //         'editForm.average_grade' => 'nullable|string|max:10',
+    //         'editForm.tagline' => 'nullable|string|max:255',
+    //         'editForm.agenda' => 'nullable|string',
+    //         'candidate_photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048|dimensions:min_width=100,min_height=100',
+    //     ];
+    // }
 
-    protected function validationAttributes()
-    {
-        return [
-            'editForm.party_name' => 'party name',
-            'editForm.position_id' => 'position',
-            'editForm.platform_title' => 'platform title',
-            'editForm.previous_position.*' => 'previous position',
-            'editForm.previous_school_project.*' => 'previous project',
-            'editForm.achievements' => 'achievements',
-            'editForm.average_grade' => 'average grade',
-            'editForm.tagline' => 'tagline',
-            'editForm.agenda' => 'agenda',
-            'candidate_photo' => 'candidate photo',
-        ];
-    }
+    // protected function validationAttributes()
+    // {
+    //     return [
+    //         'editForm.party_name' => 'party name',
+    //         'editForm.position_id' => 'position',
+    //         'editForm.platform_title' => 'platform title',
+    //         'editForm.previous_position.*' => 'previous position',
+    //         'editForm.previous_school_project.*' => 'previous project',
+    //         'editForm.achievements' => 'achievements',
+    //         'editForm.average_grade' => 'average grade',
+    //         'editForm.tagline' => 'tagline',
+    //         'editForm.agenda' => 'agenda',
+    //         'candidate_photo' => 'candidate photo',
+    //     ];
+    // }
 
     public function addField($property)
     {
@@ -182,73 +184,66 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
 
     public function updateCandidate()
     {
-        $this->validate();
+        $request = new UpdateCandidateRequest();
+        $this->validate($request->rules(), [], $request->attributes());
+        $data = $this->editForm;
 
         try {
             DB::beginTransaction();
 
             $candidate = Candidate::findOrFail($this->editingCandidateId);
 
-            $cleanPreviousPositions = array_values(array_filter(array_map('trim', (array) ($this->editForm['previous_position'] ?? []))));
-            $cleanPreviousProjects = array_values(array_filter(array_map('trim', (array) ($this->editForm['previous_school_project'] ?? []))));
+            $cleanPreviousPositions = array_values(array_filter(array_map('trim', (array) ($data['previous_position'] ?? []))));
+            $cleanPreviousProjects = array_values(array_filter(array_map('trim', (array) ($data['previous_school_project'] ?? []))));
 
             $photoPath = $candidate->photo;
-
-            if ($this->candidate_photo) {
+            if ($request->hasFile('candidate_photo')) {
                 if ($candidate->photo) {
                     Storage::disk('public')->delete($candidate->photo);
                 }
 
-                $img = Image::read($this->candidate_photo->getRealPath());
+                $img = Image::read($request->file('candidate_photo')->getRealPath());
                 $img->cover(400, 400);
-
                 $filename = 'candidates-picture/' . uniqid() . '.jpg';
                 Storage::disk('public')->put($filename, (string) $img->toJpeg(80));
-
                 $photoPath = $filename;
             }
 
-            $candidateData = [
-                'party_name' => $this->editForm['party_name'],
-                'position_id' => $this->editForm['position_id'],
-                'achievements' => $this->editForm['achievements'],
+            $candidate->update([
+                'party_name' => $data['party_name'],
+                'position_id' => $data['position_id'],
+                'achievements' => $data['achievements'],
                 'previous_position' => $cleanPreviousPositions,
                 'previous_school_project' => $cleanPreviousProjects,
-                'average_grade' => $this->editForm['average_grade'],
+                'average_grade' => $data['average_grade'],
                 'photo' => $photoPath,
                 'status' => 'approved',
-                'approved_at' => $candidate->approved_at ?? now(),
-            ];
+            ]);
 
-            $candidate->update($candidateData);
-
-            $agendaContent = $this->editForm['agenda'] ?? '';
-            $agendaArray = array_values(array_filter(array_map('trim', explode("\n", str_replace("\r", '', $agendaContent)))));
+            $agendaArray = array_values(array_filter(array_map('trim', explode("\n", str_replace("\r", '', $data['agenda'] ?? '')))));
 
             $candidate->platforms()->updateOrCreate(
                 ['candidate_id' => $candidate->id],
                 [
-                    'title' => $this->editForm['platform_title'],
-                    'tagline' => $this->editForm['tagline'],
+                    'title' => $data['platform_title'],
+                    'tagline' => $data['tagline'],
                     'agenda' => $agendaArray,
                     'status' => 'approved',
                 ],
             );
 
             DB::commit();
-
             $this->dispatch('close-modal', id: 'editCandidateModal');
             $this->dispatch('swal', [
                 'title' => 'Updated!',
-                'text' => 'Candidate profile saved successfully.',
+                'text' => 'Saved successfully.',
                 'icon' => 'success',
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-
             $this->dispatch('swal', [
-                'title' => 'Update Failed',
-                'text' => 'An error occurred while saving: ' . $e->getMessage(),
+                'title' => 'Error',
+                'text' => $e->getMessage(),
                 'icon' => 'error',
             ]);
         }
@@ -362,14 +357,6 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
     public function getAvatarColor()
     {
         return '#3b82f6';
-    }
-
-    public function logout()
-    {
-        Auth::guard('web')->logout();
-        Session::invalidate();
-        Session::regenerateToken();
-        return redirect()->route('admin.login');
     }
 }; ?>
 
@@ -771,8 +758,11 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                                                         placeholder="e.g. Reform Party"
                                                         class="form-control form-control-sm border-0 bg-light py-1 @error('editForm.party_name') is-invalid @enderror">
                                                     @error('editForm.party_name')
-                                                        <span class="text-danger d-block mt-1"
-                                                            style="font-size: 0.65rem;">{{ $message }}</span>
+                                                        <div class="invalid-feedback d-block"
+                                                            style="font-size: 0.65rem; margin-top: 2px;">
+                                                            <i class="bi bi-exclamation-circle-fill"></i>
+                                                            {{ $message }}
+                                                        </div>
                                                     @enderror
                                                 </div>
                                                 <div class="col-6 mb-1">
@@ -782,8 +772,11 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                                                         placeholder="e.g. 1.25"
                                                         class="form-control form-control-sm border-0 bg-light py-2 @error('editForm.average_grade') is-invalid @enderror">
                                                     @error('editForm.average_grade')
-                                                        <span class="text-danger d-block mt-1"
-                                                            style="font-size: 0.65rem;">{{ $message }}</span>
+                                                        <div class="invalid-feedback d-block"
+                                                            style="font-size: 0.65rem; margin-top: 2px;">
+                                                            <i class="bi bi-exclamation-circle-fill"></i>
+                                                            {{ $message }}
+                                                        </div>
                                                     @enderror
                                                 </div>
                                                 <div class="col-12">

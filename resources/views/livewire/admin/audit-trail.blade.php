@@ -3,11 +3,12 @@
 use Illuminate\Support\Str;
 use Livewire\Volt\Component;
 use Livewire\WithPagination;
+use App\Traits\AuthenticatesLogout;
 use Livewire\Attributes\{Layout, On, Title};
 use App\Models\{ActivityLog, User, Course, Block};
 
 new #[Layout('layouts.admin')] #[Title('User Activity')] class extends Component {
-    use WithPagination;
+    use WithPagination, AuthenticatesLogout;
 
     public $search = '';
     public $filterAction = '';
@@ -67,14 +68,6 @@ new #[Layout('layouts.admin')] #[Title('User Activity')] class extends Component
     public function updatingFilterBlock()
     {
         $this->resetPage();
-    }
-
-    public function logout()
-    {
-        Auth::guard('web')->logout();
-        Session::invalidate();
-        Session::regenerateToken();
-        return redirect()->route('admin.login');
     }
 }; ?>
 

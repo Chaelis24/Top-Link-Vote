@@ -2,11 +2,15 @@
 
 use Illuminate\Support\Str;
 use Livewire\Volt\Component;
+use App\Traits\AuthenticatesLogout;
+use App\Models\{ElectionCycle, Setting, Student};
+use App\Http\Requests\Admin\ElectionCycleRequest;
 use Livewire\Attributes\{Layout, Title, Computed};
 use Illuminate\Support\Facades\{Auth, Session, DB};
-use App\Models\{ElectionCycle, Setting, Student};
 
 new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Component {
+    use AuthenticatesLogout;
+
     public bool $allowVoting = false;
     public bool $showResults = false;
     public bool $showProfiles = false;
@@ -274,17 +278,8 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
             return;
         }
 
-        $this->validate([
-            'cycle_name' => 'required|min:5',
-            'academic_year' => 'required|string|size:9|regex:/^\d{4}-\d{4}$/',
-            'filing_start' => 'required|date',
-            'filing_end' => 'required|date|after_or_equal:filing_start',
-            'campaign_start' => 'required|date|after:filing_end',
-            'campaign_end' => 'required|date|after:campaign_start',
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after:start_date',
-            'results_date' => 'required|date|after:end_date',
-        ]);
+        $request = new ElectionCycleRequest();
+        $this->validate($request->rules());
 
         try {
             DB::transaction(function () {
@@ -331,15 +326,12 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
 
     public function updateDates()
     {
-        $this->validate([
-            'filing_start' => 'required|date',
-            'filing_end' => 'required|date',
-            'campaign_start' => 'required|date',
-            'campaign_end' => 'required|date',
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after:start_date',
-        ]);
+        $request = new ElectionCycleRequest();
+        $rules = collect($request->rules())
+            ->only(['filing_start', 'filing_end', 'campaign_start', 'campaign_end', 'start_date', 'end_date'])
+            ->toArray();
 
+        $this->validate($rules);
         try {
             $active = $this->active;
             if ($active) {
@@ -486,14 +478,6 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                 'icon' => 'error',
             ]);
         }
-    }
-
-    public function logout()
-    {
-        Auth::guard('web')->logout();
-        Session::invalidate();
-        Session::regenerateToken();
-        return redirect()->route('admin.login');
     }
 }; ?>
 <div>

@@ -1,11 +1,15 @@
 <?php
 
 use Livewire\Volt\Component;
-use Livewire\Attributes\{Layout, Title, Computed};
+use App\Traits\AuthenticatesLogout;
+use App\Http\Requests\Admin\PositionRequest;
 use Illuminate\Support\Facades\{Auth, Session};
+use Livewire\Attributes\{Layout, Title, Computed};
 use App\Models\{Position, ElectionCycle, Candidate};
 
 new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Component {
+    use App\Traits\AuthenticatesLogout;
+
     public string $name = '';
     public string $student_department = '';
     public int $max_winners = 1;
@@ -52,20 +56,25 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
     public function savePosition()
     {
         if (!$this->activeCycle) {
-            $this->dispatch('swal', [
-                'title' => 'Error',
-                'text' => 'No election cycle found.',
-                'icon' => 'error',
-            ]);
+            $this->dispatch('swal', ['title' => 'Error', 'text' => 'No election cycle found.', 'icon' => 'error']);
             return;
         }
 
-        $this->validate([
-            'name' => 'required|string|max:255',
-            'max_winners' => 'required|integer|min:1|max:50',
-            'priority' => 'required|integer|min:1',
-            'student_department' => 'nullable|string|max:255',
-        ]);
+        $request = new PositionRequest();
+        $this->validate($request->rules());
+
+        if ($this->editingId) {
+            $existingCount = Candidate::where('position_id', $this->editingId)->where('status', 'approved')->count();
+
+            if ($this->max_winners < $existingCount) {
+                $this->dispatch('swal', [
+                    'title' => 'Error',
+                    'text' => 'The Max Winners cannot be set lower than the current number of approved candidates (' . $existingCount . ').',
+                    'icon' => 'error',
+                ]);
+                return;
+            }
+        }
 
         Position::updateOrCreate(
             ['id' => $this->editingId],
@@ -78,19 +87,6 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
                 'is_active' => true,
             ],
         );
-
-        if ($this->editingId) {
-            $existingCandidatesCount = Candidate::where('position_id', $this->editingId)->where('status', 'approved')->count();
-
-            if ($this->max_winners < $existingCandidatesCount) {
-                $this->dispatch('swal', [
-                    'title' => 'Error',
-                    'text' => 'The Max Winners cannot be set lower than the current number of approved candidates.',
-                    'icon' => 'error',
-                ]);
-                return;
-            }
-        }
 
         $this->reset(['name', 'max_winners', 'priority', 'editingId', 'student_department']);
         $this->dispatch('swal', [
@@ -119,17 +115,8 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
             'icon' => 'warning',
         ]);
     }
-
-    public function logout()
-    {
-        Auth::guard('web')->logout();
-        Session::invalidate();
-        Session::regenerateToken();
-
-        return redirect()->route('admin.login');
-    }
 }; ?>
-<div wire:poll.15s>
+<div>
     @include('layouts.partials.admin-sidebar')
 
     <main class="main-content">

@@ -2,13 +2,14 @@
 
 use App\Mail\VoteConfirmed;
 use Livewire\Volt\Component;
-use App\Traits\ChecksMaintenance;
 use Livewire\Attributes\{Layout, Title, Computed};
+use App\Traits\{ChecksMaintenance, AuthenticatesLogout};
 use Illuminate\Support\Facades\{Auth, Mail, DB, Session, Log};
 use App\Models\{Position, Candidate, Vote, ElectionCycle, ActivityLog, Setting};
 
 new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component {
-    use ChecksMaintenance;
+   use ChecksMaintenance, AuthenticatesLogout;
+
     // 1. STATE PROPERTIES
     public $profile_photo_path = '';
     public int $currentStep = 1;
@@ -232,14 +233,6 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
     {
         $colors = ['#10b981', '#3b82f6', '#6366f1', '#f59e0b', '#ef4444'];
         return $colors[$id % count($colors)];
-    }
-
-    public function logout()
-    {
-        Auth::guard('web')->logout();
-        Session::invalidate();
-        Session::regenerateToken();
-        return redirect()->route('login');
     }
 }; ?>
 

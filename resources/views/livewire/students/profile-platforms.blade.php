@@ -3,14 +3,14 @@
 use Illuminate\Support\Str;
 use Livewire\Volt\Component;
 use Livewire\WithFileUploads;
-use App\Traits\ChecksMaintenance;
+use App\Http\Requests\Students\UpdateCandidateRequest;
 use Livewire\Attributes\{Layout, Title, Computed, Url};
+use App\Traits\{ChecksMaintenance, AuthenticatesLogout};
 use Illuminate\Support\Facades\{Auth, Session, Storage, Log};
 use App\Models\{Candidate, Position, ElectionCycle, Platform, Setting, ActivityLog};
 
 new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Component {
-    use ChecksMaintenance;
-    use WithFileUploads;
+    use ChecksMaintenance, AuthenticatesLogout, WithFileUploads;
 
     // 1. STATE PROPERTIES
     #[Url]
@@ -159,8 +159,12 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
         $this->selectedPosition = $pos;
     }
 
-    public function updatePlatform()
+    public function updatePlatform(UpdateCandidateRequest $request)
     {
+        if (!Auth::user()->hasRole('Candidate')) {
+            abort(403);
+        }
+
         $active = $this->activeCycle;
         $isVotingStarted = $active && now()->gt($active->voting_start);
 
@@ -173,14 +177,11 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
             return;
         }
 
-        $this->validate([
-            'tagline' => 'required|string|max:255',
-            'platform_title' => 'required|string|max:255',
-            'agenda' => 'required|string',
-        ]);
+        $validated = $request->validated();
 
         try {
             $candidate = Auth::user()->candidate;
+
             if ($this->candidate_photo) {
                 if ($candidate->photo) {
                     Storage::disk('public')->delete($candidate->photo);
@@ -191,20 +192,20 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
             }
 
             $candidate->update([
-                'party_name' => $this->party_name,
+                'party_name' => $validated['party_name'],
                 'achievements' => implode("\n", (array) $this->achievements),
-                'average_grade' => $this->average_grade,
-                'previous_position' => $this->previous_position,
-                'previous_school_project' => $this->previous_school_project,
+                'average_grade' => $validated['average_grade'],
+                'previous_position' => $validated['previous_position'],
+                'previous_school_project' => $validated['previous_school_project'],
                 'photo' => $photoPath,
             ]);
 
             Platform::updateOrCreate(
                 ['candidate_id' => $candidate->id],
                 [
-                    'title' => $this->platform_title,
-                    'tagline' => $this->tagline,
-                    'agenda' => explode("\n", $this->agenda),
+                    'title' => $validated['platform_title'],
+                    'tagline' => $validated['tagline'],
+                    'agenda' => explode("\n", $validated['agenda']),
                     'status' => 'pending',
                     'submitted_at' => now(),
                 ],
@@ -233,14 +234,6 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
     {
         $colors = ['#10b981', '#1976D2', '#D32F2F', '#FBC02D', '#8E24AA', '#E64A19'];
         return $colors[$id % count($colors)];
-    }
-
-    public function logout()
-    {
-        Auth::guard('web')->logout();
-        Session::invalidate();
-        Session::regenerateToken();
-        return redirect()->route('login');
     }
 }; ?>
 
@@ -382,6 +375,13 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
                                             onclick="const tab = bootstrap.Tab.getOrCreateInstance(document.querySelector('#profile-tab-{{ $candidate->id }}')); tab.show();">
                                             Profile
                                         </button>
+                                        <div class="d-flex justify-content-center mt-1">
+                                            <a href="https://www.facebook.com/sharer/sharer.php?u={{ urlencode(url('/candidates/' . $candidate->id)) }}"
+                                                target="_blank" class="text-primary"
+                                                style="font-size: 0.7rem; text-decoration: none;">
+                                                <i class="bi bi-share-fill me-1"></i> Share
+                                            </a>
+                                        </div>
                                     @else
                                         <button
                                             class="btn btn-light rounded-pill py-1 py-md-2 fw-bold w-100 text-muted border border-dashed"

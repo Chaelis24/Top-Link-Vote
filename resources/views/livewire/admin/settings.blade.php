@@ -1,13 +1,19 @@
 <?php
 
 use Livewire\Volt\Component;
-use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
+use Livewire\Attributes\Layout;
+use App\Traits\AuthenticatesLogout;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
+use App\Http\Requests\Admin\AdminSettingsRequest;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 new #[Layout('layouts.admin')] #[Title('Settings')] class extends Component {
+    use AuthenticatesLogout;
+
+    public $user;
+
     public string $name = '';
     public string $email = '';
 
@@ -17,13 +23,12 @@ new #[Layout('layouts.admin')] #[Title('Settings')] class extends Component {
 
     public function mount()
     {
-        $user = auth()->user();
+        $this->user = auth()->user();
 
-        if (!$user) {
+        if (!$this->user) {
             return redirect()->route('admin.login');
         }
 
-        $this->user = $user;
         $this->name = $this->user->name;
         $this->email = $this->user->email;
     }
@@ -36,10 +41,7 @@ new #[Layout('layouts.admin')] #[Title('Settings')] class extends Component {
 
         $this->authorize('admin');
 
-        $validated = $this->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,' . auth()->id()],
-        ]);
+        $validated = $this->validate(AdminSettingsRequest::profileRules());
 
         $this->user->update($validated);
 
@@ -58,10 +60,7 @@ new #[Layout('layouts.admin')] #[Title('Settings')] class extends Component {
 
         $this->authorize('admin');
 
-        $validated = $this->validate([
-            'current_password' => ['required', 'current_password'],
-            'password' => ['required', 'confirmed', Password::defaults()],
-        ]);
+        $validated = $this->validate(AdminSettingsRequest::passwordRules());
 
         $this->user->update([
             'password' => Hash::make($validated['password']),
@@ -74,14 +73,6 @@ new #[Layout('layouts.admin')] #[Title('Settings')] class extends Component {
             'text' => 'Admin password changed successfully.',
             'icon' => 'success',
         ]);
-    }
-
-    public function logout()
-    {
-        Auth::guard('web')->logout();
-        Session::invalidate();
-        Session::regenerateToken();
-        return redirect()->route('admin.login');
     }
 }; ?>
 

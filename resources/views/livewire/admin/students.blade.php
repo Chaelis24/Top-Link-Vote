@@ -2,13 +2,15 @@
 
 use Illuminate\Support\Str;
 use Livewire\Volt\Component;
+use App\Traits\AuthenticatesLogout;
+use App\Http\Requests\Admin\StudentRequest;
 use Livewire\Attributes\{Layout, Title, Url};
 use Livewire\{WithFileUploads, WithPagination};
 use Illuminate\Support\Facades\{Auth, Session, DB, Hash};
 use App\Models\{User, Student, Role, Vote, ElectionCycle, Block, Course};
 
 new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Component {
-    use WithFileUploads, WithPagination;
+    use WithFileUploads, WithPagination, AuthenticatesLogout;
 
     #[Url]
     public string $search = '';
@@ -19,6 +21,8 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
     #[Url]
     public string $status = 'All Status';
 
+    public $selectedStudents = [];
+    public $selectAll = false;
     public $csvFile;
     public $pendingRows = [];
     public $selectedStudent;
@@ -94,6 +98,15 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
             ->paginate(10);
     }
 
+    public function updatedSelectAll($value)
+    {
+        if ($value) {
+            $this->selectedStudents = Student::pluck('id')->toArray();
+        } else {
+            $this->selectedStudents = [];
+        }
+    }
+
     public function updatingSearch()
     {
         $this->resetPage();
@@ -124,7 +137,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
 
     public function importCSV()
     {
-        $this->validate(['csvFile' => 'required|file|max:5120']);
+        $this->validate(StudentRequest::importRules());
 
         try {
             $path = $this->csvFile->getRealPath();
@@ -198,30 +211,11 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
 
     public function updateStudent()
     {
-        $this->validate([
-            'editForm.first_name' => 'required|string|max:255',
-            'editForm.middle_name' => 'nullable|string|max:255',
-            'editForm.last_name' => 'required|string|max:255',
-            'editForm.suffix' => 'nullable|string|max:10',
-            'editForm.block_id' => 'required|exists:blocks,id',
-            'editForm.status' => 'required|in:active,inactive,suspended',
-            'editForm.phone' => 'nullable|numeric',
-            'editForm.birthday' => 'nullable|date',
-            'editForm.gender' => 'nullable|in:Male,Female,Other',
-        ]);
+        $this->validate(StudentRequest::updateRules());
 
         try {
             $student = Student::findOrFail($this->editingStudentId);
-            $student->update([
-                'first_name' => $this->editForm['first_name'],
-                'last_name' => $this->editForm['last_name'],
-                'block_id' => $this->editForm['block_id'],
-                'status' => $this->editForm['status'],
-                'phone' => $this->editForm['phone'],
-                'address' => $this->editForm['address'],
-                'birthday' => $this->editForm['birthday'],
-                'gender' => $this->editForm['gender'],
-            ]);
+            $student->update($this->editForm);
 
             $this->dispatch('close-modal', id: 'editStudentModal');
             $this->dispatch('swal', [
@@ -258,6 +252,24 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
         }
     }
 
+    public function bulkDeactivate()
+    {
+        if (empty($this->selectedStudents)) {
+            return;
+        }
+
+        Student::whereIn('id', $this->selectedStudents)->update(['status' => 'inactive']);
+
+        $this->selectedStudents = [];
+        $this->selectAll = false;
+
+        $this->dispatch('swal', [
+            'title' => 'Success!',
+            'text' => 'Successfully deactivated ' . count($this->selectedStudents) . ' students.',
+            'icon' => 'success',
+        ]);
+    }
+
     public function exportStudents()
     {
         $students = Student::with('user.block.course')->get();
@@ -272,14 +284,6 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
             fclose($file);
         };
         return response()->stream($callback, 200, $headers);
-    }
-
-    public function logout()
-    {
-        Auth::logout();
-        Session::invalidate();
-        Session::regenerateToken();
-        return redirect()->route('admin.login');
     }
 }; ?>
 
@@ -409,8 +413,15 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
             <div class="table-responsive hidden md:block">
                 <table class="table table-hover mb-0">
                     <thead class="bg-light">
-                        <tr>
-                            <th class="ps-4">ID</th>
+                        <tr class="align-middle">
+                            <th class="ps-4" style="width: 50px;">
+                                <div class="form-check">
+                                    <input type="checkbox" wire:model.live="selectAll" class="form-check-input"
+                                        id="selectAll">
+                                    <label class="form-check-label" for="selectAll" style="cursor: pointer;">All</label>
+                                </div>
+                            </th>
+                            <th>ID</th>
                             <th>Student Name</th>
                             <th>Course</th>
                             <th>Email</th>
@@ -421,7 +432,11 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                     <tbody class="align-middle">
                         @forelse($students as $student)
                             <tr wire:key="student-desktop-{{ $student->id }}">
-                                <td class="ps-3">{{ $student->student_id }}</td>
+                                <td class="ps-4">
+                                    <input type="checkbox" value="{{ $student->id }}"
+                                        wire:model.live="selectedStudents" class="form-check-input">
+                                </td>
+                                <td>{{ $student->student_id }}</td>
                                 <td>
                                     {{ $student->first_name }}
                                     {{ $student->middle_name ? substr($student->middle_name, 0, 1) . '.' : '' }}
@@ -434,64 +449,54 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                                 <td>{{ $student->user->email ?? 'N/A' }}</td>
                                 <td>
                                     @if ($student->has_voted)
-                                        <span class="badge-approved py-1 px-2">
-                                            <i class="bi bi-check-circle-fill me-1"></i> Voted
-                                        </span>
+                                        <span class="badge-approved py-1 px-2"><i
+                                                class="bi bi-check-circle-fill me-1"></i> Voted</span>
                                     @elseif($student->status === 'active')
-                                        <span class="badge-approved py-1 px-2">
-                                            <i class="bi bi-person-check-fill me-1"></i> Active
-                                        </span>
+                                        <span class="badge-approved py-1 px-2"><i
+                                                class="bi bi-person-check-fill me-1"></i> Active</span>
                                     @elseif($student->status === 'inactive' || $student->status === 'suspended')
-                                        <span class="badge-danger-soft py-1 px-2">
-                                            <i class="bi bi-slash-circle me-1"></i> Deactivated
-                                        </span>
+                                        <span class="badge-danger-soft py-1 px-2"><i
+                                                class="bi bi-slash-circle me-1"></i> Deactivated</span>
                                     @else
-                                        <span class="badge-danger-soft py-1 px-2">
-                                            <i class="bi bi-x-circle-fill me-1"></i> Not Voted
-                                        </span>
+                                        <span class="badge-danger-soft py-1 px-2"><i
+                                                class="bi bi-x-circle-fill me-1"></i> Not Voted</span>
                                     @endif
                                 </td>
                                 <td class="text-center pe-4">
                                     <div class="d-flex gap-2 justify-content-center">
-
                                         <x-icon-button variant="custom" wire:click="viewStudent({{ $student->id }})"
                                             class="flex items-center justify-center border-none bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 transition-colors">
                                             <i class="bi bi-eye"></i>
                                         </x-icon-button>
-
                                         <x-icon-button variant="custom" wire:click="editStudent({{ $student->id }})"
                                             class="flex items-center justify-center border-none bg-indigo-500/10 text-indigo-500 hover:bg-indigo-500/20 transition-colors">
                                             <i class="bi bi-pencil-square"></i>
                                         </x-icon-button>
-
                                         <x-icon-button variant="custom" type="button"
                                             class="flex items-center justify-center border-none bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 transition-colors"
                                             x-data
-                                            @click="
-                                                Swal.fire({
-                                                    title: 'Deactivate Student?',
-                                                    text: 'This will set the student status to inactive.',
-                                                    icon: 'warning',
-                                                    showCancelButton: true,
-                                                    confirmButtonColor: '#f43f5e',
-                                                    cancelButtonColor: '#6c757d',
-                                                    confirmButtonText: 'Yes, deactivate it!',
-                                                    cancelButtonText: 'Cancel'
-                                                }).then((result) => {
-                                                    if (result.isConfirmed) {
-                                                        $wire.deleteStudent({{ $student->id }})
-                                                    }
-                                                })
-                                            ">
+                                            @click.prevent.stop="Swal.fire({
+                                                title: 'Deactivate Student?',
+                                                text: 'This will set the status of {{ count($selectedStudents) }} student(s) to inactive.',
+                                                icon: 'warning',
+                                                showCancelButton: true,
+                                                confirmButtonColor: '#f43f5e',
+                                                cancelButtonColor: '#6c757d',
+                                                confirmButtonText: 'Yes, deactivate it!',
+                                                cancelButtonText: 'Cancel'
+                                            }).then((result) => {
+                                                if (result.isConfirmed) {
+                                                    $wire.bulkDeactivate({{ $student->id }})
+                                                }
+                                            })">
                                             <i class="bi bi-person-x"></i>
                                         </x-icon-button>
-
                                     </div>
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="text-center py-5">No records found.</td>
+                                <td colspan="7" class="text-center py-5">No records found.</td>
                             </tr>
                         @endforelse
                     </tbody>

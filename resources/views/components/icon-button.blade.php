@@ -25,7 +25,8 @@
         'class' => "$baseStyles $classes",
     ]) }}
         style="width: {{ $size }}; height: {{ $size }}; min-width: {{ $size }}; min-height: {{ $size }};">
-        <span wire:loading.remove wire:target="{{ $attributes->get('wire:click') }}">
+        <span
+            @if ($variant !== 'custom') wire:loading.remove wire:target="{{ $attributes->get('wire:click') }}" @endif>
             {{ $slot }}
         </span>
     </button>

@@ -2,12 +2,13 @@
 
 use Livewire\Volt\Component;
 use Livewire\WithPagination;
+use App\Traits\AuthenticatesLogout;
 use Livewire\Attributes\{Layout, Title};
 use Illuminate\Support\Facades\{Auth, Session};
 use App\Models\{Platform, Candidate, ElectionCycle};
 
 new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Component {
-    use WithPagination;
+    use WithPagination,AuthenticatesLogout;
 
     public string $search = '';
     public ?Platform $selectedPlatform = null;
@@ -103,17 +104,9 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
     {
         $this->resetPage();
     }
-
-    public function logout()
-    {
-        Auth::guard('web')->logout();
-        Session::invalidate();
-        Session::regenerateToken();
-        return redirect()->route('admin.login');
-    }
 }; ?>
 
-<div wire:poll.15s>
+<div>
     @include('layouts.partials.admin-sidebar')
 
     <main class="main-content">

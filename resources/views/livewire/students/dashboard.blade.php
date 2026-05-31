@@ -3,12 +3,12 @@
 use App\Models\Setting;
 use Livewire\Volt\Component;
 use App\Models\ElectionCycle;
-use App\Traits\ChecksMaintenance;
 use Illuminate\Support\Facades\{Auth, Session};
 use Livewire\Attributes\{Layout, On, Title, Computed};
+use App\Traits\{ChecksMaintenance, AuthenticatesLogout};
 
 new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Component {
-    use ChecksMaintenance;
+    use ChecksMaintenance, AuthenticatesLogout;
 
     // 1. STATE PROPERTIES
     public $student;
@@ -91,14 +91,6 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
     {
         cache()->forget('tally_results_' . ($this->studentCourse ?? 'all'));
         $this->dispatch('update-chart', ['tally' => $this->tallyData()]);
-    }
-
-    public function logout()
-    {
-        Auth::guard('web')->logout();
-        Session::invalidate();
-        Session::regenerateToken();
-        return redirect()->route('login');
     }
 }; ?>
 

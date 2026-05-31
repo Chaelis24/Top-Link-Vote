@@ -1,12 +1,14 @@
 <?php
 
 use Livewire\Volt\Component;
+use Barryvdh\DomPDF\Facade\Pdf;
+use App\Traits\AuthenticatesLogout;
 use Livewire\Attributes\{Layout, Title, On};
 use Illuminate\Support\Facades\{Auth, Session};
 use App\Models\{Vote, Candidate, Student, ElectionCycle, Course};
-use Barryvdh\DomPDF\Facade\Pdf;
 
 new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component {
+    use AuthenticatesLogout;
     public function getActiveProperty()
     {
         return ElectionCycle::getActiveCycle();
@@ -95,6 +97,10 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
                 ->orderBy('blocks.year_level', 'asc')
                 ->get();
 
+            $partyPerformance = Candidate::select('party_name')->selectRaw('SUM(votes_count) as total_votes')->where('election_cycle_id', $activeCycleId)->groupBy('party_name')->orderBy('total_votes', 'desc')->get()->map(fn($c) => ['party' => $c->party_name ?? 'Independent', 'votes' => $c->total_votes]);
+
+            $courseData = Course::join('blocks', 'courses.id', '=', 'blocks.course_id')->join('students', 'blocks.id', '=', 'students.block_id')->join('votes', 'students.id', '=', 'votes.student_id')->join('candidates', 'votes.candidate_id', '=', 'candidates.id')->where('candidates.election_cycle_id', $activeCycleId)->selectRaw('courses.name as course_name, COUNT(votes.id) as vote_count')->groupBy('courses.name')->get();
+
             return [
                 'totalVotes' => $totalVotes,
                 'candidatesCount' => $allCandidates->count(),
@@ -108,6 +114,11 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
                 'yearLevel' => [
                     'labels' => $yearLevelData->pluck('year_level')->map(fn($l) => 'Year ' . $l),
                     'values' => $yearLevelData->pluck('total'),
+                ],
+                'partyPerformance' => $partyPerformance,
+                'courseData' => [
+                    'labels' => $courseData->pluck('course_name'),
+                    'values' => $courseData->pluck('vote_count'),
                 ],
             ];
         });
@@ -129,6 +140,8 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
             'turnout' => (float) str_replace('%', '', $data['turnout']),
             'trends' => $data['trends'],
             'yearLevel' => $data['yearLevel'],
+            'partyPerformance' => $data['partyPerformance'],
+            'courseData' => $data['courseData'],
         ]);
     }
 
@@ -152,14 +165,6 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
         return response()->streamDownload(function () use ($pdf) {
             echo $pdf->output();
         }, 'Election_Report_' . now()->format('Y-m-d') . '.pdf');
-    }
-
-    public function logout()
-    {
-        Auth::guard('web')->logout();
-        Session::invalidate();
-        Session::regenerateToken();
-        return redirect()->route('admin.login');
     }
 }; ?>
 
@@ -320,19 +325,46 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
             </div>
         </div>
 
-        <div class="row g-4 mb-4">
-            <div class="col-lg-8">
+        <div class="row g-3 mb-3">
+            <div class="col-lg-4">
                 <div class="glass-card p-4 border-0 shadow-sm h-100">
                     <h5 class="fw-bold text-primary mb-1">Voter Turnout Trends</h5>
                     <p class="text-muted small mb-3">Activity over the last 6 hours</p>
                     <div id="chart-trends" wire:ignore style="height: 300px;"></div>
                 </div>
             </div>
+
             <div class="col-lg-4">
                 <div class="glass-card p-4 border-0 shadow-sm h-100">
-                    <h5 class="fw-bold text-primary mb-1">Year Level Breakdown</h5>
-                    <p class="text-muted small mb-3">Participation per level</p>
-                    <div id="chart-year-level" wire:ignore style="height: 300px;"></div>
+                    <h5 class="fw-bold text-primary">Campaign Effectiveness</h5>
+                    <div id="chart-party" wire:ignore style="height: 300px;"></div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="glass-card p-4 border-0 shadow-sm h-100" x-data="{ activeTab: 'year' }">
+                    <div class="d-flex justify-content-between mb-3">
+                        <div>
+                            <h5 class="fw-bold text-primary mb-0" x-show="activeTab === 'year'">Year Level Breakdown
+                            </h5>
+                            <h5 class="fw-bold text-primary mb-0" x-show="activeTab === 'course'">Course Participation
+                            </h5>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button @click="activeTab = 'year'"
+                                :class="activeTab === 'year' ? 'btn-primary' : 'btn-outline-primary'"
+                                class="btn btn-sm py-1 px-2" style="font-size: 0.75rem;">Year</button>
+                            <button @click="activeTab = 'course'"
+                                :class="activeTab === 'course' ? 'btn-primary' : 'btn-outline-primary'"
+                                class="btn btn-sm py-1 px-2" style="font-size: 0.75rem;">Course</button>
+                        </div>
+                    </div>
+
+                    <div x-show="activeTab === 'year'" wire:ignore>
+                        <div id="chart-year-level" style="height: 300px;"></div>
+                    </div>
+                    <div x-show="activeTab === 'course'" wire:ignore>
+                        <div id="chart-course" style="height: 300px;"></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -410,6 +442,63 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
                     }
                 });
 
+                const courseContainer = document.querySelector("#chart-course");
+                if (courseContainer) {
+                    if (charts.course) {
+                        charts.course.updateSeries([{
+                            data: data.courseData.values
+                        }]);
+                        charts.course.updateOptions({
+                            xaxis: {
+                                categories: data.courseData.labels
+                            }
+                        });
+                    } else {
+                        charts.course = new ApexCharts(courseContainer, {
+                            chart: {
+                                type: 'bar',
+                                height: 250,
+                                toolbar: {
+                                    show: false
+                                }
+                            },
+                            series: [{
+                                name: 'Votes',
+                                data: data.courseData.values
+                            }],
+                            xaxis: {
+                                categories: data.courseData.labels
+                            },
+                            colors: ['#6366f1']
+                        });
+                        charts.course.render();
+                    }
+                }
+
+                const partyContainer = document.querySelector("#chart-party");
+                if (partyContainer) {
+                    if (window.partyChart) {
+                        window.partyChart.updateSeries(data.partyPerformance.map(p => p.votes));
+                        window.partyChart.updateOptions({
+                            labels: data.partyPerformance.map(p => p.party)
+                        });
+                    } else {
+                        window.partyChart = new ApexCharts(partyContainer, {
+                            chart: {
+                                type: 'pie',
+                                height: 300
+                            },
+                            series: data.partyPerformance.map(p => p.votes),
+                            labels: data.partyPerformance.map(p => p.party),
+                            legend: {
+                                position: 'bottom'
+                            },
+                            colors: ['#3b82f6', '#10B981', '#f59e0b', '#ef4444']
+                        });
+                        window.partyChart.render();
+                    }
+                }
+
                 const trendContainer = document.querySelector("#chart-trends");
                 if (trendContainer) {
                     if (trendChart) {
@@ -472,7 +561,26 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
             };
 
             renderCharts();
-            $wire.on('update-admin-charts', (payload) => renderCharts(Array.isArray(payload) ? payload[0] : payload));
+            $wire.on('update-admin-charts', (payload) => {
+                renderCharts(Array.isArray(payload) ? payload[0] : payload);
+
+                setTimeout(() => {
+                    if (typeof yearChart !== 'undefined' && yearChart) {
+                        yearChart.updateOptions({
+                            chart: {
+                                width: '100%'
+                            }
+                        });
+                    }
+                    if (charts.course) {
+                        charts.course.updateOptions({
+                            chart: {
+                                width: '100%'
+                            }
+                        });
+                    }
+                }, 100);
+            });
         </script>
     @endscript
 </div>
