@@ -1,106 +1,67 @@
 <?php
 
-use App\Models\Setting;
 use Livewire\Volt\Component;
-use App\Models\{ElectionCycle, Candidate};
-use Illuminate\Support\Facades\{Auth, Session};
+use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\{Layout, On, Title, Computed};
 use App\Traits\{ChecksMaintenance, AuthenticatesLogout};
+use App\Services\Student\DashboardService;
 
 new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Component {
     use ChecksMaintenance, AuthenticatesLogout;
 
-    // 1. STATE PROPERTIES
     public $student;
     public $profile_photo_path;
     public $studentCourse;
-    public bool $isVotingOpen = false;
     public bool $isResultsVisible = false;
 
-    // 2. LIFECYCLE HOOKS
-    public function mount()
+    private DashboardService $dashboardService;
+
+    public function boot(DashboardService $dashboardService)
     {
-        $user = Auth::user()?->load('student.block.course');
-        $this->student = $user?->student;
-        $this->studentCourse = $this->student?->block?->course?->name ?? 'No Course Assigned';
-
-        if ($this->student) {
-            $this->profile_photo_path = $this->student->photo ?? ($this->student->profile_photo_path ?? null);
-        }
-
-        $settings = Setting::pluck('value', 'key')->toArray();
-        $this->isVotingOpen = (bool) ($settings['allowVoting'] ?? false);
-        $this->isResultsVisible = (bool) ($settings['showResults'] ?? false);
+        $this->dashboardService = $dashboardService;
     }
 
-    // 3. COMPUTED PROPERTIES
+    public function mount()
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return;
+        }
+
+        $data = $this->dashboardService->getStudentData($user);
+        $this->student = $data['student'];
+        $this->studentCourse = $data['studentCourse'];
+        $this->profile_photo_path = $data['profile_photo_path'];
+        $this->isResultsVisible = $this->dashboardService->isResultsVisible();
+    }
+
     #[Computed]
     public function activeCycle()
     {
-        return ElectionCycle::where('status', 'active')->latest()->first();
+        return $this->dashboardService->getActiveCycle();
     }
 
     #[Computed]
     public function isVotingOpen()
     {
-        $setting = Setting::where('key', 'allowVoting')->first();
-        $activeCycle = $this->activeCycle;
-
-        if (!$setting || !(bool) $setting->value) {
-            return false;
-        }
-
-        if (!$activeCycle || now()->gt($activeCycle->voting_end)) {
-            return false;
-        }
-
-        return true;
+        return $this->dashboardService->isVotingOpen($this->activeCycle);
     }
 
     #[Computed]
     public function tallyData()
     {
-        if (!$this->isResultsVisible) {
-            return [];
-        }
-
-        $activeCycle = $this->activeCycle;
-        if (!$activeCycle) {
-            return [];
-        }
-
-        $studentCourseId = $this->student?->block?->course_id;
-        $cacheKey = "tally_data_cycle_{$activeCycle->id}_course_{$studentCourseId}";
-        return cache()->remember($cacheKey, now()->addMinutes(10), function () use ($activeCycle, $studentCourseId) {
-            return Candidate::query()
-                ->with(['student.block.course', 'position'])
-                ->withCount(['votes' => fn($q) => $q->where('election_cycle_id', $activeCycle->id)])
-                ->where('candidates.election_cycle_id', $activeCycle->id)
-                ->join('positions', 'candidates.position_id', '=', 'positions.id')
-                ->whereHas('position', function ($query) use ($studentCourseId) {
-                    $query->where(function ($q) use ($studentCourseId) {
-                        $q->whereNull('student_department')->orWhere('student_department', '')->orWhere('student_department', $studentCourseId);
-                    });
-                })
-                ->get()
-                ->map(
-                    fn($candidate) => [
-                        'label' => ($candidate->student->last_name ?? 'Unknown') . ' (' . ($candidate->position->name ?? 'N/A') . ')',
-                        'votes' => (int) ($candidate->votes_count ?? 0),
-                    ],
-                )
-                ->values()
-                ->toArray();
-        });
+        $courseId = $this->dashboardService->getStudentCourseId($this->student);
+        return $this->dashboardService->getTallyData($this->activeCycle, $courseId, $this->isResultsVisible);
     }
 
-    // 4. EVENT LISTENERS
     #[On('echo-private:election-results.{studentCourse},VoteUpdated')]
     public function refreshTally()
     {
-        $activeCycle = $this->activeCycle;
-        $voterYear = (string) ($this->student?->block?->year_level ?? 'all');
-        cache()->forget("tally_data_cycle_{$activeCycle->id}_year_{$voterYear}");
+        $activeCycle = $this->dashboardService->getActiveCycle();
+        if ($activeCycle) {
+            $courseId = $this->dashboardService->getStudentCourseId($this->student);
+            $this->dashboardService->forgetTallyCache($activeCycle, $courseId);
+        }
         $this->dispatch('update-chart', ['tally' => $this->tallyData()]);
     }
 }; ?>
@@ -202,7 +163,7 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
                             </a>
                         @else
                             @php
-                                $latestCycle = \App\Models\ElectionCycle::latest()->first();
+                                $latestCycle = ElectionCycle::latest()->first();
                             @endphp
 
                             @if ($latestCycle && ($latestCycle->status === 'finished' || $latestCycle->status === 'completed'))
@@ -247,18 +208,12 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
                         <span class="badge px-2 py-1 rounded-full shadow-sm text-white"
                             style="background-color: #10b981; font-size: 0.75rem;">
                             <i class="bi bi-mortarboard-fill me-1"></i>
-                            {{ match ($student->block->course->name ?? 'General') {
-                                'IT' => 'Information Technology',
-                                'HRMT' => 'Hotel and Restaurant Management',
-                                'HST' => 'Hospitality Service Technology',
-                                'ECT' => 'Electronic Computer Technology',
-                                default => $student->block->course->name ?? 'General',
-                            } }}
+                            {{ app(\App\Services\Student\DashboardService::class)->getCourseDisplayName($student->block->course->name ?? null) }}
                         </span>
                     </div>
 
                     @if ($isResultsVisible)
-                        <div class="relative h-[500px] md:h-[600px] mb-4 md:mb-6" style="position: relative;"
+                        <div class="relative h-[500px] md:h-[400px] mb-4 md:mb-0" style="position: relative;"
                             wire:ignore>
                             <div id="mainTallyChart"></div>
                         </div>

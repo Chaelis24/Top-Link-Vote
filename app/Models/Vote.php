@@ -11,6 +11,10 @@ class Vote extends Model
     use HasFactory;
 
     protected $table = 'votes';
+<<<<<<< HEAD
+=======
+    public $timestamps = false;
+>>>>>>> 4d6096382b3a3fdd28850ef1d2274061908ae07e
 
     protected $fillable = [
         'student_id',

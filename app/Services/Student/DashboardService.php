@@ -2,55 +2,103 @@
 
 namespace App\Services\Student;
 
-use App\Models\{Setting, ElectionCycle, Candidate};
+use App\Models\{Setting, ElectionCycle, Candidate, User};
 use Illuminate\Support\Facades\Cache;
 
 class DashboardService
 {
-    public function getElectionSettings(): array
+    public function getStudentData(User $user): array
     {
-        $settings = Setting::pluck('value', 'key')->toArray();
+        $user->load('student.block.course');
+        $student = $user->student;
+
         return [
-            'allowVoting' => (bool) ($settings['allowVoting'] ?? false),
-            'showResults' => (bool) ($settings['showResults'] ?? false),
+            'student' => $student,
+            'studentCourse' => $student?->block?->course?->name ?? 'No Course Assigned',
+            'profile_photo_path' => $student?->photo ?? ($student?->profile_photo_path ?? null),
         ];
     }
 
-    public function isVotingOpen(): bool
+    public function getActiveCycle(): ?ElectionCycle
+    {
+        return ElectionCycle::where('status', 'active')->latest()->first();
+    }
+
+    public function isVotingOpen(?ElectionCycle $activeCycle): bool
     {
         $setting = Setting::where('key', 'allowVoting')->first();
-        $activeCycle = ElectionCycle::where('status', 'active')->latest()->first();
 
-        if (!$setting || !(bool) $setting->value) return false;
-        if (!$activeCycle || now()->gt($activeCycle->voting_end)) return false;
+        if (!$setting || !(bool) $setting->value) {
+            return false;
+        }
+
+        if (!$activeCycle || now()->gt($activeCycle->voting_end)) {
+            return false;
+        }
 
         return true;
     }
 
-    public function getTallyData(?string $course, bool $isVisible): array
+    public function isResultsVisible(): bool
     {
-        if (!$isVisible) return [];
+        return (bool) (Setting::where('key', 'showResults')->value('value') ?? false);
+    }
 
-        return Cache::remember('tally_results_' . ($course ?? 'all'), 60, function () use ($course) {
-            return Candidate::with(['student', 'position'])
-                ->withCount('votes')
-                ->whereHas('position', fn($q) => $q->whereNull('student_department')
-                    ->orWhere('student_department', '')
-                    ->orWhere('student_department', $course))
+    public function getTallyData(?ElectionCycle $activeCycle, ?int $studentCourseId, bool $isResultsVisible): array
+    {
+        if (!$isResultsVisible || !$activeCycle) {
+            return [];
+        }
+
+        $cacheKey = "tally_data_cycle_{$activeCycle->id}_course_{$studentCourseId}";
+
+        return Cache::remember($cacheKey, now()->addMinutes(10), function () use ($activeCycle, $studentCourseId) {
+            return Candidate::query()
+                ->with(['student.block.course', 'position'])
+                ->withCount(['votes' => fn($q) => $q->where('election_cycle_id', $activeCycle->id)])
+                ->where('candidates.election_cycle_id', $activeCycle->id)
                 ->join('positions', 'candidates.position_id', '=', 'positions.id')
-                ->orderBy('positions.priority', 'asc')
-                ->orderBy('votes_count', 'desc')
-                ->select('candidates.*')
+                ->whereHas('position', function ($query) use ($studentCourseId) {
+                    $query->where(function ($q) use ($studentCourseId) {
+                        $q->whereNull('student_department')
+                            ->orWhere('student_department', '')
+                            ->orWhere('student_department', $studentCourseId);
+                    });
+                })
                 ->get()
-                ->map(fn($c) => [
-                    'label' => ($c->student->last_name ?? 'Unknown') . ' (' . ($c->position->name ?? 'N/A') . ')',
-                    'votes' => $c->votes_count ?? 0,
-                ])->toArray();
+                ->map(fn($candidate) => [
+                    'label' => ($candidate->student->last_name ?? 'Unknown') . ' (' . ($candidate->position->name ?? 'N/A') . ')',
+                    'votes' => (int) ($candidate->votes_count ?? 0),
+                ])
+                ->values()
+                ->toArray();
         });
     }
 
-    public function forgetTallyCache(?string $course)
+    public function getLatestCycle(): ?ElectionCycle
     {
-        Cache::forget('tally_results_' . ($course ?? 'all'));
+        return ElectionCycle::latest()->first();
+    }
+
+    public function getCourseDisplayName(?string $courseName): string
+    {
+        return match ($courseName) {
+            'IT'    => 'Information Technology',
+            'HRMT'  => 'Hotel and Restaurant Management',
+            'HST'   => 'Hospitality Service Technology',
+            'ECT'   => 'Electronic Computer Technology',
+            default => $courseName ?? 'General',
+        };
+    }
+
+    public function forgetTallyCache(ElectionCycle $activeCycle, ?int $studentCourseId): void
+    {
+        $cacheKey = "tally_data_cycle_{$activeCycle->id}_course_{$studentCourseId}";
+        Cache::forget($cacheKey);
+    }
+
+    public function getStudentCourseId($student): ?int
+    {
+        return $student?->block?->course_id;
     }
 }

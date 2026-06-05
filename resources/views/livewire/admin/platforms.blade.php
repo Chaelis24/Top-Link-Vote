@@ -275,7 +275,11 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                                         <img src="{{ asset('storage/' . $platform->candidate->photo) }}"
                                             class="w-full h-full object-cover">
                                     @else
+<<<<<<< HEAD
                                         {{ strtoupper(substr($platform->candidate->student?->first_name ?? 'A', 0, 1)) }}{{ strtoupper(substr($platform->candidate->student?->last_name ?? '', 0, 1)) }}
+=======
+                                        {{ strtoupper(substr($platform->candidate->student?->first_name ?? 'A', 0, 1)) }}{{ strtoupper(substr($candidate->student?->last_name ?? '', 0, 1)) }}
+>>>>>>> 4d6096382b3a3fdd28850ef1d2274061908ae07e
                                     @endif
                                 </div>
                                 <div>
@@ -386,7 +390,11 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                                     <img src="{{ asset('storage/' . $platform->candidate->photo) }}"
                                         class="w-full h-full object-cover">
                                 @else
+<<<<<<< HEAD
                                     {{ strtoupper(substr($platform->candidate->student?->first_name ?? 'A', 0, 1)) }}{{ strtoupper(substr($platform->candidate->student?->last_name ?? '', 0, 1)) }}
+=======
+                                    {{ strtoupper(substr($platform->candidate->student?->first_name ?? 'A', 0, 1)) }}{{ strtoupper(substr($candidate->student?->last_name ?? '', 0, 1)) }}
+>>>>>>> 4d6096382b3a3fdd28850ef1d2274061908ae07e
                                 @endif
                             </div>
                             <div>

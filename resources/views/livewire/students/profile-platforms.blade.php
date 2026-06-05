@@ -458,6 +458,7 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
                 </div>
             @elseif ($isFiling && $isStudentOnly)
                 <div class="p-5 text-center my-5 rounded-4">
+<<<<<<< HEAD
                     <h3 class="text-primary fw-bold">Filing of Candidacy Ongoing</h3>
                     <p class="text-secondary">The candidates are currently finalizing their platforms. Campaigning
                         will start soon!</p>
@@ -466,6 +467,21 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
                 <div class="p-5 text-center my-5 rounded-4">
                     <h3 class="text-primary fw-bold">Campaign of Candidacy Ongoing</h3>
                     <p class="text-secondary">The candidates are currently campaigning. Voting will start soon!</p>
+=======
+                    <div class="p-5 text-center my-5 rounded-4">
+                        <h3 class="text-primary fw-bold">Filing of Candidacy Ongoing</h3>
+                        <p class="text-secondary">The candidates are currently finalizing their platforms. Campaigning
+                            will
+                            start soon!</p>
+                    </div>
+                </div>
+            @elseif ($isCampaign && $isStudentOnly)
+                <div class="p-5 text-center my-5 rounded-4">
+                    <div class="p-5 text-center my-5 rounded-4">
+                        <h3 class="text-primary fw-bold">Campaign of Candidacy Ongoing</h3>
+                        <p class="text-secondary">The candidates are currently campaigning. Voting will start soon!</p>
+                    </div>
+>>>>>>> 4d6096382b3a3fdd28850ef1d2274061908ae07e
                 </div>
             @else
                 <div class="p-5 text-center">

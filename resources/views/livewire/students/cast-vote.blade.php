@@ -116,7 +116,11 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
 
     public function submitVote()
     {
+<<<<<<< HEAD
         sleep(1);
+=======
+        sleep(2);
+>>>>>>> 4d6096382b3a3fdd28850ef1d2274061908ae07e
 
         if (!$this->isVotingOpen || $this->hasVoted) {
             $this->dispatch('swal', [
@@ -212,7 +216,11 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
 
             RateLimiter::clear($throttleKey);
 
+<<<<<<< HEAD
             event(new \App\Events\VoteUpdated($student->course));
+=======
+            event(new \App\Events\VoteUpdated((string) $student->course));
+>>>>>>> 4d6096382b3a3fdd28850ef1d2274061908ae07e
 
             $this->dispatch('swal', [
                 'title' => 'Success!',
