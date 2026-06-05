@@ -24,10 +24,19 @@ document.addEventListener("livewire:init", () => {
         }
     });
 
-    window.addEventListener("close-modal", (e) => {
-        const modalElement = document.getElementById(e.detail.id);
-        const m = bootstrap.Modal.getInstance(modalElement);
-        if (m) m.hide();
+    window.addEventListener("close-modal", (event) => {
+        let modal = document.getElementById(event.detail.id);
+        let modalInstance = bootstrap.Modal.getInstance(modal);
+        if (modalInstance) {
+            modalInstance.hide();
+        }
+
+        document
+            .querySelectorAll(".modal-backdrop")
+            .forEach((el) => el.remove());
+        document.body.classList.remove("modal-open");
+        document.body.style.overflow = "";
+        document.body.style.paddingRight = "";
     });
 
     window.addEventListener("confirm-csv-import", (e) => {

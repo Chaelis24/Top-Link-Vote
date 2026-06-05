@@ -6,7 +6,6 @@ use Livewire\Volt\Component;
 use Livewire\WithFileUploads;
 use Livewire\Attributes\{Layout, Title};
 use Illuminate\Validation\Rules\Password;
-use Intervention\Image\Laravel\Facades\Image;
 use App\Http\Requests\Students\UpdateProfileRequest;
 use App\Http\Requests\Students\UpdatePasswordRequest;
 use App\Traits\{ChecksMaintenance, AuthenticatesLogout};
@@ -92,21 +91,17 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
             }
 
             if ($user?->student) {
-                $data = ['phone' => $validated['phone'] ?? $this->phone];
+                $data = ['phone' => $this->phone];
 
-                if ($request->hasFile('photo')) {
+                if ($this->photo && !is_string($this->photo)) {
                     if ($this->profile_photo_path) {
                         Storage::disk('public')->delete($this->profile_photo_path);
                     }
 
-                    $img = Image::read($validated['photo']->getRealPath());
-                    $img->cover(300, 300);
+                    $path = $this->photo->store('student-profile', 'public');
+                    $data['photo'] = $path;
+                    $this->profile_photo_path = $path;
 
-                    $filename = 'student-profile/' . uniqid() . '.jpg';
-                    Storage::disk('public')->put($filename, (string) $img->toJpeg(75));
-
-                    $data['photo'] = $filename;
-                    $this->profile_photo_path = $filename;
                     $this->reset('photo');
                 }
                 $user->student->update($data);
@@ -159,7 +154,7 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
         <div class="topbar" wire:key="persistent-topbar-header">
             <div>
                 <h2 class="text-dark">My <span class="text-primary">Profile</span></h2>
-                <p class="text-secondary mb-0">View your student information and voting status</p>
+                <p class="text-secondary mb-0 small">View your student information and voting status</p>
             </div>
         </div>
 
@@ -169,11 +164,13 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                     <div class="position-relative d-inline-block">
                         @if ($photo)
                             <img src="{{ $photo->temporaryUrl() }}" class="profile-avatar-lg border shadow-sm"
-                                style="width: 80px; height: 80px; object-fit: cover; border-radius: 50%;">
+                                style="width: 80px; height: 80px; object-fit: cover; border-radius: 50%;"
+                                alt="Student">
                         @elseif($profile_photo_path)
                             <img src="{{ asset('storage/' . $profile_photo_path) }}"
                                 class="profile-avatar-lg border shadow-sm"
-                                style="width: 80px; height: 80px; object-fit: cover; border-radius: 50%;">
+                                style="width: 80px; height: 80px; object-fit: cover; border-radius: 50%;"
+                                alt="Student">
                         @else
                             <div class="profile-avatar-lg d-flex align-items-center justify-content-center bg-emerald-light fw-bold text-primary border shadow-sm"
                                 style="width: 80px; height: 80px; border-radius: 50%; font-size: 1.5rem;">
@@ -290,7 +287,7 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                     </div>
 
                     <div class="d-flex gap-3">
-                        <div class="info-icon d-flex align-items-center justify-content-center rounded bg-warning-light text-warning"
+                        <div class="info-icon d-flex align-items-center justify-content-center rounded bg-primary-light text-primary"
                             style="width: 40px; height: 40px;">
                             <i class="bi bi-calendar3 fs-5"></i>
                         </div>
@@ -389,7 +386,7 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
 
                     <div class="position-relative mt-3 ps-2">
                         <div class="position-absolute border-start border-light-subtle"
-                            style="left: 15px; top: 15px; bottom: 15px; border-width: 2px !important; border-style: dashed !important;">
+                            style="left: 22px; top: 15px; bottom: 15px; border-width: 2px !important; border-style: dashed !important;">
                         </div>
 
                         @if ($has_voted)
@@ -406,20 +403,6 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                                     </div>
                                     <small
                                         class="text-secondary">{{ Carbon::parse($voted_at)->format('M d, Y, h:i A') }}</small>
-                                </div>
-                            </div>
-
-                            <div class="position-relative d-flex align-items-start mb-4">
-                                <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle bg-dark shadow-sm text-white"
-                                    style="width: 32px; height: 32px; z-index: 2;">
-                                    <i class="bi bi-receipt-lg lh-1 fs-6"></i>
-                                </div>
-                                <div class="ps-3 pt-1">
-                                    <div class="fw-semibold text-dark">Ballot Receipt Encrypted & Saved</div>
-                                    <small class="text-muted text-monospace font-monospace small"
-                                        style="font-size: 0.75rem;">
-                                        Ref: #{{ substr(md5($voted_at), 0, 8) }}...
-                                    </small>
                                 </div>
                             </div>
                         @endif
@@ -447,8 +430,8 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                                 <i class="bi bi-person-plus"></i>
                             </div>
                             <div class="ps-3 pt-1">
-                                <div class="fw-semibold text-dark">Account Verified & Created</div>
-                                <small class="text-secondary">Initial setup complete</small>
+                                <div class="fw-semibold text-dark">Account Verified</div>
+                                <small class="text-secondary">Initial setup completed</small>
                             </div>
                         </div>
 
@@ -457,6 +440,7 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
             </div>
         </div>
     </main>
+
     <div class="modal fade" id="editProfileModal" tabindex="-1" wire:ignore.self aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg">
@@ -500,12 +484,13 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                             </div>
 
                             <div class="col">
-                                <label class="form-label small fw-bold text-secondary mb-1">PHONE NUMBER</label>
+                                <label class="form-label small fw-bold text-secondary mb-1"
+                                    style="font-size: 0.8rem;">PHONE NUMBER</label>
                                 <div class="input-group input-group-sm">
                                     <span class="input-group-text bg-light border-end-0"><i
                                             class="bi bi-telephone small" style="color: #10b981;"></i></span>
                                     <input type="text" class="form-control border-start-0" wire:model="phone"
-                                        placeholder="09xxxxxxxxx">
+                                        placeholder="09xxxxxxxxx" maxlength="11">
                                     <button type="submit" class="btn text-white"
                                         style="background-color: #10b981; border-color: #10b981;"
                                         wire:loading.attr="disabled">
@@ -524,7 +509,8 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                     <hr class="text-secondary opacity-25">
 
                     <form wire:submit.prevent="updatePassword">
-                        <label class="form-label small fw-bold text-secondary mb-2">CHANGE PASSWORD</label>
+                        <label class="form-label small fw-bold text-secondary mb-2" style="font-size: 0.8rem;">CHANGE
+                            PASSWORD</label>
                         <div class="row g-2 align-items-start">
                             <div class="col-md-3">
                                 <input type="password" class="form-control form-control-sm bg-light"

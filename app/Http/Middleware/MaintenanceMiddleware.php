@@ -22,8 +22,14 @@ class MaintenanceMiddleware
             return (bool) Setting::where('key', 'maintenanceMode')->value('value');
         });
 
-        if ($isMaintenance && !Auth::check()) {
-            return response()->view('maintenance');
+        if ($isMaintenance) {
+            if (!Auth::check()) {
+                return response()->view('maintenance');
+            }
+            if (!Auth::user()->hasRole('admin')) {
+                Auth::logout();
+                return response()->view('maintenance');
+            }
         }
 
         return $next($request);

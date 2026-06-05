@@ -29,19 +29,21 @@ class ActivityLog extends Model
     ];
 
 
-    public static function log($action, $description, $oldValue = null, $newValue = null, $studentId = null)
+    public static function log(string $action, string $description, ?array $properties = null, ?int $studentId = null)
     {
         $ip = request()->ip();
+
         $isCampus = str_starts_with($ip, '10.0') || str_starts_with($ip, '192.168') || $ip === '127.0.0.1';
         $location = $isCampus ? "Campus Network ($ip)" : "External ($ip)";
 
         return self::create([
-            'user_id' => Auth::id(),
-            'action' => $action,
-            'student_id' => $studentId,
+            'user_id'     => Auth::id(),
+            'action'      => $action,
+            'student_id'  => $studentId,
             'description' => $description,
-            'ip_address' => $location,
-            'user_agent' => request()->userAgent(),
+            'ip_address'  => $location,
+            'user_agent'  => request()->userAgent(),
+            'properties'  => $properties,
         ]);
     }
 
@@ -49,15 +51,16 @@ class ActivityLog extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class)->withDefault([
-            'first_name' => 'System /',
-            'last_name' => 'Deleted User'
+            'name' => 'System / Deleted User'
         ]);
     }
 
     public function student(): BelongsTo
     {
         return $this->belongsTo(Student::class)->withDefault([
-            'id' => 'N/A'
+            'student_id' => 'N/A',
+            'first_name' => 'Deleted',
+            'last_name' => 'Student'
         ]);
     }
 }

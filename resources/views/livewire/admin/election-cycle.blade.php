@@ -6,14 +6,13 @@ use App\Traits\AuthenticatesLogout;
 use App\Models\{ElectionCycle, Setting, Student};
 use App\Http\Requests\Admin\ElectionCycleRequest;
 use Livewire\Attributes\{Layout, Title, Computed};
-use Illuminate\Support\Facades\{Auth, Session, DB};
+use Illuminate\Support\Facades\{Auth, Session, DB, Cache};
 
 new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Component {
     use AuthenticatesLogout;
 
     public bool $allowVoting = false;
     public bool $showResults = false;
-    public bool $showProfiles = false;
     public bool $lockChanges = false;
     public bool $maintenanceMode = false;
 
@@ -107,7 +106,6 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
         }
 
         $this->showResults = (bool) ($settings['showResults'] ?? false);
-        $this->showProfiles = (bool) ($settings['showProfiles'] ?? false);
         $this->lockChanges = (bool) ($settings['lockChanges'] ?? false);
         $this->maintenanceMode = (bool) ($settings['maintenanceMode'] ?? false);
     }
@@ -164,9 +162,6 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                     $this->allowVoting = true;
                     Setting::updateOrCreate(['key' => 'allowVoting'], ['value' => 1]);
 
-                    $this->showProfiles = true;
-                    Setting::updateOrCreate(['key' => 'showProfiles'], ['value' => 1]);
-
                     if (!$active->notifications_sent) {
                         \App\Jobs\SendElectionStartedEmail::dispatch();
 
@@ -184,8 +179,6 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                     $this->allowVoting = false;
                     Setting::updateOrCreate(['key' => 'allowVoting'], ['value' => 0]);
 
-                    $this->showProfiles = false;
-                    Setting::updateOrCreate(['key' => 'showProfiles'], ['value' => 0]);
                     $this->dispatch('swal', [
                         'title' => 'Election Closed',
                         'text' => 'The voting period has ended automatically.',
@@ -199,9 +192,7 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                     $active->update(['status' => 'completed']);
 
                     Setting::updateOrCreate(['key' => 'allowVoting'], ['value' => 0]);
-                    Setting::updateOrCreate(['key' => 'showProfiles'], ['value' => 0]);
                     $this->allowVoting = false;
-                    $this->showProfiles = false;
 
                     $this->dispatch('swal', [
                         'title' => 'Cycle Completed',
@@ -455,9 +446,6 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
             if ($active) {
                 $active->update(['status' => 'completed']);
 
-                Student::where('status', 'active')
-                    ->where('has_voted', false)
-                    ->update(['status' => 'inactive']);
             }
 
             Cache::forget('active_election_cycle');
@@ -543,9 +531,10 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                         <span
                             class="badge d-flex align-items-center gap-1 gap-md-2 px-2 py-1 px-md-3 py-2 rounded-pill shadow-sm"
                             style="font-size: 0.75rem;"
-                            :class="!dates.rD ? 'bg-secondary' : (now < dates.rD ? 'bg-success-subtle text-success' :
-                                'bg-danger-subtle text-danger')" 'bg-success-subtle text-success border border-success'
-                            : 'bg-danger-subtle text-danger border border-danger' )">
+                            :class="!dates.rD ? 'bg-secondary border' : (now < dates.rD ?
+                                'bg-success-subtle text-success border border-success' :
+                                'bg-danger-subtle text-danger border border-danger')">
+
                             <span x-show="dates.rD" class="pulse-dot" style="width: 6px; height: 6px;"
                                 :style="'background: ' + (now < dates.rD ? '#10b981' : '#ef4444')"></span>
                             <span class="fw-bold"
@@ -696,7 +685,7 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                         <i class="bi bi-sliders me-2"></i>Live Controls
                     </h6>
                     <div wire:poll.5s="checkAutoOff">
-                        @foreach ([['key' => 'allowVoting', 'label' => 'Allow Voting', 'desc' => 'Open the voting portal for students'], ['key' => 'showProfiles', 'label' => 'Show Candidate Profiles', 'desc' => 'Display candidate profile and platforms'], ['key' => 'showResults', 'label' => 'Show Election Results', 'desc' => 'Display the tally to the student dashboard'], ['key' => 'maintenanceMode', 'label' => 'Maintenance', 'desc' => 'Instantly freeze site activity']] as $setting)
+                        @foreach ([['key' => 'allowVoting', 'label' => 'Allow Voting', 'desc' => 'Open the voting portal for students'], ['key' => 'showResults', 'label' => 'Show Election Results', 'desc' => 'Display the tally to the student dashboard'], ['key' => 'maintenanceMode', 'label' => 'Maintenance', 'desc' => 'Instantly freeze site activity']] as $setting)
                             <div
                                 class="control-item d-flex justify-content-between align-items-center mb-2 mb-md-3 p-2 rounded-3 hover-bg-light border shadow-xs">
                                 <div class="pe-2">

@@ -2,7 +2,6 @@
 
 use Livewire\Volt\Component;
 use App\Traits\AuthenticatesLogout;
-use Intervention\Image\Laravel\Facades\Image;
 use Livewire\{WithFileUploads, WithPagination};
 use App\Http\Requests\Admin\UpdateCandidateRequest;
 use Livewire\Attributes\{Layout, Title, Url, Computed};
@@ -39,38 +38,6 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
         'agenda' => '',
         'photo_url' => '',
     ];
-
-    // protected function rules()
-    // {
-    //     return [
-    //         'editForm.party_name' => 'required|string|max:255',
-    //         'editForm.position_id' => 'required|exists:positions,id','editForm.position_id' => 'required|exists:positions,id',
-    //         'editForm.platform_title' => 'required|string|max:255',
-    //         'editForm.previous_position.*' => 'nullable|string|max:100',
-    //         'editForm.previous_school_project.*' => 'nullable|string|max:100',
-    //         'editForm.achievements' => 'nullable|string',
-    //         'editForm.average_grade' => 'nullable|string|max:10',
-    //         'editForm.tagline' => 'nullable|string|max:255',
-    //         'editForm.agenda' => 'nullable|string',
-    //         'candidate_photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048|dimensions:min_width=100,min_height=100',
-    //     ];
-    // }
-
-    // protected function validationAttributes()
-    // {
-    //     return [
-    //         'editForm.party_name' => 'party name',
-    //         'editForm.position_id' => 'position',
-    //         'editForm.platform_title' => 'platform title',
-    //         'editForm.previous_position.*' => 'previous position',
-    //         'editForm.previous_school_project.*' => 'previous project',
-    //         'editForm.achievements' => 'achievements',
-    //         'editForm.average_grade' => 'average grade',
-    //         'editForm.tagline' => 'tagline',
-    //         'editForm.agenda' => 'agenda',
-    //         'candidate_photo' => 'candidate photo',
-    //     ];
-    // }
 
     public function addField($property)
     {
@@ -197,16 +164,12 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
             $cleanPreviousProjects = array_values(array_filter(array_map('trim', (array) ($data['previous_school_project'] ?? []))));
 
             $photoPath = $candidate->photo;
-            if ($request->hasFile('candidate_photo')) {
+
+            if ($this->candidate_photo) {
                 if ($candidate->photo) {
                     Storage::disk('public')->delete($candidate->photo);
                 }
-
-                $img = Image::read($request->file('candidate_photo')->getRealPath());
-                $img->cover(400, 400);
-                $filename = 'candidates-picture/' . uniqid() . '.jpg';
-                Storage::disk('public')->put($filename, (string) $img->toJpeg(80));
-                $photoPath = $filename;
+                $photoPath = $this->candidate_photo->store('candidates-picture', 'public');
             }
 
             $candidate->update([
@@ -256,6 +219,10 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
         try {
             $activeCycle = $this->activeCycle;
 
+            if (!$activeCycle) {
+                throw new \Exception('No active election cycle found. Please create a cycle first.');
+            }
+
             $path = $this->csvFile->getRealPath();
             $file = fopen($path, 'r');
             fgetcsv($file);
@@ -277,7 +244,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                         [
                             'name' => $positionName,
                             'election_cycle_id' => $activeCycle?->id,
-                            'student_department' => $student->block->course->name ?? 'Unknown',
+                            'student_department' => $student->block->course_id ?? null,
                         ],
                         [
                             'max_candidate' => 10,
@@ -424,9 +391,9 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                 <div class="col-4 col-md-3">
                     <select wire:model.live="departmentFilter" class="form-select-modern w-100"
                         style="font-size: 0.8rem; padding-left: 5px; padding-right: 5px;">
-                        <option value="All Departments">💼 All Depts</option>
+                        <option value="All Departments">💼All Depts</option>
                         @foreach ($availableDepartments as $dept)
-                            <option value="{{ $dept }}">{{ $dept }}</option>
+                            <option value="{{ $dept }}">💼{{ $dept }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -435,7 +402,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                         style="font-size: 0.8rem; padding-left: 5px; padding-right: 5px;">
                         <option value="All Positions">🗳️ Positions</option>
                         @foreach ($availablePositions as $name)
-                            <option value="{{ $name }}">{{ $name }}</option>
+                            <option value="{{ $name }}">🗳️{{ $name }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -445,7 +412,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                         <option value="active">📅 Current Active Cycle</option>
                         @foreach ($this->electionCycles as $cycle)
                             @if ($cycle->status !== 'active')
-                                <option value="{{ $cycle->id }}">🔗 {{ $cycle->cycle_name }}</option>
+                                <option value="{{ $cycle->id }}">🔗 {{ $cycle->academic_year }}</option>
                             @endif
                         @endforeach
                     </select>
@@ -459,8 +426,8 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                     <thead class="bg-light">
                         <tr>
                             <th class="ps-4 py-3">Candidate Name</th>
-                            <th>Position / Party Name</th>
-                            <th>Profile Readiness</th>
+                            <th>Position & Party Name</th>
+                            <th>Profile Status</th>
                             <th class="text-center pe-4">Actions</th>
                         </tr>
                     </thead>
@@ -469,13 +436,10 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                             <tr>
                                 <td class="ps-4">
                                     <div class="d-flex align-items-center gap-3">
-                                        <div class="d-flex align-items-center justify-content-center fw-bold text-white shadow-sm flex-shrink-0"
+                                        <div class="profile-avatar-sm shadow-sm text-white flex-shrink-0 d-flex align-items-center justify-content-center"
                                             style="background: {{ $this->getAvatarColor($candidate->id) }}; width: 40px; height: 40px; border-radius: 24px; overflow: hidden;">
                                             @if ($candidate->photo)
                                                 <img src="{{ asset('storage/' . $candidate->photo) }}"
-                                                    style="width: 100%; height: 100%; object-fit: cover;">
-                                            @elseif ($candidate->student?->photo)
-                                                <img src="{{ asset('storage/' . $candidate->student->photo) }}"
                                                     style="width: 100%; height: 100%; object-fit: cover;">
                                             @else
                                                 {{ strtoupper(substr($candidate->student?->first_name ?? 'A', 0, 1)) }}{{ strtoupper(substr($candidate->student?->last_name ?? '', 0, 1)) }}
@@ -535,7 +499,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                                         ]) }}">
                                         @if ($candidate->isProfileComplete())
                                             <span class="badge-approved text-nowrap"><i
-                                                    class="bi bi-check2-circle me-1"></i>Complete</span>
+                                                    class="bi bi-check2-circle me-1"></i>Completed</span>
                                         @else
                                             <span class="badge-pending text-nowrap"><i
                                                     class="bi bi-exclamation-triangle me-1"></i>Missing Bio</span>
@@ -601,13 +565,10 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                 @forelse($candidates as $candidate)
                     <div class="p-3 border-bottom position-relative">
                         <div class="d-flex align-items-start gap-3">
-                            <div class="d-flex align-items-center justify-content-center fw-bold text-white shadow-sm flex-shrink-0"
+                            <div class="profile-avatar-sm shadow-sm text-white flex-shrink-0 d-flex align-items-center justify-content-center"
                                 style="background: {{ $this->getAvatarColor($candidate->id) }}; width: 45px; height: 45px; border-radius: 50%; overflow: hidden;">
                                 @if ($candidate->photo)
                                     <img src="{{ asset('storage/' . $candidate->photo) }}"
-                                        style="width: 100%; height: 100%; object-fit: cover;">
-                                @elseif ($candidate->student?->photo)
-                                    <img src="{{ asset('storage/' . $candidate->student->photo) }}"
                                         style="width: 100%; height: 100%; object-fit: cover;">
                                 @else
                                     {{ strtoupper(substr($candidate->student?->first_name ?? 'A', 0, 1)) }}{{ strtoupper(substr($candidate->student?->last_name ?? '', 0, 1)) }}
@@ -906,11 +867,13 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                     </div>
 
                     <div class="modal-footer border-0 bg-light p-3">
-                        <x-button type="button" variant="gray" data-bs-dismiss="modal" width="130px">
+                        <x-button type="button" variant="gray" data-bs-dismiss="modal" class="w-25 w-sm-initial"
+                            style="min-width: 90px; max-width: 130px;">
                             Cancel
                         </x-button>
                         <x-button type="submit" variant="glow" wire:loading.attr="disabled"
-                            wire:target="updateCandidate" width="150px">
+                            wire:target="updateCandidate" class="w-50 w-sm-initial"
+                            style="min-width: 120px; max-width: 150px;">
                             <span wire:loading.remove wire:target="updateCandidate">Save Changes</span>
                             <span wire:loading wire:target="updateCandidate">Saving...</span>
                         </x-button>

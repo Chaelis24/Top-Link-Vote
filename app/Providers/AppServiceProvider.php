@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
@@ -27,6 +28,9 @@ class AppServiceProvider extends ServiceProvider
     {
         if ($request->header('X-Socket-ID') === 'undefined') {
             $request->headers->set('X-Socket-ID', null);
+        }
+        if (str_starts_with(config('app.url'), 'https://') || request()->secure()) {
+            URL::forceScheme('https');
         }
 
         Gate::define('admin', function (User $user) {

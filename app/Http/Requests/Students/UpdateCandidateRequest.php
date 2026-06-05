@@ -28,7 +28,6 @@ class UpdateCandidateRequest extends FormRequest
             'platform_title' => 'required|string|max:255',
             'agenda' => 'required|string',
             'average_grade' => 'nullable|numeric|between:1.0,5.0',
-            'candidate_photo' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             'previous_position' => 'nullable|array',
             'previous_position.*' => 'nullable|string|max:255',
             'previous_school_project' => 'nullable|array',

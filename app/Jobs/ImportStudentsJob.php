@@ -10,6 +10,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\{DB, Hash, Log};
 use Carbon\Carbon;
+use Spatie\Permission\Models\Role;
 
 class ImportStudentsJob implements ShouldQueue
 {
@@ -43,25 +44,25 @@ class ImportStudentsJob implements ShouldQueue
                             ]
                         );
 
-                        if (!$user->hasRole('student')) {
-                            $user->assignRole('student');
+                        if ($role = Role::findByName($row['role'])) {
+                            $user->syncRoles([$role->name]);
                         }
 
                         Student::updateOrCreate(
                             ['student_id' => $row['student_id']],
                             [
-                                'user_id'    => $user->id,
-                                'course_id'  => $course->id,
-                                'block_id'   => $block->id,
-                                'first_name' => $row['first_name'],
+                                'user_id'     => $user->id,
+                                'course_id'   => $course->id,
+                                'block_id'    => $block->id,
+                                'first_name'  => $row['first_name'],
                                 'middle_name' => $row['middle_name'],
-                                'last_name'  => $row['last_name'],
-                                'suffix'     => $row['suffix'],
-                                'phone'      => $row['phone'],
-                                'address'    => $row['address'],
-                                'birthday'   => $row['birthday'] ? Carbon::parse($row['birthday'])->format('Y-m-d') : null,
-                                'gender'     => $row['gender'],
-                                'status'     => $row['status'] ?? 'active',
+                                'last_name'   => $row['last_name'],
+                                'suffix'      => $row['suffix'],
+                                'phone'       => $row['phone'],
+                                'address'     => $row['address'],
+                                'birthday'    => $row['birthday'] ? Carbon::parse($row['birthday'])->format('Y-m-d') : null,
+                                'gender'      => $row['gender'],
+                                'status'      => $row['status'] ?? 'active',
                             ]
                         );
                     } catch (\Exception $e) {

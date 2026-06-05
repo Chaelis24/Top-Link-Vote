@@ -126,8 +126,16 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
 
     public function viewStudent($id)
     {
-        $this->selectedStudent = Student::with(['user', 'latestVote'])->findOrFail($id);
-        $this->dispatch('open-modal', id: 'viewStudentModal');
+        try {
+            $this->selectedStudent = Student::with(['user', 'latestVote'])->findOrFail($id);
+            $this->dispatch('open-modal', id: 'viewStudentModal');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            $this->dispatch('swal', [
+                'title' => 'Error',
+                'text' => 'Student not found.',
+                'icon' => 'error',
+            ]);
+        }
     }
 
     public function updatedCsvFile()
@@ -258,6 +266,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
             return;
         }
 
+        $count = count($this->selectedStudents);
         Student::whereIn('id', $this->selectedStudents)->update(['status' => 'inactive']);
 
         $this->selectedStudents = [];
@@ -265,14 +274,14 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
 
         $this->dispatch('swal', [
             'title' => 'Success!',
-            'text' => 'Successfully deactivated ' . count($this->selectedStudents) . ' students.',
+            'text' => 'Successfully deactivated ' . $count . ' students.',
             'icon' => 'success',
         ]);
     }
 
     public function exportStudents()
     {
-        $students = Student::with('user.block.course')->get();
+        $students = Student::with('block.course')->get();
         $fileName = 'students_export.csv';
         $headers = ['Content-type' => 'text/csv', 'Content-Disposition' => "attachment; filename=$fileName"];
         $callback = function () use ($students) {
@@ -382,7 +391,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                     <select wire:model.live="course" class="form-select-modern py-2 w-100">
                         <option value="All Courses">🏢 All Courses</option>
                         @foreach (\App\Models\Course::all() as $c)
-                            <option value="{{ $c->name }}">{{ $c->name }}</option>
+                            <option value="{{ $c->name }}">🏢 {{ $c->name }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -391,7 +400,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                     <select wire:model.live="year" class="form-select-modern py-2 w-100">
                         <option value="All Years">🎓 All Years</option>
                         @foreach (\App\Models\Block::distinct()->pluck('year_level')->sort() as $y)
-                            <option value="{{ $y }}">{{ $y }}st/nd/rd Year</option>
+                            <option value="{{ $y }}">🎓{{ $y }}st/nd/rd Year</option>
                         @endforeach
                     </select>
                 </div>
@@ -400,9 +409,9 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                     <select wire:model.live="status" class="form-select-modern py-2 w-100"
                         style="font-size: 0.8rem; padding-left: 4px; padding-right: 4px;">
                         <option value="All Status">📊 All Status</option>
-                        <option>Voted</option>
-                        <option>Not Voted</option>
-                        <option>Deactivated</option>
+                        <option>📊 Voted</option>
+                        <option>📊 Not Voted</option>
+                        <option>📊 Deactivated</option>
                     </select>
                 </div>
 
@@ -418,7 +427,6 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                                 <div class="form-check">
                                     <input type="checkbox" wire:model.live="selectAll" class="form-check-input"
                                         id="selectAll">
-                                    <label class="form-check-label" for="selectAll" style="cursor: pointer;">All</label>
                                 </div>
                             </th>
                             <th>ID</th>
@@ -437,7 +445,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                                         wire:model.live="selectedStudents" class="form-check-input">
                                 </td>
                                 <td>{{ $student->student_id }}</td>
-                                <td>
+                                <td class="text-primary fw-bold">
                                     {{ $student->first_name }}
                                     {{ $student->middle_name ? substr($student->middle_name, 0, 1) . '.' : '' }}
                                     {{ $student->last_name }}{{ $student->suffix ? ', ' . $student->suffix : '' }}
@@ -486,7 +494,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                                                 cancelButtonText: 'Cancel'
                                             }).then((result) => {
                                                 if (result.isConfirmed) {
-                                                    $wire.bulkDeactivate({{ $student->id }})
+                                                    $wire.deleteStudent({{ $student->id }})
                                                 }
                                             })">
                                             <i class="bi bi-person-x"></i>
@@ -594,25 +602,11 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                             <h5 class="fw-bold text-dark mb-0">{{ $selectedStudent->first_name }}
                                 {{ $selectedStudent->last_name }}</h5>
                             <p class="text-muted small mb-0">{{ $selectedStudent->student_id }} |
-                                {{ $selectedStudent->course }}</p>
+                                {{ $selectedStudent->course->name ?? 'N/A' }}-{{ $selectedStudent->block->year_level ?? 'N/A' }}{{ $selectedStudent->block->section ?? 'N/A' }}
+                            </p>
                         </div>
 
-                        <div class="p-4">
-                            <h6 class="text-primary fw-bold small mb-3 text-uppercase" style="letter-spacing: 1px;">
-                                Information</h6>
-                            <div class="row g-3 mb-4">
-                                <div class="col-6">
-                                    <label class="text-primary fw-bold d-block mb-0" style="font-size: 0.65rem;">EMAIL
-                                        ADDRESS</label>
-                                    <span class="text-dark small">{{ $selectedStudent->user->email ?? 'N/A' }}</span>
-                                </div>
-                                <div class="col-6">
-                                    <label class="text-primary fw-bold d-block mb-0"
-                                        style="font-size: 0.65rem;">GENDER</label>
-                                    <span class="text-dark small">{{ $selectedStudent->gender ?? 'N/A' }}</span>
-                                </div>
-                            </div>
-
+                        <div class="p-3">
                             <div class="p-3 rounded-3 border-0 shadow-sm"
                                 style="background: #f8f9ff; border-left: 4px solid #0d6efd !important;">
                                 <h6 class="text-primary fw-bold small mb-2 text-uppercase"
@@ -633,7 +627,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                                             style="font-size: 0.65rem;">VOTED ON</label>
                                         <span class="text-dark small">
                                             <i class="bi bi-calendar-check me-1"></i>
-                                            {{ $selectedStudent->latestVote->created_at->timezone('Asia/Manila')->format('M d, Y - h:i A') }}
+                                            {{ $selectedStudent->latestVote->created_at?->timezone('Asia/Manila')->format('M d, Y - h:i A') }}
                                         </span>
                                     </div>
                                 @else
@@ -648,7 +642,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                     @endif
                 </div>
                 <div class="modal-footer border-0 p-3">
-                    <x-button variant="gray" type="button" class="btn btn-secondary btn-sm fw-bold px-4"
+                    <x-button variant="gray" type="button" class="btn btn-secondary btn-sm fw-bold px-3"
                         data-bs-dismiss="modal">Close
                     </x-button>
                 </div>
@@ -667,28 +661,28 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                 <form wire:submit="updateStudent">
                     <div class="modal-body p-3">
                         <div class="row g-2">
-                            <div class="col-md-4 col-12">
+                            <div class="col-md-4 col-4">
                                 <label class="form-label mb-0 text-primary fw-bold" style="font-size: 0.65rem;">FIRST
                                     NAME</label>
                                 <input type="text" wire:model="editForm.first_name"
                                     class="form-control-modern py-1 text-sm bg-light" disabled
                                     style="font-size: 0.8rem;">
                             </div>
-                            <div class="col-md-3 col-6">
+                            <div class="col-md-3 col-4">
                                 <label class="form-label mb-0 text-primary fw-bold" style="font-size: 0.65rem;">MIDDLE
                                     NAME</label>
                                 <input type="text" wire:model="editForm.middle_name"
                                     class="form-control-modern py-1 text-sm bg-light" disabled
                                     style="font-size: 0.8rem;">
                             </div>
-                            <div class="col-md-3 col-6">
+                            <div class="col-md-3 col-4">
                                 <label class="form-label mb-0 text-primary fw-bold" style="font-size: 0.65rem;">LAST
                                     NAME</label>
                                 <input type="text" wire:model="editForm.last_name"
                                     class="form-control-modern py-1 text-sm bg-light" disabled
                                     style="font-size: 0.8rem;">
                             </div>
-                            <div class="col-md-2 col-12">
+                            <div class="col-md-2 col-4">
                                 <label class="form-label mb-0 text-primary fw-bold"
                                     style="font-size: 0.65rem;">SUFFIX</label>
                                 <input type="text" wire:model="editForm.suffix"
@@ -696,7 +690,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                                     style="font-size: 0.8rem;" placeholder="N/A">
                             </div>
 
-                            <div class="col-md-4 col-4">
+                            <div class="col-md-3 col-4">
                                 <label class="form-label mb-0 text-primary fw-bold" style="font-size: 0.65rem;">COURSE
                                     & BLOCK</label>
                                 <select wire:model="editForm.block_id" class="form-select-modern py-1"
@@ -710,7 +704,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                                     @endforeach
                                 </select>
                             </div>
-                            <div class="col-md-4 col-4">
+                            <div class="col-md-3 col-4">
                                 <label class="form-label mb-0 text-primary fw-bold"
                                     style="font-size: 0.65rem;">STATUS</label>
                                 <select wire:model="editForm.status" class="form-select-modern py-1"
@@ -721,14 +715,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                                 </select>
                             </div>
 
-                            <div class="col-md-5 col-12">
-                                <label class="form-label mb-0 text-primary fw-bold" style="font-size: 0.65rem;">PHONE
-                                    NUMBER</label>
-                                <input type="text" wire:model="editForm.phone"
-                                    class="form-control-modern py-1 @error('editForm.phone') is-invalid @enderror"
-                                    placeholder="09xxxxxxxxx" style="font-size: 0.8rem;">
-                            </div>
-                            <div class="col-md-3 col-6">
+                            <div class="col-md-3 col-4">
                                 <label class="form-label mb-0 text-primary fw-bold"
                                     style="font-size: 0.65rem;">GENDER</label>
                                 <select wire:model="editForm.gender" class="form-select-modern py-1 bg-light"
@@ -737,15 +724,21 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                                     <option value="Female">Female</option>
                                 </select>
                             </div>
-                            <div class="col-md-4 col-6">
+                            <div class="col-md-3 col-4">
                                 <label class="form-label mb-0 text-primary fw-bold"
                                     style="font-size: 0.65rem;">BIRTHDAY</label>
                                 <input type="date" wire:model="editForm.birthday"
                                     class="form-control-modern py-1 bg-light text-sm" style="font-size: 0.8rem;"
                                     disabled>
                             </div>
-
-                            <div class="col-12">
+                            <div class="col-md-5 col-4">
+                                <label class="form-label mb-0 text-primary fw-bold" style="font-size: 0.65rem;">PHONE
+                                    NUMBER</label>
+                                <input type="text" wire:model="editForm.phone"
+                                    class="form-control-modern py-1 @error('editForm.phone') is-invalid @enderror"
+                                    placeholder="09xxxxxxxxx" style="font-size: 0.8rem;">
+                            </div>
+                            <div class="col-md-7 col-12">
                                 <label class="form-label mb-0 text-primary fw-bold"
                                     style="font-size: 0.65rem;">ADDRESS</label>
                                 <textarea wire:model="editForm.address"

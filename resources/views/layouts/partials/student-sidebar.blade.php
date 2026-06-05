@@ -43,16 +43,16 @@
                     </a>
                 </li>
 
-                <li class="nav-item d-lg-none" x-data="{ open: false }" style="position: relative;">
+                <li class="nav-item hidden lg:hidden" x-data="{ open: false }" style="position: relative;">
                     <a @click.prevent="open = !open" style="cursor: pointer;" class="nav-link"
                         :class="currentPath.split('?')[0] === '/students/profile' ? 'active' : ''">
 
                         @if ($profile_photo_path)
                             <img src="{{ asset('storage/' . $profile_photo_path) }}" class="user-avatar-mobile"
-                                alt="User">
+                                alt="Student">
                         @else
                             <img src="https://ui-avatars.com/api/?name={{ urlencode(auth()->user()->name ?? 'Student') }}&background=10B981&color=fff"
-                                class="user-avatar-mobile" alt="User">
+                                class="user-avatar-mobile" alt="Student">
                         @endif
 
                         <span>Profile</span>
@@ -80,16 +80,16 @@
             </ul>
         </nav>
 
-        <div class="sidebar-footer d-none d-lg-block" x-data="{ open: false }" style="position: relative;">
+        <div class="sidebar-footer d-lg-block" x-data="{ open: false }" style="position: relative;">
             <div class="d-flex align-items-center" @click="open = !open" style="cursor: pointer;">
                 <div class="d-flex align-items-center gap-2">
                     <div class="avatar-wrapper" style="position: relative;">
                         @if ($profile_photo_path)
-                            <img src="{{ asset('storage/' . $profile_photo_path) }}" class="user-avatar" alt="User"
+                            <img src="{{ asset('storage/' . $profile_photo_path) }}" class="user-avatar" alt="Student"
                                 style="object-fit: cover;">
                         @else
                             <img src="https://ui-avatars.com/api/?name={{ urlencode(auth()->user()->name ?? 'Student') }}&background=10B981&color=fff"
-                                class="user-avatar" alt="User">
+                                class="user-avatar" alt="Student">
                         @endif
                         <div class="status-indicator"
                             style="position: absolute; bottom: 0; right: 0; width: 12px; height: 12px; background: #10B981; border: 2px solid #c0c0c0; border-radius: 50%;">
@@ -97,9 +97,9 @@
                     </div>
 
                     <div class="user-details">
-                        <p class="user-name text-truncate" style="max-width: 100px;">
+                        <p class="user-name text-truncate" style="max-width: 150px; font-size: 0.80rem;">
                             {{ auth()->user()->name ?? 'Student' }}</p>
-                        <p class="user-role text-uppercase" style="font-size: 0.6rem; font-weight: 700;">View Profile
+                        <p class="user-role text-uppercase" style="font-size: 0.60rem; font-weight: 700;">View Profile
                         </p>
                     </div>
                 </div>

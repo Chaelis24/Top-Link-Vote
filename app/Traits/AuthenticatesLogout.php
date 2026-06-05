@@ -13,6 +13,7 @@ trait AuthenticatesLogout
         Auth::logout();
         session()->invalidate();
         session()->regenerateToken();
-        return $this->redirect(route($route), navigate: true);
+
+        return redirect(route($route));
     }
 }

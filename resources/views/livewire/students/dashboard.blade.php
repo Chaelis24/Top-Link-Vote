@@ -2,7 +2,7 @@
 
 use App\Models\Setting;
 use Livewire\Volt\Component;
-use App\Models\ElectionCycle;
+use App\Models\{ElectionCycle, Candidate};
 use Illuminate\Support\Facades\{Auth, Session};
 use Livewire\Attributes\{Layout, On, Title, Computed};
 use App\Traits\{ChecksMaintenance, AuthenticatesLogout};
@@ -64,20 +64,29 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
             return [];
         }
 
-        $voterCourse = $this->student->course ?? null;
-        return cache()->remember('tally_results_' . ($voterCourse ?? 'all'), 60, function () use ($voterCourse) {
-            return \App\Models\Candidate::with(['student', 'position'])
-                ->withCount('votes')
-                ->whereHas('position', fn($query) => $query->whereNull('student_department')->orWhere('student_department', '')->orWhere('student_department', $voterCourse))
+        $activeCycle = $this->activeCycle;
+        if (!$activeCycle) {
+            return [];
+        }
+
+        $studentCourseId = $this->student?->block?->course_id;
+        $cacheKey = "tally_data_cycle_{$activeCycle->id}_course_{$studentCourseId}";
+        return cache()->remember($cacheKey, now()->addMinutes(10), function () use ($activeCycle, $studentCourseId) {
+            return Candidate::query()
+                ->with(['student.block.course', 'position'])
+                ->withCount(['votes' => fn($q) => $q->where('election_cycle_id', $activeCycle->id)])
+                ->where('candidates.election_cycle_id', $activeCycle->id)
                 ->join('positions', 'candidates.position_id', '=', 'positions.id')
-                ->orderBy('positions.priority', 'asc')
-                ->orderBy('votes_count', 'desc')
-                ->select('candidates.*')
+                ->whereHas('position', function ($query) use ($studentCourseId) {
+                    $query->where(function ($q) use ($studentCourseId) {
+                        $q->whereNull('student_department')->orWhere('student_department', '')->orWhere('student_department', $studentCourseId);
+                    });
+                })
                 ->get()
                 ->map(
                     fn($candidate) => [
                         'label' => ($candidate->student->last_name ?? 'Unknown') . ' (' . ($candidate->position->name ?? 'N/A') . ')',
-                        'votes' => $candidate->votes_count ?? 0,
+                        'votes' => (int) ($candidate->votes_count ?? 0),
                     ],
                 )
                 ->values()
@@ -89,29 +98,37 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
     #[On('echo-private:election-results.{studentCourse},VoteUpdated')]
     public function refreshTally()
     {
-        cache()->forget('tally_results_' . ($this->studentCourse ?? 'all'));
+        $activeCycle = $this->activeCycle;
+        $voterYear = (string) ($this->student?->block?->year_level ?? 'all');
+        cache()->forget("tally_data_cycle_{$activeCycle->id}_year_{$voterYear}");
         $this->dispatch('update-chart', ['tally' => $this->tallyData()]);
     }
 }; ?>
 
 <div>
     @include('layouts.partials.student-sidebar')
+
+    @php
+        $suffix = auth()->user()->student->suffix;
+        $formattedSuffix = in_array($suffix, ['Jr', 'Sr']) ? $suffix . '.' : $suffix;
+    @endphp
+
     <main class="main-content">
         <div class="topbar" wire:key="persistent-topbar-header">
             <div>
                 <h2 class="mb-0">Student <span class="text-primary">Dashboard</span></h2>
-                <p class="text-secondary mb-0">
+                <p class="text-secondary mb-0 small">
                     Welcome back, <span class="text-primary">{{ $student->first_name ?? 'Student' }}
-                        {{ $student->middle_name ? substr($student->middle_name, 0, 1) . '.' : 'N/A' }}
+                        {{ $student->middle_name ? substr($student->middle_name, 0, 1) . '.' : '' }}
                         {{ $student->last_name ?? 'Student' }}
-                        {{ $student->suffix ?? '' }}</span>
+                        {{ $formattedSuffix ?? '' }}</span>
                 </p>
             </div>
         </div>
 
         <div class="row g-3 mb-4">
             <div class="col-12 col-lg-8">
-                <div class="glass-card p-3 h-100 border-0 shadow-sm">
+                <div class="glass-card p-2 h-100 border-0 shadow-sm">
                     <div class="d-flex align-items-center gap-2 mb-3">
                         <div class="icon-box bg-info-light p-2 rounded">
                             <i class="bi bi-info-circle text-info text-primary"></i>
@@ -179,8 +196,8 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
                             <p class="text-success small pb-2">
                                 <i class="bi bi-check-circle-fill me-1"></i> The election is live.
                             </p>
-                            <a href="/students/cast-vote" wire:navigate
-                                class="btn btn-glow btn-sm w-100 py-2 d-inline-flex align-items-center justify-content-center">
+                            <a href="/students/cast-vote" wire:navigate wire:loading.attr="disabled"
+                                class="btn btn-glow w-100 py-1">
                                 Vote Now
                             </a>
                         @else
@@ -223,13 +240,12 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
         <div class="row g-3 grid grid-cols-1">
             <div class="col-12 w-full">
                 <div class="glass-card p-2 md:p-6 mb-3 border-0 shadow-sm">
-                    <div class="d-flex flex-col sm:flex-row justify-content-between align-items-center mb-3 gap-3">
-                        <h5 class="text-dark mb-0 fw-bold flex items-center">
+                    <div class="flex flex-row justify-between items-center mb-3 px-1 md-px-3">
+                        <h5 class="text-dark mb-0 font-bold flex items-center">
                             <i class="bi bi-bar-chart-line-fill text-primary me-2"></i>Live Election Standings
                         </h5>
-
-                        <span class="badge px-3 py-2 rounded-pill shadow-sm w-fit"
-                            style="background-color: #10b981; color: white; border: none; font-size: 0.85rem;">
+                        <span class="badge px-2 py-1 rounded-full shadow-sm text-white"
+                            style="background-color: #10b981; font-size: 0.75rem;">
                             <i class="bi bi-mortarboard-fill me-1"></i>
                             {{ match ($student->block->course->name ?? 'General') {
                                 'IT' => 'Information Technology',
@@ -242,7 +258,8 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
                     </div>
 
                     @if ($isResultsVisible)
-                        <div class="relative h-[300px] md:h-[400px]" style="position: relative;" wire:ignore>
+                        <div class="relative h-[500px] md:h-[600px] mb-4 md:mb-6" style="position: relative;"
+                            wire:ignore>
                             <div id="mainTallyChart"></div>
                         </div>
                     @else
@@ -269,7 +286,7 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
                 const container = document.getElementById('mainTallyChart');
                 if (!container) return;
 
-                const tally = newData ? newData : @json($this->tallyData);
+                const tally = newData ? newData : @json($this->tallyData());
                 const labels = tally.map(item => item.label);
                 const votes = tally.map(item => item.votes);
 

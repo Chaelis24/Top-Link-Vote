@@ -43,6 +43,8 @@ return [
          * resolve those IDs. If null, defaults to the guard's model.
          */
         'default_model' => null,
+
+        'user' => App\Models\User::class,
     ],
 
     'table_names' => [

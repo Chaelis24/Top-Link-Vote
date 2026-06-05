@@ -18,7 +18,7 @@ class Setting extends Model
     public static function isMaintenanceMode()
     {
         return cache()->remember('maintenanceMode', 3600, function () {
-            return Setting::where('key', 'maintenanceMode')->value('value') === '1';
+            return (bool) Setting::where('key', 'maintenanceMode')->value('value');
         });
     }
 }
