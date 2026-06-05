@@ -15,8 +15,6 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
     // 1. STATE PROPERTIES
     #[Url]
     public string $selectedPosition = 'All Positions';
-    public bool $showProfiles = false;
-    public bool $isVotingOpen = false;
     public bool $lockChanges = false;
     public string $party_name = '';
     public $achievements = [];
@@ -35,9 +33,8 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
     public function mount()
     {
         $settings = Setting::pluck('value', 'key')->toArray();
-        $this->isVotingOpen = (bool) ($settings['allowVoting'] ?? false);
-        $this->showProfiles = (bool) ($settings['showProfiles'] ?? false);
         $user = Auth::user()?->load('student', 'candidate');
+
         $this->student = $user?->student;
 
         if ($this->student) {
@@ -64,57 +61,64 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
 
     // 3. COMPUTED PROPERTIES
     #[Computed]
-    public function isEligibleToEdit()
-    {
-        $user = Auth::user();
-        return $user && $user->hasRole('Candidate') && $user->candidate;
-    }
-
-    #[Computed]
     public function activeCycle()
     {
         return ElectionCycle::where('status', 'active')->first();
     }
 
     #[Computed]
+    public function isEligibleToEdit()
+    {
+        $user = Auth::user();
+        return $user && $user->hasRole('candidate') && $user->candidate;
+    }
+
+    #[Computed]
     public function isFilingOpen()
+    {
+        $cycle = $this->activeCycle;
+
+        if (!$cycle || $cycle->status !== 'active') {
+            return false;
+        }
+        return now()->between($cycle->filing_start, $cycle->filing_end);
+    }
+
+    #[Computed]
+    public function isCampaignOpen()
     {
         $cycle = $this->activeCycle;
         if (!$cycle || $cycle->status !== 'active') {
             return false;
         }
-        return now()->lt($cycle->filing_end);
+
+        return now()->between($cycle->campaign_start, $cycle->campaign_end);
     }
 
     #[Computed]
     public function isVotingOpen()
     {
-        $setting = Setting::where('key', 'allowVoting')->first();
-        $activeCycle = ElectionCycle::where('status', 'active')->first();
-
-        if (!$setting || !(bool) $setting->value) {
+        $cycle = $this->activeCycle;
+        if (!$cycle || $cycle->status !== 'active') {
             return false;
         }
 
-        if (!$activeCycle || now()->gt($activeCycle->voting_end)) {
-            return false;
-        }
-
-        return true;
+        return now()->between($cycle->voting_start, $cycle->voting_end);
     }
 
     #[Computed]
     public function positionsList()
     {
-        $voterCourse = $this->student->course ?? '';
+        $voterCourseId = $this->student->course_id ?? '';
+
         $activeCycle = $this->activeCycle;
         if (!$activeCycle) {
             return collect(['All Positions']);
         }
 
         $positions = Position::where('election_cycle_id', $activeCycle->id)
-            ->where(function ($query) use ($voterCourse) {
-                $query->whereNull('student_department')->orWhere('student_department', '')->orWhere('student_department', $voterCourse);
+            ->where(function ($query) use ($voterCourseId) {
+                $query->whereNull('student_department')->orWhere('student_department', '')->orWhere('student_department', $voterCourseId);
             })
             ->whereHas('candidates', fn($q) => $q->whereIn('status', ['approved', 'active']))
             ->pluck('name')
@@ -126,7 +130,8 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
     #[Computed]
     public function filteredCandidates()
     {
-        $voterCourse = $this->student->course ?? '';
+        $voterCourseId = $this->student->course_id ?? '';
+
         $activeCycle = $this->activeCycle;
         if (!$activeCycle) {
             return collect();
@@ -135,8 +140,8 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
         return Candidate::with(['student.user', 'position', 'platforms' => fn($q) => $q->latest()])
             ->where('election_cycle_id', $activeCycle->id)
             ->whereIn('status', ['approved', 'active'])
-            ->whereHas('position', function ($q) use ($voterCourse) {
-                $q->where(fn($sub) => $sub->whereNull('student_department')->orWhere('student_department', '')->orWhere('student_department', $voterCourse));
+            ->whereHas('position', function ($q) use ($voterCourseId) {
+                $q->where(fn($sub) => $sub->whereNull('student_department')->orWhere('student_department', '')->orWhere('student_department', $voterCourseId));
             })
             ->when($this->selectedPosition !== 'All Positions', fn($query) => $query->whereHas('position', fn($q) => $q->where('name', $this->selectedPosition)))
             ->get();
@@ -159,9 +164,9 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
         $this->selectedPosition = $pos;
     }
 
-    public function updatePlatform(UpdateCandidateRequest $request)
+    public function updatePlatform()
     {
-        if (!Auth::user()->hasRole('Candidate')) {
+        if (!Auth::user()->hasRole('candidate')) {
             abort(403);
         }
 
@@ -177,24 +182,33 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
             return;
         }
 
-        $validated = $request->validated();
+        $request = new UpdateCandidateRequest();
+
+        $validated = $this->validate(
+            array_merge($request->rules(), [
+                'candidate_photo' => 'nullable|image|max:2048',
+            ]),
+        );
 
         try {
             $candidate = Auth::user()->candidate;
 
             if ($this->candidate_photo) {
-                if ($candidate->photo) {
+                if ($candidate->photo && Storage::disk('public')->exists($candidate->photo)) {
                     Storage::disk('public')->delete($candidate->photo);
                 }
-                $photoPath = $this->candidate_photo->store('candidates-picture', 'public');
+                $filename = 'candidate_' . $candidate->id . '_' . time() . '.' . $this->candidate_photo->getClientOriginalExtension();
+                $photoPath = $this->candidate_photo->storeAs('candidates-picture', $filename, 'public');
             } else {
                 $photoPath = $candidate->photo;
             }
 
+            $grade = $validated['average_grade'] === '' || $validated['average_grade'] === null ? null : $validated['average_grade'];
+
             $candidate->update([
                 'party_name' => $validated['party_name'],
                 'achievements' => implode("\n", (array) $this->achievements),
-                'average_grade' => $validated['average_grade'],
+                'average_grade' => $grade,
                 'previous_position' => $validated['previous_position'],
                 'previous_school_project' => $validated['previous_school_project'],
                 'photo' => $photoPath,
@@ -211,6 +225,19 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
                 ],
             );
 
+            \App\Jobs\LogActivity::dispatch([
+                'user_id' => Auth::id(),
+                'student_id' => $candidate->id,
+                'action' => 'Update Platform',
+                'description' => 'Candidate updated their profile and platform.',
+                'properties' => json_encode([
+                    'candidate_id' => $candidate->id,
+                    'party' => $validated['party_name'],
+                ]),
+                'ip_address' => request()->ip(),
+                'user_agent' => request()->userAgent(),
+            ])->onQueue('logs');
+
             $this->dispatch('swal', [
                 'title' => 'Submission Successful!',
                 'text' => 'Your profile and platform have been submitted for review.',
@@ -223,7 +250,7 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
             Log::error('Update Error: ' . $e->getMessage());
             $this->dispatch('swal', [
                 'title' => 'Error',
-                'text' => 'Something went wrong while submitting.',
+                'text' => 'Something went wrong while submitting.' . $e->getMessage(),
                 'icon' => 'error',
             ]);
         }
@@ -243,7 +270,7 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
         <div class="topbar">
             <div>
                 <h2 class="text-dark">Candidate <span class="text-primary">Profiles & Platforms</span></h2>
-                <p class="text-secondary mb-0">Learn about candidate advocacy before casting your vote</p>
+                <p class="text-secondary mb-0 small">Learn about candidate advocacy before casting your vote</p>
             </div>
 
             @if ($this->isEligibleToEdit)
@@ -256,7 +283,6 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
 
                     $isLocked = $isVotingStarted || $isVotingFinished;
                 @endphp
-
                 @if ($isLocked)
                     <button class="btn btn-glow btn-sm shadow-sm" style="cursor: not-allowed; opacity: 0.8;" disabled>
                         <div class="d-flex align-items-center justify-content-center text-danger">
@@ -284,141 +310,136 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
                 @endif
             @endif
         </div>
-        @if ($this->isVotingOpen)
-            @if ($this->showProfiles)
-                <div class="d-flex gap-1 gap-md-2 flex-wrap mb-3">
-                    @foreach ($this->positionsList as $pos)
-                        <button wire:click="selectPosition('{{ $pos }}')"
-                            @click="selectedPosition = '{{ $pos }}'"
-                            class="tab-custom {{ $selectedPosition === $pos ? 'active' : '' }} text-xs md:text-base px-2 py-2 md:px-3 md:py-3">
-                            {{ $pos }}
-                        </button>
-                    @endforeach
-                </div>
 
-                <div class="row g-2 g-md-4">
-                    @forelse($this->filteredCandidates as $candidate)
-                        <div class="col-6 col-md-6 col-lg-4 col-xl-3 mb-2 mb-md-4"
-                            wire:key="candidate-box-{{ $selectedPosition }}-{{ $candidate->id }}">
-                            @php
-                                $latestPlatform = $candidate->platforms->first();
-                                $isApproved = $latestPlatform && $latestPlatform->status === 'approved';
-                            @endphp
+        @php
+            $user = Auth::user();
+            $isStudentOnly = $user->hasRole('student') && !$user->hasRole('candidate');
+            $isFiling = $this->isFilingOpen;
+            $isCampaign = $this->isCampaignOpen;
+            $isVoting = $this->isVotingOpen;
+
+            $canAccess = $isVoting || $isCampaign || ($isFiling && !$isStudentOnly);
+        @endphp
+
+        @if ($canAccess)
+            <div class="d-flex gap-1 gap-md-2 flex-wrap mb-3">
+                @foreach ($this->positionsList as $pos)
+                    <button wire:click="selectPosition('{{ $pos }}')"
+                        @click="selectedPosition = '{{ $pos }}'"
+                        class="tab-custom {{ $selectedPosition === $pos ? 'active' : '' }} text-xs md:text-base px-2 py-2 md:px-3 md:py-3"
+                        style="font-size: 0.8rem;">
+                        {{ $pos }}
+                    </button>
+                @endforeach
+            </div>
+
+            <div class="row g-2 g-md-4">
+                @forelse($this->filteredCandidates as $candidate)
+                    <div class="col-6 col-md-6 col-lg-4 col-xl-3 mb-2 mb-md-3"
+                        wire:key="candidate-box-{{ $selectedPosition }}-{{ $candidate->id }}">
+                        @php
+                            $latestPlatform = $candidate->platforms->first();
+                            $isApproved = $latestPlatform && $latestPlatform->status === 'approved';
+
+                            $suffix = $candidate->student->suffix;
+                            $formattedSuffix = in_array($suffix, ['Jr', 'Sr']) ? $suffix . '.' : $suffix;
+                        @endphp
+
+                        <div
+                            class="position-relative bg-white rounded-5 shadow-sm border transition-all hover-translate-y hover-shadow-lg p-2 p-md-3 h-100 d-flex flex-column align-items-center text-center group-card {{ !$isApproved ? 'opacity-75' : '' }}">
 
                             <div
-                                class="position-relative bg-white rounded-5 shadow-sm border transition-all hover-translate-y hover-shadow-lg p-2 p-md-4 h-100 d-flex flex-column align-items-center text-center group-card {{ !$isApproved ? 'opacity-75' : '' }}">
+                                class="position-absolute top-0 start-0 w-100 p-2 p-md-3 d-flex justify-content-between align-items-center">
+                                <span
+                                    class="badge rounded-pill {{ $isApproved ? 'bg-emerald-light text-primary' : 'bg-light text-muted' }} fw-bold px-2 px-md-3 py-1"
+                                    style="font-size: 0.55rem; max-width: 80%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                    {{ Str::limit($candidate->party_name ?? 'No Party Name', 15) }}
+                                </span>
 
-                                <div
-                                    class="position-absolute top-0 start-0 w-100 p-2 p-md-3 d-flex justify-content-between align-items-center">
-                                    <span
-                                        class="badge rounded-pill {{ $isApproved ? 'bg-emerald-light text-primary' : 'bg-light text-muted' }} fw-bold px-2 px-md-3 py-1"
-                                        style="font-size: 0.55rem; max-width: 80%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                        {{ Str::limit($candidate->party_name ?? 'No Party Name', 15) }}
-                                    </span>
+                                @if ($isApproved)
+                                    <button type="button" class="btn p-0 border-0" data-bs-toggle="modal"
+                                        data-bs-target="#unifiedModal{{ $candidate->id }}">
+                                        <i class="bi bi-info-circle-fill text-primary opacity-50"
+                                            style="font-size: 0.8rem;"></i>
+                                    </button>
+                                @else
+                                    <i class="bi bi-hourglass-split text-muted" style="font-size: 0.8rem;"></i>
+                                @endif
+                            </div>
 
-                                    @if ($isApproved)
-                                        <button type="button" class="btn p-0 border-0" data-bs-toggle="modal"
-                                            data-bs-target="#unifiedModal{{ $candidate->id }}">
-                                            <i class="bi bi-info-circle-fill text-primary opacity-50"
-                                                style="font-size: 0.8rem;"></i>
-                                        </button>
+                            <div class="mt-4 mt-md-4 mb-2 mb-md-3 position-relative">
+                                <div class="candidate-avatar-circle shadow-md border border-4 border-white overflow-hidden mx-auto"
+                                    style="width: clamp(60px, 15vw, 120px); height: clamp(60px, 15vw, 120px); background: {{ $this->getAvatarColor($candidate->id) }}; filter: {{ !$isApproved ? 'grayscale(100%)' : 'none' }};">
+                                    @if ($candidate->photo)
+                                        <img src="{{ asset('storage/' . $candidate->photo) }}"
+                                            class="w-100 h-100 object-fit-cover">
                                     @else
-                                        <i class="bi bi-hourglass-split text-muted" style="font-size: 0.8rem;"></i>
-                                    @endif
-                                </div>
-
-                                <div class="mt-4 mt-md-4 mb-2 mb-md-3 position-relative">
-                                    <div class="candidate-avatar-circle shadow-md border border-4 border-white overflow-hidden mx-auto"
-                                        style="width: clamp(60px, 15vw, 120px); height: clamp(60px, 15vw, 120px); background: {{ $this->getAvatarColor($candidate->id) }}; filter: {{ !$isApproved ? 'grayscale(100%)' : 'none' }};">
-                                        @if ($candidate->photo)
-                                            <img src="{{ asset('storage/' . $candidate->photo) }}"
-                                                class="w-100 h-100 object-fit-cover">
-                                        @elseif ($candidate->student?->photo)
-                                            <img src="{{ asset('storage/' . $candidate->student->photo) }}"
-                                                class="w-100 h-100 object-fit-cover">
-                                        @else
-                                            <div
-                                                class="w-100 h-100 d-flex align-items-center justify-content-center text-white fw-bold fs-4 fs-md-3">
-                                                {{ strtoupper(substr($candidate->student?->first_name ?? 'A', 0, 1)) }}
-                                            </div>
-                                        @endif
-                                    </div>
-                                </div>
-
-                                <div class="mb-1 mb-md-2 w-100">
-                                    <h6 class="fw-black text-dark mb-0 text-truncate px-1"
-                                        style="font-size: clamp(0.7rem, 2vw, 0.95rem);">
-                                        {{ $candidate->student?->first_name }} {{ $candidate->student?->last_name }}
-                                    </h6>
-                                    <p class="text-uppercase tracking-wider text-primary fw-bold mb-0"
-                                        style="font-size: 0.60rem;">
-                                        {{ $candidate->position?->name }}
-                                    </p>
-                                </div>
-
-                                <div class="bg-light rounded-4 p-2 p-md-3 mb-2 mb-md-3 w-100">
-                                    <p class="text-primary mb-0 fst-italic"
-                                        style="font-size: 0.70rem; line-height: 1.3; min-height: 3px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
-                                        @if ($isApproved)
-                                            "{{ $latestPlatform?->tagline ?? 'No Tagline' }}"
-                                        @else
-                                            <span class="text-muted"><i class="bi bi-lock-fill me-1"></i> Hidden</span>
-                                        @endif
-                                    </p>
-                                </div>
-
-                                <div class="mt-auto w-100 d-flex flex-column gap-1 gap-md-2">
-                                    @if ($isApproved)
-                                        <button class="btn btn-outline-glow rounded-pill py-1 py-md-2 fw-bold w-100"
-                                            style="font-size: 0.65rem;" data-bs-toggle="modal"
-                                            data-bs-target="#unifiedModal{{ $candidate->id }}"
-                                            onclick="const tab = bootstrap.Tab.getOrCreateInstance(document.querySelector('#profile-tab-{{ $candidate->id }}')); tab.show();">
-                                            Profile
-                                        </button>
-                                        <div class="d-flex justify-content-center mt-1">
-                                            <a href="https://www.facebook.com/sharer/sharer.php?u={{ urlencode(url('/candidates/' . $candidate->id)) }}"
-                                                target="_blank" class="text-primary"
-                                                style="font-size: 0.7rem; text-decoration: none;">
-                                                <i class="bi bi-share-fill me-1"></i> Share
-                                            </a>
+                                        <div
+                                            class="w-100 h-100 d-flex align-items-center justify-content-center text-white fw-bold fs-4 fs-md-3">
+                                            {{ strtoupper(substr($candidate->student?->first_name ?? 'A', 0, 1)) }}
                                         </div>
-                                    @else
-                                        <button
-                                            class="btn btn-light rounded-pill py-1 py-md-2 fw-bold w-100 text-muted border border-dashed"
-                                            style="font-size: 0.65rem;" disabled>
-                                            Review
-                                        </button>
                                     @endif
                                 </div>
                             </div>
-                        </div>
-                    @empty
-                        <div class="col-12 py-5 text-center">
-                            <div class="bg-light rounded-5 p-5">
-                                <i class="bi bi-person-x fs-1 text-muted"></i>
-                                <p class="text-muted mt-3">No candidates found.</p>
+
+                            <div class="mb-1 mb-md-2 w-100">
+                                <h6 class="fw-black text-dark mb-0 text-truncate px-1"
+                                    style="font-size: clamp(0.7rem, 2vw, 0.95rem);">
+                                    {{ $candidate->student?->first_name }}
+                                    {{ $candidate->student?->middle_name ? substr($candidate->student?->middle_name, 0, 1) . '.' : '' }}
+                                    {{ $candidate->student?->last_name }} {{ $formattedSuffix ?? '' }}
+                                </h6>
+                                <p class="text-uppercase tracking-wider text-primary fw-bold mb-0"
+                                    style="font-size: 0.60rem;">
+                                    {{ $candidate->position?->name }}
+                                </p>
+                            </div>
+
+                            <div class="bg-light rounded-4 p-2 p-md-3 mb-2 mb-md-3 w-100">
+                                <p class="text-primary mb-0 fst-italic"
+                                    style="font-size: 0.70rem; line-height: 1.3; min-height: 3px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                                    @if ($isApproved)
+                                        "{{ $latestPlatform?->tagline ?? 'No Tagline' }}"
+                                    @else
+                                        <span class="text-muted"><i class="bi bi-lock-fill me-1"></i> Hidden</span>
+                                    @endif
+                                </p>
+                            </div>
+
+                            <div class="mt-auto w-100 d-flex flex-column gap-1 gap-md-2">
+                                @if ($isApproved)
+                                    <button class="btn btn-outline-glow rounded-pill py-1 py-md-2 fw-bold w-100"
+                                        style="font-size: 0.65rem;" data-bs-toggle="modal"
+                                        data-bs-target="#unifiedModal{{ $candidate->id }}"
+                                        onclick="const tab = bootstrap.Tab.getOrCreateInstance(document.querySelector('#profile-tab-{{ $candidate->id }}')); tab.show();">
+                                        Profile
+                                    </button>
+                                @else
+                                    <button
+                                        class="btn btn-light rounded-pill py-1 py-md-2 fw-bold w-100 text-muted border border-dashed"
+                                        style="font-size: 0.65rem;" disabled>
+                                        Review
+                                    </button>
+                                @endif
                             </div>
                         </div>
-                    @endforelse
-                </div>
-            @else
-                <div class="glass-card p-5 text-center my-5 shadow-sm border-0 rounded-4">
-                    <div class="mb-4">
-                        <i class="bi bi-eye-slash text-muted" style="font-size: 4rem;"></i>
                     </div>
-                    <h3 class="fw-bold text-dark">Profiles are currently hidden</h3>
-                    <p class="text-secondary mx-auto" style="max-width: 500px;">
-                        The administrator hasn't released the official candidate profiles yet.
-                    </p>
-                </div>
-            @endif
+                @empty
+                    <div class="col-12 py-5 text-center">
+                        <div class="bg-light rounded-5 p-5">
+                            <i class="bi bi-person-x fs-1 text-muted"></i>
+                            <p class="text-muted mt-3">No candidates found.</p>
+                        </div>
+                    </div>
+                @endforelse
+            </div>
         @else
             @php
                 $latestCycle = ElectionCycle::latest()->first();
             @endphp
 
-            @if ($latestCycle && ($latestCycle->status === 'finished' || $latestCycle->status === 'completed'))
-                <div class="glass-card p-5 text-center my-5 shadow-sm border-0 rounded-4 bg-light">
+            @if ($latestCycle && $latestCycle->status === 'completed')
+                <div class="p-5 text-center my-5 rounded-4">
                     <div class="mb-4">
                         <div class="position-relative d-inline-block">
                             <i class="bi bi-calendar-check text-success opacity-75" style="font-size: 5rem;"></i>
@@ -435,16 +456,33 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
                         Candidate profiles and ballot submissions are now locked while results are being finalized.
                     </p>
                 </div>
+            @elseif ($isFiling && $isStudentOnly)
+                <div class="p-5 text-center my-5 rounded-4">
+                    <div class="p-5 text-center my-5 rounded-4">
+                        <h3 class="text-primary fw-bold">Filing of Candidacy Ongoing</h3>
+                        <p class="text-secondary">The candidates are currently finalizing their platforms. Campaigning
+                            will
+                            start soon!</p>
+                    </div>
+                </div>
+            @elseif ($isCampaign && $isStudentOnly)
+                <div class="p-5 text-center my-5 rounded-4">
+                    <div class="p-5 text-center my-5 rounded-4">
+                        <h3 class="text-primary fw-bold">Campaign of Candidacy Ongoing</h3>
+                        <p class="text-secondary">The candidates are currently campaigning. Voting will start soon!</p>
+                    </div>
+                </div>
             @else
-                <div class="glass-card p-5 text-center my-5 shadow-sm border-0 rounded-4 bg-light">
-                    <div class="mb-4">
-                        <div class="position-relative d-inline-block">
-                            <i class="bi bi-box-seam text-muted opacity-25" style="font-size: 5rem;"></i>
-                            <i class="bi bi-exclamation-circle-fill text-warning position-absolute bottom-0 end-0"
-                                style="font-size: 2rem;"></i>
+                <div class="p-5 text-center">
+                    <div class="mb-6 relative inline-block">
+                        <div class="bg-emerald-50 p-6 rounded-full">
+                            <i class="bi bi-box-seam text-emerald-600/30 text-6xl"></i>
+                        </div>
+                        <div class="absolute -bottom-2 -right-2 bg-white rounded-full p-1">
+                            <i class="bi bi-exclamation-circle-fill text-amber-500 text-3xl"></i>
                         </div>
                     </div>
-                    <h2 class="fw-black text-dark">No Active Election</h2>
+                    <h2 class="text-2xl font-bold text-gray-800 mb-3">No Active Election</h2>
                     <p class="text-secondary mx-auto mb-4" style="max-width: 500px;">
                         There is currently no ongoing election cycle or the voting period has not been opened yet by the
                         administrator.
@@ -455,215 +493,212 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
         @endif
     </main>
 
-    @if ($this->showProfiles)
-        @foreach ($this->filteredCandidates as $candidate)
-            @php $approvedPlatform = $candidate->platforms->first(); @endphp
+    @foreach ($this->filteredCandidates as $candidate)
+        @php
+            $approvedPlatform = $candidate->platforms->first();
 
-            <div class="modal fade" id="unifiedModal{{ $candidate->id }}" tabindex="-1" wire:ignore.self>
-                <div class="modal-dialog modal-dialog-centered modal-lg mx-3 mx-md-auto">
-                    <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden min-h-[50vh] md:h-[10px]">
+            $suffix = $candidate->student->suffix;
+            $formattedSuffix = in_array($suffix, ['Jr', 'Sr']) ? $suffix . '.' : $suffix;
+        @endphp
 
-                        <div class="modal-header border-0 p-3 pb-2 flex-column align-items-start bg-emerald-50">
-                            <div class="d-flex justify-content-between align-items-center w-100 mb-2">
-                                <span class="badge bg-white fw-bold px-2 py-1 shadow-sm text-emerald-600"
-                                    style="font-size: 0.7rem; letter-spacing: 0.5px;">
-                                    CANDIDATE PROFILE
-                                </span>
-                                <button type="button" class="btn-close" style="font-size: 0.7rem;"
-                                    data-bs-dismiss="modal"></button>
-                            </div>
+        <div class="modal fade" id="unifiedModal{{ $candidate->id }}" tabindex="-1" wire:ignore.self>
+            <div class="modal-dialog modal-dialog-centered modal-lg mx-3 mx-md-auto">
+                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden min-h-[50vh] md:h-[10px]">
 
-                            <ul class="nav nav-pills w-100 p-1 rounded-3 bg-transparent" role="tablist">
-                                <li class="nav-item flex-fill text-center" role="presentation">
-                                    <button
-                                        class="nav-link active fw-bold border-0 w-100 py-2 small rounded-3 !text-emerald-700 bg-transparent [&.active]:!bg-emerald-600 [&.active]:!text-white"
-                                        id="profile-tab-{{ $candidate->id }}" data-bs-toggle="tab"
-                                        data-bs-target="#profile-panel-{{ $candidate->id }}" type="button"
-                                        style="font-size: 0.75rem; transition: all 0.2s ease;">
-                                        <i class="bi bi-person-badge me-1"></i> Introductory Profile
-                                    </button>
-                                </li>
-                                <li class="nav-item flex-fill text-center" role="presentation">
-                                    <button
-                                        class="nav-link fw-bold border-0 w-100 py-2 small rounded-3 !text-emerald-700 bg-transparent [&.active]:!bg-emerald-600 [&.active]:!text-white"
-                                        id="platform-tab-{{ $candidate->id }}" data-bs-toggle="tab"
-                                        data-bs-target="#platform-panel-{{ $candidate->id }}" type="button"
-                                        style="font-size: 0.75rem; transition: all 0.2s ease;">
-                                        <i class="bi bi-megaphone me-1"></i> Platform & Agenda
-                                    </button>
-                                </li>
-                            </ul>
+                    <div class="modal-header border-0 p-3 pb-2 flex-column align-items-start bg-emerald-50">
+                        <div class="d-flex justify-content-between align-items-center w-100 mb-2">
+                            <span class="badge bg-white fw-bold px-2 py-1 shadow-sm text-emerald-600"
+                                style="font-size: 0.7rem; letter-spacing: 0.5px;">
+                                CANDIDATE PROFILE
+                            </span>
+                            <button type="button" class="btn-close" style="font-size: 0.7rem;"
+                                data-bs-dismiss="modal"></button>
                         </div>
 
-                        <div class="modal-body p-3 pt-4">
-                            <div class="tab-content">
-
-                                <div class="tab-pane fade show active" id="profile-panel-{{ $candidate->id }}"
-                                    role="tabpanel">
-                                    <div class="row g-4 align-items-center">
-
-                                        <div class="col-12 col-md-4 text-center border-md-end pe-md-4">
-                                            <div class="position-relative d-inline-block mb-3">
-                                                <div class="rounded-circle mx-auto shadow border border-3 border-white"
-                                                    style="width:90px; height:90px; overflow:hidden; background: {{ $this->getAvatarColor($candidate->id) }}">
-                                                    @if ($candidate->photo)
-                                                        <img src="{{ asset('storage/' . $candidate->photo) }}"
-                                                            class="w-100 h-100 object-fit-cover">
-                                                    @elseif ($candidate->student?->photo)
-                                                        <img src="{{ asset('storage/' . $candidate->student->photo) }}"
-                                                            class="w-100 h-100 object-fit-cover">
-                                                    @else
-                                                        <div
-                                                            class="w-100 h-100 d-flex align-items-center justify-content-center text-white fw-black fs-3">
-                                                            {{ strtoupper(substr($candidate->student?->first_name ?? 'A', 0, 1)) }}
-                                                        </div>
-                                                    @endif
-                                                </div>
-                                            </div>
-
-                                            <h5 class="fw-black text-dark mb-1"
-                                                style="font-size: 1rem; letter-spacing: -0.3px;">
-                                                {{ $candidate->student?->first_name }}
-                                                {{ $candidate->student?->middle_name ? substr($candidate->student->middle_name, 0, 1) . '.' : '' }}
-                                                {{ $candidate->student?->last_name }}
-                                                {{ $candidate->student?->suffix }}
-                                            </h5>
-
-                                            <p class="text-muted fw-semibold small mb-2" style="font-size: 0.75rem;">
-                                                {{ $candidate->student?->course }} — Year
-                                                {{ $candidate->student?->year_level }}
-                                            </p>
-
-                                            <span
-                                                class="badge bg-white rounded-pill px-3 py-1 fw-bold text-uppercase text-emerald-600 border border-emerald-200"
-                                                style="font-size: 0.70rem; letter-spacing: 0.5px;">
-                                                {{ $candidate->party_name ?? 'Independent' }}
-                                            </span>
-                                        </div>
-
-                                        <div class="col-12 col-md-8 ps-md-4">
-                                            <div class="mb-3">
-                                                <h6 class="text-uppercase small fw-black mb-2 d-flex align-items-center text-emerald-600"
-                                                    style="font-size: 0.75rem; letter-spacing: 0.5px;">
-                                                    <i class="bi bi-trophy me-2"></i> Achievements
-                                                </h6>
-                                                <div style="max-height: 110px; overflow-y: auto; padding-right: 4px;">
-                                                    <div class="p-2.5 rounded-3 bg-white border border-emerald-600 shadow-sm"
-                                                        style="font-size: 0.82rem; line-height: 1.5;">
-                                                        {{ is_array($candidate->achievements)
-                                                            ? (implode(', ', $candidate->achievements) ?:
-                                                                'No achievements listed.')
-                                                            : $candidate->achievements ?? 'No achievements listed.' }}
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div class="row g-2 pt-2 border-top">
-                                                <div class="col-6">
-                                                    <div
-                                                        class="bg-light p-2 rounded-3 text-center shadow-sm h-100 d-flex flex-column justify-content-center">
-                                                        <span
-                                                            class="fw-black text-uppercase d-block mb-1 text-emerald-600"
-                                                            style="font-size: 0.65rem; letter-spacing: 0.5px;">General
-                                                            Weighted Average</span>
-                                                        <span class="text-dark fw-bold" style="font-size: 0.95rem;">
-                                                            <i class="bi bi-star-fill text-warning me-1"
-                                                                style="font-size: 0.8rem;"></i>{{ $candidate->average_grade ?: 'N/A' }}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                                <div class="col-6">
-                                                    <div
-                                                        class="bg-light p-2 rounded-3 text-center shadow-sm h-100 d-flex flex-column justify-content-center">
-                                                        <span
-                                                            class="fw-black text-uppercase d-block mb-1 text-emerald-600"
-                                                            style="font-size: 0.65rem; letter-spacing: 0.5px;">Previous
-                                                            Project</span>
-                                                        <span
-                                                            class="text-dark fw-semibold small px-1 text-truncate d-block"
-                                                            style="font-size: 0.8rem;"
-                                                            title="{{ is_array($candidate->previous_school_project) ? implode(', ', $candidate->previous_school_project) : $candidate->previous_school_project }}">
-                                                            {{ is_array($candidate->previous_school_project)
-                                                                ? (implode(', ', $candidate->previous_school_project) ?:
-                                                                    'None')
-                                                                : $candidate->previous_school_project ?? 'None' }}
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                    </div>
-                                </div>
-
-                                <div class="tab-pane fade" id="platform-panel-{{ $candidate->id }}" role="tabpanel">
-                                    <div
-                                        class="p-3 rounded-3 mb-3 border border-emerald-600 bg-emerald-50/30 shadow-sm">
-                                        <h6 class="fw-black text-dark mb-1"
-                                            style="font-size: 0.85rem; letter-spacing: -0.2px;">
-                                            {{ blank($approvedPlatform?->title) ? 'No Title Listed' : $approvedPlatform->title }}
-                                        </h6>
-                                        <p class="small fst-italic mb-0 opacity-80 text-emerald-600"
-                                            style="font-size: 0.72rem;">
-                                            <i
-                                                class="bi bi-quote me-1"></i>{{ $approvedPlatform?->tagline ?? 'No tagline provided.' }}
-                                        </p>
-                                    </div>
-
-                                    <h6 class="text-uppercase small fw-black mb-2 px-1 text-emerald-600"
-                                        style="font-size: 0.75rem; letter-spacing: 0.5px;">
-                                        <i class="bi bi-journal-check me-2"></i> Key Agenda Points
-                                    </h6>
-
-                                    <div class="agenda-list pe-1" style="max-height: 140px; overflow-y: auto;">
-                                        @php
-                                            $platformAgenda = $approvedPlatform?->agenda;
-                                            $agenda = !empty($platformAgenda)
-                                                ? (is_array($platformAgenda)
-                                                    ? $platformAgenda
-                                                    : explode("\n", $platformAgenda))
-                                                : [];
-                                            $filteredAgenda = array_filter(array_map('trim', $agenda));
-                                        @endphp
-
-                                        @if (count($filteredAgenda) > 0)
-                                            <div class="row g-2">
-                                                @foreach ($filteredAgenda as $point)
-                                                    <div class="col-12">
-                                                        <div
-                                                            class="d-flex align-items-start p-2 rounded-2 bg-light-subtle border border-light shadow-sm bg-white">
-                                                            <span
-                                                                class="me-2 mt-0.5 rounded-circle p-1 d-inline-flex align-items-center justify-content-center bg-emerald-50 text-emerald-600"
-                                                                style="width: 18px; height: 18px;">
-                                                                <i class="bi bi-check2 fw-bold"
-                                                                    style="font-size: 0.65rem;"></i>
-                                                            </span>
-                                                            <span class="text-dark"
-                                                                style="font-size: 0.80rem; line-height: 1.4;">
-                                                                {{ $point }}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                @endforeach
-                                            </div>
-                                        @else
-                                            <div
-                                                class="text-muted small fst-italic p-3 text-center bg-light rounded-3">
-                                                <i class="bi bi-info-circle me-1"></i> No specific agenda details
-                                                listed for this platform.
-                                            </div>
-                                        @endif
-                                    </div>
-                                </div>
-
-                            </div>
-                        </div>
-
+                        <ul class="nav nav-pills w-100 p-1 rounded-3 bg-transparent" role="tablist">
+                            <li class="nav-item flex-fill text-center" role="presentation">
+                                <button
+                                    class="nav-link active fw-bold border-0 w-100 py-2 small rounded-3 !text-emerald-700 bg-transparent [&.active]:!bg-emerald-600 [&.active]:!text-white"
+                                    id="profile-tab-{{ $candidate->id }}" data-bs-toggle="tab"
+                                    data-bs-target="#profile-panel-{{ $candidate->id }}" type="button"
+                                    style="font-size: 0.75rem; transition: all 0.2s ease;">
+                                    <i class="bi bi-person-badge me-1"></i> Introductory Profile
+                                </button>
+                            </li>
+                            <li class="nav-item flex-fill text-center" role="presentation">
+                                <button
+                                    class="nav-link fw-bold border-0 w-100 py-2 small rounded-3 !text-emerald-700 bg-transparent [&.active]:!bg-emerald-600 [&.active]:!text-white"
+                                    id="platform-tab-{{ $candidate->id }}" data-bs-toggle="tab"
+                                    data-bs-target="#platform-panel-{{ $candidate->id }}" type="button"
+                                    style="font-size: 0.75rem; transition: all 0.2s ease;">
+                                    <i class="bi bi-megaphone me-1"></i> Platform & Agenda
+                                </button>
+                            </li>
+                        </ul>
                     </div>
+
+                    <div class="modal-body p-3 pt-4">
+                        <div class="tab-content">
+
+                            <div class="tab-pane fade show active" id="profile-panel-{{ $candidate->id }}"
+                                role="tabpanel">
+                                <div class="row g-4 align-items-center">
+
+                                    <div class="col-12 col-md-4 text-center border-md-end pe-md-4">
+                                        <div class="position-relative d-inline-block mb-3">
+                                            <div class="rounded-circle mx-auto shadow border border-3 border-white"
+                                                style="width:90px; height:90px; overflow:hidden; background: {{ $this->getAvatarColor($candidate->id) }}">
+                                                @if ($candidate->photo)
+                                                    <img src="{{ asset('storage/' . $candidate->photo) }}"
+                                                        class="w-100 h-100 object-fit-cover">
+                                                @else
+                                                    <div
+                                                        class="w-100 h-100 d-flex align-items-center justify-content-center text-white fw-black fs-3">
+                                                        {{ strtoupper(substr($candidate->student?->first_name ?? 'A', 0, 1)) }}
+                                                    </div>
+                                                @endif
+                                            </div>
+                                        </div>
+
+                                        <h5 class="fw-black text-dark mb-1"
+                                            style="font-size: 1rem; letter-spacing: -0.3px;">
+                                            {{ $candidate->student?->first_name }}
+                                            {{ $candidate->student?->middle_name ? substr($candidate->student->middle_name, 0, 1) . '.' : '' }}
+                                            {{ $candidate->student?->last_name }}
+                                            {{ $formattedSuffix ?? 'asd' }}
+                                        </h5>
+
+                                        <p class="text-muted fw-semibold small mb-2" style="font-size: 0.75rem;">
+                                            {{ $candidate->student?->block?->course?->name ?? 'N/A' }}
+                                            -
+                                            {{ $candidate->student?->block?->year_level }}{{ $candidate->student?->block?->section }}
+                                        </p>
+
+                                        <span
+                                            class="badge bg-white rounded-pill px-3 py-1 fw-bold text-uppercase text-emerald-600 border border-emerald-200"
+                                            style="font-size: 0.70rem; letter-spacing: 0.5px;">
+                                            {{ $candidate->party_name ?? 'Independent' }}
+                                        </span>
+                                    </div>
+
+                                    <div class="col-12 col-md-8 ps-md-4">
+                                        <div class="mb-3">
+                                            <h6 class="text-uppercase small fw-black mb-2 d-flex align-items-center text-emerald-600"
+                                                style="font-size: 0.75rem; letter-spacing: 0.5px;">
+                                                <i class="bi bi-trophy me-2"></i> Achievements
+                                            </h6>
+                                            <div style="max-height: 110px; overflow-y: auto; padding-right: 4px;">
+                                                <div class="p-2.5 rounded-3 bg-white border border-emerald-600 shadow-sm"
+                                                    style="font-size: 0.82rem; line-height: 1.5;">
+                                                    {{ is_array($candidate->achievements)
+                                                        ? (implode(', ', $candidate->achievements) ?:
+                                                            'No achievements listed.')
+                                                        : $candidate->achievements ?? 'No achievements listed.' }}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="row g-2 pt-2 border-top">
+                                            <div class="col-6">
+                                                <div
+                                                    class="bg-light p-2 rounded-3 text-center shadow-sm h-100 d-flex flex-column justify-content-center">
+                                                    <span class="fw-black text-uppercase d-block mb-1 text-emerald-600"
+                                                        style="font-size: 0.65rem; letter-spacing: 0.5px;">General
+                                                        Weighted Average</span>
+                                                    <span class="text-dark fw-bold" style="font-size: 0.95rem;">
+                                                        <i class="bi bi-star-fill text-warning me-1"
+                                                            style="font-size: 0.8rem;"></i>{{ $candidate->average_grade ?: 'N/A' }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div class="col-6">
+                                                <div
+                                                    class="bg-light p-2 rounded-3 text-center shadow-sm h-100 d-flex flex-column justify-content-center">
+                                                    <span class="fw-black text-uppercase d-block mb-1 text-emerald-600"
+                                                        style="font-size: 0.65rem; letter-spacing: 0.5px;">Previous
+                                                        Project</span>
+                                                    <span
+                                                        class="text-dark fw-semibold small px-1 text-truncate d-block"
+                                                        style="font-size: 0.8rem;"
+                                                        title="{{ is_array($candidate->previous_school_project) ? implode(', ', $candidate->previous_school_project) : $candidate->previous_school_project }}">
+                                                        {{ is_array($candidate->previous_school_project)
+                                                            ? (implode(', ', $candidate->previous_school_project) ?:
+                                                                'None')
+                                                            : $candidate->previous_school_project ?? 'None' }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+
+                            <div class="tab-pane fade" id="platform-panel-{{ $candidate->id }}" role="tabpanel">
+                                <div class="p-3 rounded-3 mb-3 border border-emerald-600 bg-emerald-50/30 shadow-sm">
+                                    <h6 class="fw-black text-dark mb-1"
+                                        style="font-size: 0.85rem; letter-spacing: -0.2px;">
+                                        {{ blank($approvedPlatform?->title) ? 'No Title Listed' : $approvedPlatform->title }}
+                                    </h6>
+                                    <p class="small fst-italic mb-0 opacity-80 text-emerald-600"
+                                        style="font-size: 0.72rem;">
+                                        <i
+                                            class="bi bi-quote me-1"></i>{{ $approvedPlatform?->tagline ?? 'No tagline provided.' }}
+                                    </p>
+                                </div>
+
+                                <h6 class="text-uppercase small fw-black mb-2 px-1 text-emerald-600"
+                                    style="font-size: 0.75rem; letter-spacing: 0.5px;">
+                                    <i class="bi bi-journal-check me-2"></i> Key Agenda Points
+                                </h6>
+
+                                <div class="agenda-list pe-1" style="max-height: 140px; overflow-y: auto;">
+                                    @php
+                                        $platformAgenda = $approvedPlatform?->agenda;
+                                        $agenda = !empty($platformAgenda)
+                                            ? (is_array($platformAgenda)
+                                                ? $platformAgenda
+                                                : explode("\n", $platformAgenda))
+                                            : [];
+                                        $filteredAgenda = array_filter(array_map('trim', $agenda));
+                                    @endphp
+
+                                    @if (count($filteredAgenda) > 0)
+                                        <div class="row g-2">
+                                            @foreach ($filteredAgenda as $point)
+                                                <div class="col-12">
+                                                    <div
+                                                        class="d-flex align-items-start p-2 rounded-2 bg-light-subtle border border-light shadow-sm bg-white">
+                                                        <span
+                                                            class="me-2 mt-0.5 rounded-circle p-1 d-inline-flex align-items-center justify-content-center bg-emerald-50 text-emerald-600"
+                                                            style="width: 18px; height: 18px;">
+                                                            <i class="bi bi-check2 fw-bold"
+                                                                style="font-size: 0.65rem;"></i>
+                                                        </span>
+                                                        <span class="text-dark"
+                                                            style="font-size: 0.80rem; line-height: 1.4;">
+                                                            {{ $point }}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @else
+                                        <div class="text-muted small fst-italic p-3 text-center bg-light rounded-3">
+                                            <i class="bi bi-info-circle me-1"></i> No specific agenda details
+                                            listed for this platform.
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+
                 </div>
             </div>
-        @endforeach
-    @endif
+        </div>
+    @endforeach
 
     @if ($this->isEligibleToEdit)
         <div class="modal fade" id="editMyPlatformModal" tabindex="-1" wire:ignore.self>

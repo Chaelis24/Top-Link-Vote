@@ -3,7 +3,7 @@
 use Illuminate\Support\Facades\{Route, Session, Auth};
 use Livewire\Volt\Volt;
 
-Route::middleware(['auth', 'role:student'])
+Route::middleware(['auth', 'role:student|candidate'])
     ->prefix('students')
     ->group(function () {
 

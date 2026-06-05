@@ -41,59 +41,40 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     @livewireScripts
     @stack('scripts')
-    <script>
-        document.addEventListener("livewire:init", () => {
-            Livewire.on("swal", (data) => {
-                const options = data[0];
-
-                Swal.fire({
-                    title: options.title || 'Notification',
-                    text: options.text || '',
-                    icon: options.icon || 'info',
-                    confirmButtonColor: options.icon === 'error' ? '#ef4444' : '#10b981',
-                    confirmButtonText: options.confirmButtonText || "Understood",
-                });
-            });
-        });
-
-        document.addEventListener('livewire:init', () => {
-            Livewire.on('close-modal', () => {
-                const modals = document.querySelectorAll('.modal.show');
-                modals.forEach(modalElement => {
-                    const modalInstance = bootstrap.Modal.getInstance(modalElement);
-                    if (modalInstance) {
-                        modalInstance.hide();
-                    }
-                });
-
-                const backdrops = document.querySelectorAll('.modal-backdrop');
-                backdrops.forEach(backdrop => backdrop.remove());
-
-                document.body.classList.remove('modal-open');
-                document.body.style.overflow = '';
-                document.body.style.paddingRight = '';
-            });
-        });
-
-        Livewire.on("swal-maintenance", (data) => {
-            const options = data[0];
-            Swal.fire({
-                title: options.title,
-                text: options.text,
-                icon: options.icon,
-                confirmButtonText: "OK",
-                allowOutsideClick: false,
-                allowEscapeKey: false
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    window.location.href = "{{ route('force.logout') }}";
-                }
-            });
-        });
-    </script>
     @auth
         <script type="module">
             document.addEventListener('DOMContentLoaded', function() {
+
+                if (typeof Livewire !== 'undefined') {
+                    Livewire.on("swal", (data) => {
+                        const options = data[0];
+                        Swal.fire({
+                            title: options.title || 'Notification',
+                            text: options.text || '',
+                            icon: options.icon || 'info',
+                            confirmButtonColor: options.icon === 'error' ? '#ef4444' : '#10b981',
+                            confirmButtonText: options.confirmButtonText || "Understood",
+                        });
+                    });
+
+                    Livewire.on('close-modal', () => {
+                        const modals = document.querySelectorAll('.modal.show');
+                        modals.forEach(modalElement => {
+                            const modalInstance = bootstrap.Modal.getInstance(modalElement);
+                            if (modalInstance) {
+                                modalInstance.hide();
+                            }
+                        });
+
+                        const backdrops = document.querySelectorAll('.modal-backdrop');
+                        backdrops.forEach(backdrop => backdrop.remove());
+
+                        document.body.classList.remove('modal-open');
+                        document.body.style.overflow = '';
+                        document.body.style.paddingRight = '';
+                    });
+                }
+
                 if (typeof Echo !== 'undefined') {
                     Echo.private(`user.{{ auth()->id() }}`)
                         .listen('.account.duplicate-login', (e) => {
@@ -113,9 +94,13 @@
                                             1000);
                                         b.textContent = secondsLeft;
                                     }, 100);
+
+                                    Swal.getPopup().addEventListener('hidden', () => {
+                                        clearInterval(timerInterval);
+                                    });
                                 }
                             }).then((result) => {
-                                window.location.reload();
+                                window.location.href = "{{ route('force.logout') }}";
                             });
                         });
                 }
@@ -124,7 +109,16 @@
                         .listen('.App\\Events\\MaintenanceModeToggled', (e) => {
                             console.log('Maintenance Signal Received:', e);
                             if (e.isMaintenance) {
-                                window.location.href = "{{ route('force.logout') }}";
+                                Swal.fire({
+                                    title: "System Maintenance",
+                                    text: "The voting system is currently undergoing maintenance. Please try again later.",
+                                    icon: "info",
+                                    confirmButtonText: "Understood",
+                                    allowOutsideClick: false,
+                                    allowEscapeKey: false
+                                }).then((result) => {
+                                    window.location.href = "{{ route('force.logout') }}";
+                                });
                             }
                         });
                 @endif

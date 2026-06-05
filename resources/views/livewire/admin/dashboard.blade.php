@@ -97,7 +97,19 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
                 ->orderBy('blocks.year_level', 'asc')
                 ->get();
 
-            $partyPerformance = Candidate::select('party_name')->selectRaw('SUM(votes_count) as total_votes')->where('election_cycle_id', $activeCycleId)->groupBy('party_name')->orderBy('total_votes', 'desc')->get()->map(fn($c) => ['party' => $c->party_name ?? 'Independent', 'votes' => $c->total_votes]);
+            $partyPerformance = Candidate::query()
+                ->where('election_cycle_id', $activeCycleId)
+                ->withCount('votes')
+                ->get()
+                ->groupBy('party_name')
+                ->map(function ($candidates, $partyName) {
+                    return [
+                        'party' => $partyName ?: 'Independent',
+                        'votes' => $candidates->sum('votes_count'),
+                    ];
+                })
+                ->values()
+                ->sortByDesc('votes');
 
             $courseData = Course::join('blocks', 'courses.id', '=', 'blocks.course_id')->join('students', 'blocks.id', '=', 'students.block_id')->join('votes', 'students.id', '=', 'votes.student_id')->join('candidates', 'votes.candidate_id', '=', 'candidates.id')->where('candidates.election_cycle_id', $activeCycleId)->selectRaw('courses.name as course_name, COUNT(votes.id) as vote_count')->groupBy('courses.name')->get();
 
@@ -214,10 +226,9 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
                         <span class="hidden md:inline ms-1" style="font-size: 14px;">Ongoing Election</span>
                     </div>
                 @else
-                    <button type="button"
-                        class="btn btn-light d-flex align-items-center justify-content-center w-100 py-2"
+                    <button type="button" class="btn btn-light d-flex align-items-center justify-content-center w-100"
                         style="cursor: not-allowed; border: 1px dashed #ccc; opacity: 0.6;" disabled>
-                        <i class="bi bi-lock-fill fs-5 p-2"></i>
+                        <i class="bi bi-lock-fill fs-5"></i>
                         <span class="fw-bold d-none d-md-inline ms-2" style="font-size: 12px;">No Active Cycle</span>
                     </button>
                 @endif
@@ -226,7 +237,7 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
 
         <div class="row g-2 g-lg-3 mb-4">
             <div class="col-6 col-lg-3">
-                <div class="stat-card p-2 p-md-3 shadow-sm h-100" x-data="{
+                <div class="stat-card p-3 p-md-3 shadow-sm h-100" x-data="{
                     current: 0,
                     target: {{ $totalVotes }},
                     animate() {
@@ -249,7 +260,7 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
             </div>
 
             <div class="col-6 col-lg-3">
-                <div class="stat-card p-2 p-md-3 shadow-sm h-100" x-data="{ current: 0, target: {{ $candidatesCount }} }" x-init="let start = null;
+                <div class="stat-card p-3 p-md-3 shadow-sm h-100" x-data="{ current: 0, target: {{ $candidatesCount }} }" x-init="let start = null;
                 const step = (ts) => {
                     if (!start) start = ts;
                     let progress = Math.min((ts - start) / 1000, 1);
@@ -264,7 +275,7 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
             </div>
 
             <div class="col-6 col-lg-3">
-                <div class="stat-card p-2 p-md-3 shadow-sm h-100" x-data="{
+                <div class="stat-card p-3 p-md-3 shadow-sm h-100" x-data="{
                     current: 0,
                     target: {{ (float) str_replace('%', '', $turnout) }},
                     animate() {
@@ -286,7 +297,7 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
             </div>
 
             <div class="col-6 col-lg-3">
-                <div class="stat-card p-2 p-md-3 shadow-sm h-100" x-data="{
+                <div class="stat-card p-3 p-md-3 shadow-sm h-100" x-data="{
                     remainingSeconds: {{ $targetDate ? now()->diffInSeconds($targetDate, false) : -1 }},
                     displayValue: '...',
                 
@@ -477,23 +488,40 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
 
                 const partyContainer = document.querySelector("#chart-party");
                 if (partyContainer) {
+                    const performanceArray = Object.values(data.partyPerformance);
+
+                    const seriesData = performanceArray.map(p => Number(p.votes));
+                    const labelsData = performanceArray.map(p => p.party);
+
                     if (window.partyChart) {
-                        window.partyChart.updateSeries(data.partyPerformance.map(p => p.votes));
                         window.partyChart.updateOptions({
-                            labels: data.partyPerformance.map(p => p.party)
+                            series: seriesData,
+                            labels: labelsData
                         });
                     } else {
                         window.partyChart = new ApexCharts(partyContainer, {
                             chart: {
                                 type: 'pie',
-                                height: 300
+                                height: 300,
+                                width: '100%'
                             },
-                            series: data.partyPerformance.map(p => p.votes),
-                            labels: data.partyPerformance.map(p => p.party),
+                            series: seriesData,
+                            labels: labelsData,
                             legend: {
                                 position: 'bottom'
                             },
-                            colors: ['#3b82f6', '#10B981', '#f59e0b', '#ef4444']
+                            colors: ['#3b82f6', '#10B981', '#f59e0b', '#ef4444'],
+                            responsive: [{
+                                breakpoint: 480,
+                                options: {
+                                    chart: {
+                                        width: '100%'
+                                    },
+                                    legend: {
+                                        position: 'bottom'
+                                    }
+                                }
+                            }]
                         });
                         window.partyChart.render();
                     }

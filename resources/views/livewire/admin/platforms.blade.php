@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\{Auth, Session};
 use App\Models\{Platform, Candidate, ElectionCycle};
 
 new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Component {
-    use WithPagination,AuthenticatesLogout;
+    use WithPagination, AuthenticatesLogout;
 
     public string $search = '';
     public ?Platform $selectedPlatform = null;
@@ -104,6 +104,11 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
     {
         $this->resetPage();
     }
+
+    public function getAvatarColor($candidateId)
+    {
+        return '#3b82f6';
+    }
 }; ?>
 
 <div>
@@ -142,14 +147,13 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                             <tr wire:key="plt-desktop-{{ $platform->id }}">
                                 <td class="ps-4">
                                     <div class="d-flex align-items-center gap-3">
-                                        <div class="profile-avatar-sm shadow-sm" style="color: white;">
+                                        <div class="profile-avatar-sm shadow-sm text-white flex-shrink-0 d-flex align-items-center justify-content-center"
+                                            style="background: {{ $this->getAvatarColor($platform->candidate->id) }}; ; width: 40px; height: 40px; border-radius: 24px; overflow: hidden;">
                                             @if ($platform->candidate?->photo)
                                                 <img src="{{ asset('storage/' . $platform->candidate->photo) }}"
                                                     class="w-100 h-100 object-fit-cover rounded-circle">
                                             @else
-                                                <span class="fw-bold fs-6 text-uppercase">
-                                                    {{ substr($platform->candidate?->student?->first_name ?? 'U', 0, 1) }}{{ substr($platform->candidate?->student?->last_name ?? 'P', 0, 1) }}
-                                                </span>
+                                                {{ strtoupper(substr($platform->candidate->student?->first_name ?? 'A', 0, 1)) }}{{ strtoupper(substr($platform->candidate->student?->last_name ?? '', 0, 1)) }}
                                             @endif
                                         </div>
                                         <div>
@@ -265,15 +269,13 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                         class="p-4 border-bottom flex flex-col gap-3 bg-white">
                         <div class="flex items-start justify-between">
                             <div class="flex items-center gap-3">
-                                <div class="profile-avatar-sm shadow-sm flex-shrink-0"
-                                    style="background: #1e3a8a; color: white; width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                                <div class="profile-avatar-sm shadow-sm text-white flex-shrink-0 d-flex align-items-center justify-content-center"
+                                    style="background: {{ $this->getAvatarColor($platform->candidate->id) }}; ; width: 40px; height: 40px; border-radius: 24px; overflow: hidden;">
                                     @if ($platform->candidate?->photo)
                                         <img src="{{ asset('storage/' . $platform->candidate->photo) }}"
                                             class="w-full h-full object-cover">
                                     @else
-                                        <span class="fw-bold text-uppercase" style="font-size: 0.8rem;">
-                                            {{ substr($platform->candidate?->student?->first_name ?? 'U', 0, 1) }}{{ substr($platform->candidate?->student?->last_name ?? 'P', 0, 1) }}
-                                        </span>
+                                        {{ strtoupper(substr($platform->candidate->student?->first_name ?? 'A', 0, 1)) }}{{ strtoupper(substr($candidate->student?->last_name ?? '', 0, 1)) }}
                                     @endif
                                 </div>
                                 <div>
@@ -378,15 +380,13 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                     <div class="modal-body p-0">
                         <div
                             class="p-3 p-md-4 bg-white border-bottom d-flex flex-column flex-md-row align-items-center gap-2 gap-md-4 text-center text-md-start">
-                            <div style="width: 65px; height: 65px; border-radius: 12px; overflow: hidden;"
-                                class="shadow-sm border d-flex align-items-center justify-content-center bg-primary text-white flex-shrink-0">
-                                @if ($selectedPlatform->candidate->photo)
-                                    <img src="{{ asset('storage/' . $selectedPlatform->candidate->photo) }}"
-                                        class="w-100 h-100 object-fit-cover">
+                            <div class="profile-avatar-sm shadow-sm text-white flex-shrink-0 d-flex align-items-center justify-content-center"
+                                style="background: {{ $this->getAvatarColor($platform->candidate->id) }}; ; width: 60px; height: 60px; border-radius: 50%; overflow: hidden;">
+                                @if ($platform->candidate?->photo)
+                                    <img src="{{ asset('storage/' . $platform->candidate->photo) }}"
+                                        class="w-full h-full object-cover">
                                 @else
-                                    <span class="fw-bold fs-4 text-uppercase">
-                                        {{ substr($selectedPlatform->candidate->student->first_name, 0, 1) }}{{ substr($selectedPlatform->candidate->student->last_name, 0, 1) }}
-                                    </span>
+                                    {{ strtoupper(substr($platform->candidate->student?->first_name ?? 'A', 0, 1)) }}{{ strtoupper(substr($candidate->student?->last_name ?? '', 0, 1)) }}
                                 @endif
                             </div>
                             <div>
@@ -421,7 +421,7 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                                         <small class="d-block text-primary fw-bold"
                                             style="font-size: 0.85rem;">Achievements</small>
                                         <p class="text-dark mb-0" style="font-size: 0.80rem; line-height: 1.4;">
-                                            {{ $selectedPlatform->candidate->achievements ?: 'None listed.' }}
+                                            {{ is_array($selectedPlatform->candidate->achievements) ? implode(', ', $selectedPlatform->candidate->achievements) : $selectedPlatform->candidate->achievements ?? 'None listed.' }}
                                         </p>
                                     </div>
                                     <div class="mb-0">
@@ -477,17 +477,18 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                         </div>
                     </div>
 
-                    <div class="modal-footer bg-light p-2 flex-row justify-content-end">
-                        <x-button type="button" variant="gray" data-bs-dismiss="modal" width="auto"
-                            height="32px" fontSize="0.75rem" padding="0 16px">
+                    <div class="modal-footer bg-light d-flex justify-content-end align-items-center">
+                        <x-button type="button" variant="gray" data-bs-dismiss="modal"
+                            style="height: 28px; width: 90px; font-size: 0.75rem; padding: 0 10px;">
                             Close
                         </x-button>
                         @if ($selectedPlatform && $selectedPlatform->status === 'pending')
                             <x-button type="button" variant="glow"
                                 wire:click="publishPlatform({{ $selectedPlatform->id }})" data-bs-dismiss="modal"
-                                wire:target="publishPlatform" width="auto" height="32px" fontSize="0.75rem"
-                                padding="0 16px">
-                                <span wire:loading.remove wire:target="publishPlatform">Confirm Approval</span>
+                                wire:target="publishPlatform"
+                                style="height: 28px; width: 90px; font-size: 0.75rem; padding: 0 10px;">
+
+                                <span wire:loading.remove wire:target="publishPlatform">Approve</span>
                                 <span wire:loading wire:target="publishPlatform">Approving...</span>
                             </x-button>
                         @endif

@@ -7,10 +7,7 @@
     <link rel="icon" type="image/png" href="{{ asset('images/logo.png') }}">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>Top Link-Vote</title>
-
-    <link rel="preconnect" href="https://fonts.bunny.net">
-    <link href="https://fonts.bunny.net/css?family=raleway:400,700|figtree:400,500,600&display=swap" rel="stylesheet" />
+    <title>{{ $title ?? 'Top Link-Vote' }}</title>
 
     @vite(['resources/css/students/app.css', 'resources/js/app.js'])
 
@@ -20,7 +17,7 @@
 
 <body>
     {{ $slot }}
-
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/aos@2.3.4/dist/aos.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>

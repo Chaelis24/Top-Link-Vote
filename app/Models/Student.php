@@ -65,6 +65,7 @@ class Student extends Model
     {
         return $this->hasMany(Vote::class);
     }
+
     public function latestVote()
     {
         return $this->hasOne(Vote::class)->latestOfMany();
@@ -77,6 +78,6 @@ class Student extends Model
 
     public function course()
     {
-        return $this->belongsTo(Course::class);
+        return $this->belongsTo(Course::class, 'course_id');
     }
 }

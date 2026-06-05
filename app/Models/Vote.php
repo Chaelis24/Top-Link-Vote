@@ -10,6 +10,7 @@ class Vote extends Model
 {
     use HasFactory;
 
+    protected $table = 'votes';
     public $timestamps = false;
 
     protected $fillable = [
@@ -28,7 +29,7 @@ class Vote extends Model
 
     public function candidate(): BelongsTo
     {
-        return $this->belongsTo(Candidate::class);
+        return $this->belongsTo(Candidate::class, 'candidate_id', 'id');
     }
 
     public function position(): BelongsTo

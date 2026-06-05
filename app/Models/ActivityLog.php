@@ -29,19 +29,21 @@ class ActivityLog extends Model
     ];
 
 
-    public static function log($action, $description, $oldValue = null, $newValue = null, $studentId = null)
+    public static function log(string $action, string $description, ?array $properties = null, ?int $studentId = null)
     {
         $ip = request()->ip();
+
         $isCampus = str_starts_with($ip, '10.0') || str_starts_with($ip, '192.168') || $ip === '127.0.0.1';
         $location = $isCampus ? "Campus Network ($ip)" : "External ($ip)";
 
         return self::create([
-            'user_id' => Auth::id(),
-            'action' => $action,
-            'student_id' => $studentId,
+            'user_id'     => Auth::id(),
+            'action'      => $action,
+            'student_id'  => $studentId,
             'description' => $description,
-            'ip_address' => $location,
-            'user_agent' => request()->userAgent(),
+            'ip_address'  => $location,
+            'user_agent'  => request()->userAgent(),
+            'properties'  => $properties,
         ]);
     }
 

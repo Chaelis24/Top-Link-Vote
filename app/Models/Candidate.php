@@ -13,6 +13,10 @@ class Candidate extends Model
 {
     use SoftDeletes, HasFactory;
 
+    public const STATUS_PENDING = 'pending';
+    public const STATUS_APPROVED = 'approved';
+    public const STATUS_REJECTED = 'rejected';
+
     protected $fillable = [
         'user_id',
         'student_id',
@@ -38,9 +42,23 @@ class Candidate extends Model
         'achievements' => 'array',
     ];
 
+    protected $appends = ['is_profile_complete'];
+
+    public function getIsProfileCompleteAttribute(): bool
+    {
+        return $this->isProfileComplete();
+    }
+
     public function isProfileComplete(): bool
     {
-        $platform = $this->platforms()->first();
+        return empty($this->getIncompleteFields());
+    }
+
+    public function getIncompleteFields(): array
+    {
+        $platform = $this->relationLoaded('platforms')
+            ? $this->platforms->first()
+            : $this->platforms()->first();
 
         $check = [
             'candidate_photo' => !empty($this->photo),
@@ -52,12 +70,15 @@ class Candidate extends Model
             'platform_agenda' => $platform && is_array($platform->agenda) && count($platform->agenda) > 0,
         ];
 
-        if (collect($check)->contains(false)) {
-            Log::info("Candidate ID {$this->id} Incomplete:", $check);
+        $missing = array_keys(array_filter($check, fn($value) => $value === false));
+
+        if (!empty($missing)) {
+            Log::info("Candidate ID {$this->id} Incomplete fields:", $missing);
         }
 
-        return !collect($check)->contains(false);
+        return $missing;
     }
+
 
     public function student(): BelongsTo
     {
@@ -81,7 +102,7 @@ class Candidate extends Model
 
     public function votes(): HasMany
     {
-        return $this->hasMany(Vote::class);
+        return $this->hasMany(Vote::class, 'candidate_id', 'id');
     }
 
     public function user(): BelongsTo

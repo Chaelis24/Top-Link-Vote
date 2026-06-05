@@ -3,14 +3,14 @@
 use App\Models\Setting;
 use Illuminate\Support\Str;
 use Livewire\Volt\Component;
-use Livewire\Attributes\Layout;
+use Livewire\Attributes\{Layout, Title};
 use App\Livewire\Forms\LoginForm;
 use App\Traits\ChecksMaintenance;
 use Illuminate\Support\Facades\DB;
 use App\Events\UserLoggedInElsewhere;
 use Illuminate\Support\Facades\{Session, RateLimiter};
 
-new #[Layout('layouts.guest')] class extends Component {
+new #[Layout('layouts.guest')] #[Title('Login')] class extends Component {
     use ChecksMaintenance;
 
     public LoginForm $form;
@@ -38,7 +38,6 @@ new #[Layout('layouts.guest')] class extends Component {
             if ($otherSessions) {
                 broadcast(new UserLoggedInElsewhere($user->id))->toOthers();
                 auth()->logoutOtherDevices($this->form->password);
-                DB::table('sessions')->where('user_id', $user->id)->where('id', '!=', $currentSessionId)->delete();
             }
 
             $this->redirectIntended(route('student.dashboard'));
@@ -55,7 +54,7 @@ new #[Layout('layouts.guest')] class extends Component {
             throw $e;
         }
     }
-};?>
+}; ?>
 <div class="fixed inset-0 z-[9999] overflow-y-auto bg-white flex items-center justify-center p-4 m-0 w-full h-full">
     <div class="absolute inset-0 bg-white"></div>
 
@@ -89,10 +88,10 @@ new #[Layout('layouts.guest')] class extends Component {
 
                     <div class="relative z-10 flex flex-col items-center text-center">
                         <div class="mb-2 md:mb-4">
-                            <img src="{{ asset('images/logo.png') }}" alt="Top Link Logo" class="w-28 md:w-48 h-auto">
+                            <img src="{{ asset('images/logo.png') }}" alt="Top Link Logo" class="w-24 md:w-40 h-auto">
                         </div>
                         <h2
-                            class="text-xl md:text-3xl font-extrabold uppercase mb-2 md:mb-3 tracking-tight text-white drop-shadow-md">
+                            class="text-lg md:text-2xl font-extrabold uppercase mb-2 md:mb-3 tracking-tight text-white drop-shadow-md">
                             Top Link-Vote
                         </h2>
                         <p class="block text-white/90 leading-relaxed text-xs md:text-sm font-medium">
@@ -103,7 +102,7 @@ new #[Layout('layouts.guest')] class extends Component {
 
                 <div class="md:w-1/2 p-5 md:p-10 flex flex-col justify-center bg-white">
                     <div class="mb-3 md:mb-6">
-                        <h2 class="text-2xl md:text-3xl font-bold text-[#252525] mb-1 md:mb-2 tracking-tighter">Sign
+                        <h2 class="text-lg md:text-xl font-bold text-[#252525] mb-1 md:mb-2 tracking-tighter">Sign
                             in
                         </h2>
                         <p class="text-gray-500 text-xs md:text-sm">Log in with your Student Credentials.</p>
@@ -111,12 +110,12 @@ new #[Layout('layouts.guest')] class extends Component {
 
                     <form wire:submit="login" class="space-y-4 md:space-y-5">
                         <div>
-                            <label class="text-[10px] md:text-xs font-bold uppercase text-gray-500 mb-1 block ms-1">
+                            <label class="text-[10px] md:text-[11px] font-bold uppercase text-gray-500 mb-1 block ms-1">
                                 Student ID
                             </label>
-                            <input wire:model="form.student_id" type="text" placeholder="E.g. 23-0001" required
+                            <input wire:model="form.student_id" type="text" placeholder="e.g. 23-0001" required
                                 class="w-full px-4 py-2.5 md:py-3 rounded-lg border transition-all text-sm outline-none focus:outline-none focus:ring-2
-                                {{ $errors->has('form.student_id') ? 'border-red-500 focus:ring-red-200 focus:border-red-500' : 'border-gray-200 focus:ring-[#9cff00]/30 focus:border-[#108500]' }}">
+                            {{ $errors->has('form.student_id') ? 'border-red-500 focus:ring-red-200 focus:border-red-500' : 'border-gray-200 focus:ring-[#9cff00]/30 focus:border-[#108500]' }}">
                             @error('form.student_id')
                                 <p class="text-[10px] text-red-500 font-bold mt-1 ms-1 uppercase italic">
                                     {{ $message }}
@@ -125,17 +124,17 @@ new #[Layout('layouts.guest')] class extends Component {
                         </div>
 
                         <div x-data="{ show: false }" class="relative">
-                            <label class="text-[10px] md:text-xs font-bold uppercase text-gray-500 mb-1 block ms-1">
+                            <label class="text-[10px] md:text-[11px] font-bold uppercase text-gray-500 mb-1 block ms-1">
                                 Password
                             </label>
                             <div class="relative">
                                 <input :type="show ? 'text' : 'password'" wire:model="form.password"
-                                    placeholder="Enter your password" required
+                                    placeholder="••••••••" required
                                     class="w-full px-4 py-2.5 md:py-3 rounded-lg border transition-all text-sm outline-none focus:outline-none focus:ring-2
-                                {{ $errors->has('form.password') ? 'border-red-500 focus:ring-red-200 focus:border-red-500' : 'border-gray-200 focus:ring-[#9cff00]/30 focus:border-[#108500]' }}">
+                            {{ $errors->has('form.password') ? 'border-red-500 focus:ring-red-200 focus:border-red-500' : 'border-gray-200 focus:ring-[#9cff00]/30 focus:border-[#108500]' }}">
                                 <button type="button" @click="show = !show" aria-label="Toggle password visibility"
-                                    class="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black {{ $errors->has('form.password') ? 'text-red-500' : 'text-[#108500]' }} uppercase">
-                                    <span x-text="show ? 'Hide' : 'Show'"></span>
+                                    class="absolute right-3 top-1/2 -translate-y-1/2 {{ $errors->has('form.password') ? 'text-red-500' : 'text-gray-400 hover:text-[#108500]' }} transition-colors">
+                                    <i :class="show ? 'bi bi-eye-slash-fill' : 'bi bi-eye-fill'" class="text-md"></i>
                                 </button>
                             </div>
                             @error('form.password')
@@ -145,7 +144,7 @@ new #[Layout('layouts.guest')] class extends Component {
                             @enderror
                         </div>
 
-                        <div class="flex items-center justify-between text-[10px] md:text-xs font-bold">
+                        <div class="flex items-center justify-between text-[10px] md:text-[12px] font-semibold">
                             <label class="flex items-center text-[#252525] cursor-pointer">
                                 <input type="checkbox" wire:model="form.remember"
                                     class="rounded border-gray-300 text-[#108500] shadow-sm focus:ring-[#9cff00]/30">
@@ -158,7 +157,7 @@ new #[Layout('layouts.guest')] class extends Component {
                         </div>
 
                         <button type="submit" wire:loading.attr="disabled"
-                            class="w-full bg-[#108500] hover:bg-[#0d6b00] text-white font-black py-3 rounded-lg shadow-lg transition-all uppercase tracking-widest text-xs md:text-sm">
+                            class="w-full bg-[#108500] hover:bg-[#0d6b00] text-white font-semibold py-3 rounded-lg shadow-lg transition-all uppercase tracking-widest text-xs btn-loader">
                             <span wire:loading.remove>Log in to Vote</span>
                             <span wire:loading>Authenticating...</span>
                         </button>
@@ -166,7 +165,7 @@ new #[Layout('layouts.guest')] class extends Component {
 
                     @if (Route::has('verify-account'))
                         <p
-                            class="text-center mt-4 md:mt-6 text-[10px] md:text-xs font-bold text-gray-500 tracking-widest">
+                            class="text-center mt-4 md:mt-6 text-[10px] md:text-[12px] font-semibold text-gray-500 tracking-widest">
                             Don't have an account?
                             <a href="{{ route('verify-account') }}" wire:navigate
                                 class="text-[#108500] hover:text-[#0d6b00] underline">Verify an Account</a>
@@ -174,6 +173,6 @@ new #[Layout('layouts.guest')] class extends Component {
                     @endif
                 </div>
             </div>
-        @endif
     </div>
+    @endif
 </div>

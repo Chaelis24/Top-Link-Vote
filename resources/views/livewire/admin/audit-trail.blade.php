@@ -42,7 +42,7 @@ new #[Layout('layouts.admin')] #[Title('User Activity')] class extends Component
                     });
                 })
                 ->latest()
-                ->paginate(15),
+                ->paginate(6),
 
             'actions' => cache()->remember('audit_actions', 60, fn() => ActivityLog::select('action')->distinct()->get()),
             'courses' => Course::select('name')->distinct()->whereNotNull('name')->pluck('name'),
@@ -82,25 +82,17 @@ new #[Layout('layouts.admin')] #[Title('User Activity')] class extends Component
             </div>
         </div>
 
-        <div class="flex flex-wrap items-center gap-3 w-full mt-4">
-            <div class="relative w-full md:w-80 order-1">
-                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <i class="bi bi-search text-gray-400"></i>
-                </div>
-                <input type="text" wire:model.live.debounce.300ms="search" placeholder="Search activities..."
-                    class="block w-full pl-10 pr-3 py-2.5 bg-white border-0 shadow-sm rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none h-[42px]">
-            </div>
-
-            <div class="flex gap-3 w-full md:w-auto order-2">
+        <div class="flex flex-wrap justify-between gap-3 w-full mt-4">
+            <div class="flex gap-3 w-full md:w-auto">
                 <select wire:model.live="filterCourse"
-                    class="block px-3 py-2.5 bg-white border-0 shadow-sm rounded-xl text-sm cursor-pointer focus:ring-2 focus:ring-blue-500 h-[42px]">
+                    class="block px-4 py-2 bg-white border-0 shadow-sm rounded-xl text-sm cursor-pointer focus:ring-2 focus:ring-blue-500 h-[42px]">
                     <option value="">All Courses</option>
                     @foreach ($courses as $course)
                         <option value="{{ $course }}">{{ $course }}</option>
                     @endforeach
                 </select>
                 <select wire:model.live="filterBlock"
-                    class="block px-3 py-2.5 bg-white border-0 shadow-sm rounded-xl text-sm cursor-pointer focus:ring-2 focus:ring-blue-500 h-[42px]">
+                    class="block px-4 py-2 bg-white border-0 shadow-sm rounded-xl text-sm cursor-pointer focus:ring-2 focus:ring-blue-500 h-[42px]">
                     <option value="">All Blocks</option>
                     @foreach ($blocks as $block)
                         <option value="{{ $block->id }}">
@@ -109,13 +101,19 @@ new #[Layout('layouts.admin')] #[Title('User Activity')] class extends Component
                     @endforeach
                 </select>
                 <select wire:model.live="filterAction"
-                    class="block px-3 py-2.5 bg-white border-0 shadow-sm rounded-xl text-sm cursor-pointer focus:ring-2 focus:ring-blue-500 h-[42px]">
+                    class="block px-4 py-2 bg-white border-0 shadow-sm rounded-xl text-sm cursor-pointer focus:ring-2 focus:ring-blue-500 h-[42px]">
                     <option value="">All Actions</option>
                     @foreach ($actions as $action)
                         <option value="{{ $action->action }}">{{ $action->action }}</option>
                     @endforeach
                 </select>
-
+            </div>
+            <div class="relative w-full md:w-80">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i class="bi bi-search text-gray-400"></i>
+                </div>
+                <input type="text" wire:model.live.debounce.300ms="search" placeholder="Search activities..."
+                    class="block w-full pl-10 pr-3 py-2.5 bg-white border-0 shadow-sm rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none h-[42px]">
             </div>
         </div>
 
@@ -126,7 +124,7 @@ new #[Layout('layouts.admin')] #[Title('User Activity')] class extends Component
                         <tr style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px;">
                             <th class="ps-4">Student / Candidate</th>
                             <th>Action & Description</th>
-                            <th class="text-end pe-4">Location & Time</th>
+                            <th class="text-end pe-4">IP Address & Time</th>
                         </tr>
                     </thead>
                     <tbody style="font-size: 0.85rem;">

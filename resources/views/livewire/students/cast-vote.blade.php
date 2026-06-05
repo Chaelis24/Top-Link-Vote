@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\{Auth, Mail, DB, Session, Log};
 use App\Models\{Position, Candidate, Vote, ElectionCycle, ActivityLog, Setting};
 
 new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component {
-   use ChecksMaintenance, AuthenticatesLogout;
+    use ChecksMaintenance, AuthenticatesLogout;
 
     // 1. STATE PROPERTIES
     public $profile_photo_path = '';
@@ -70,19 +70,19 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
             return collect();
         }
 
-        $voterCourse = auth()->user()->student->course;
+        $voterCourseId = auth()->user()->student->course_id;
 
         return Position::where('election_cycle_id', $this->activeCycle->id)
-            ->where(function ($query) use ($voterCourse) {
-                $query->whereNull('student_department')->orWhere('student_department', '')->orWhere('student_department', $voterCourse);
+            ->where(function ($query) use ($voterCourseId) {
+                $query->whereNull('student_department')->orWhere('student_department', '')->orWhere('student_department', $voterCourseId); // Gamitin ang ID
             })
-            ->whereHas('candidates', function ($query) use ($voterCourse) {
-                $query->whereIn('status', ['approved', 'active'])->whereHas('student', function ($q) use ($voterCourse) {
-                    $q->where('course', $voterCourse);
+            ->whereHas('candidates', function ($query) use ($voterCourseId) {
+                $query->whereIn('status', ['approved', 'active'])->whereHas('student', function ($q) use ($voterCourseId) {
+                    $q->where('course_id', $voterCourseId);
                 });
             })
             ->with([
-                'candidates' => function ($query) use ($voterCourse) {
+                'candidates' => function ($query) use ($voterCourseId) {
                     $query->whereIn('status', ['approved', 'active'])->with('student');
                 },
             ])
@@ -116,6 +116,8 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
 
     public function submitVote()
     {
+        sleep(2);
+
         if (!$this->isVotingOpen || $this->hasVoted) {
             $this->dispatch('swal', [
                 'title' => 'Access Denied',
@@ -151,15 +153,6 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
         $student = $user->student;
         $cycle = $this->activeCycle;
 
-        if (!$cycle) {
-            $this->dispatch('swal', [
-                'title' => 'No Cycle',
-                'text' => 'No active election cycle found',
-                'icon' => 'warning',
-            ]);
-            return;
-        }
-
         try {
             DB::transaction(function () use ($student, $cycle, $user) {
                 $lockedStudent = $user->student()->lockForUpdate()->first();
@@ -186,6 +179,12 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                     'vote_reference' => $referenceNumber,
                 ]);
 
+                $clientIp = request()->header('X-Forwarded-For') ? explode(',', request()->header('X-Forwarded-For'))[0] : request()->ip();
+
+                if ($clientIp === '::1') {
+                    $clientIp = '127.0.0.1';
+                }
+
                 \App\Jobs\LogActivity::dispatch([
                     'user_id' => $user->id,
                     'student_id' => $student->id,
@@ -195,7 +194,7 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                         'selections' => $this->selections,
                         'reference' => $referenceNumber,
                     ]),
-                    'ip_address' => request()->ip(),
+                    'ip_address' => $clientIp,
                     'user_agent' => request()->userAgent(),
                 ])->onQueue('logs');
 
@@ -206,11 +205,14 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                 }
             });
 
+            $this->student = $student->fresh();
+            auth()->user()->setRelation('student', $this->student);
+
+            $this->hasVoted = true;
+
             RateLimiter::clear($throttleKey);
 
             event(new \App\Events\VoteUpdated((string) $student->course));
-            $this->student = $student->fresh();
-            unset($this->hasVoted);
 
             $this->dispatch('swal', [
                 'title' => 'Success!',
@@ -246,6 +248,11 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
             </div>
         </div>
 
+        @php
+            $suffix = auth()->user()->student->suffix;
+            $formattedSuffix = in_array($suffix, ['Jr', 'Sr']) ? $suffix . '.' : $suffix;
+        @endphp
+
         @if ($this->hasVoted)
             <div class="fade-in d-flex flex-column align-items-center justify-content-center" style="min-height: 65vh;">
                 <div class="glass-card p-5 text-center shadow-sm border-0 bg-white"
@@ -256,8 +263,8 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                     <h2 class="fw-bold text-dark mb-2">Your vote has been submitted!</h2>
                     <p class="text-secondary mb-2">Hi <strong
                             class="text-primary">{{ auth()->user()->student->first_name }}
-                            {{ substr(auth()->user()->student->middle_name, 0, 1) }}.
-                            {{ auth()->user()->student->last_name }} {{ auth()->user()->student->suffix }}</strong>,
+                            {{ auth()->user()->student->middle_name ? substr(auth()->user()->student->middle_name, 0, 1) . '.' : '' }}
+                            {{ auth()->user()->student->last_name }} {{ $formattedSuffix ?? '' }}</strong>,
                         your vote has been securely recorded.</p>
                     <div class="mt-2 mb-2">
                         <a href="https://www.facebook.com/share/18ghE6XNFp/" target="_blank"
@@ -277,7 +284,8 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                     <div class="receipt-box p-3 mb-4 text-start bg-light rounded-3 border">
                         <div class="d-flex justify-content-between">
                             <small class="text-secondary">Reference:</small>
-                            <span class="text-dark small fw-bold">{{ auth()->user()->student->vote_reference }}</span>
+                            <span
+                                class="text-dark small fw-bold">{{ auth()->user()->student->vote_reference ?? 'N/A' }}</span>
                         </div>
                         <div class="d-flex justify-content-between">
                             <small class="text-secondary">Student ID:</small>
@@ -286,27 +294,25 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                         <div class="d-flex justify-content-between">
                             <small class="text-secondary">Date:</small>
                             <span
-                                class="text-dark small fw-bold">{{ auth()->user()->student->voted_at?->format('M d, Y - h:i A') }}</span>
+                                class="text-dark small fw-bold">{{ auth()->user()->student->voted_at?->format('M d, Y - h:i A') ?? 'N/A' }}</span>
                         </div>
                     </div>
-                    <a href="/students/dashboard" wire:navigate class="btn btn-glow w-100 py-3">Return to Dashboard</a>
+                    <a href="/students/dashboard" wire:navigate class="btn btn-glow w-100 py-2">Return to Dashboard</a>
                 </div>
             </div>
         @elseif (!$this->isVotingOpen)
-            <div class="fade-in d-flex flex-column align-items-center justify-content-center" style="min-height: 65vh;">
-                <div class="glass-card p-5 text-center shadow-sm border-0 bg-white"
-                    style="max-width: 550px; border-radius: 25px;">
-                    <div class="mb-4">
-                        <i class="bi bi-calendar2-week text-muted" style="font-size: 3.5rem;"></i>
+            <div class="d-flex flex-column align-items-center justify-content-center" style="min-height: 65vh;">
+                <div class="text-center" style="max-width: 550px; border-radius: 25px;">
+                    <div class="mb-6">
+                        <div class="inline-flex p-4 rounded-full bg-emerald-50">
+                            <i class="bi bi-calendar2-week text-emerald-600 text-5xl"></i>
+                        </div>
                     </div>
-                    <h3 class="fw-bold text-dark mb-2">Voting is Currently Inactive</h3>
-                    <p class="text-secondary mb-4 px-3">
-                        There is no active election cycle at this time. Please check the Commission on Elections
-                        announcement for the official timeline and schedule.
+                    <h3 class="text-2xl font-bold text-gray-800 mb-3">Voting is Currently Inactive</h3>
+                    <p class="text-secondary mx-auto mb-4" style="max-width: 500px;">
+                        There is no active election cycle at this time. Please monitor the official announcements from
+                        the Commission on Elections for the upcoming schedule.
                     </p>
-                    <a href="/students/dashboard" wire:navigate class="btn btn-secondary btn-sm w-75 py-2 fw-bold">
-                        Return to Dashboard
-                    </a>
                 </div>
             </div>
         @else
@@ -372,9 +378,6 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                                                 @if ($candidate->photo)
                                                     <img src="{{ asset('storage/' . $candidate->photo) }}"
                                                         class="w-full h-full object-cover">
-                                                @elseif ($candidate->student?->photo)
-                                                    <img src="{{ asset('storage/' . $candidate->student->photo) }}"
-                                                        class="w-full h-full object-cover">
                                                 @else
                                                     <div class="w-full h-full flex items-center justify-center text-white text-2xl font-bold"
                                                         style="background: {{ $this->getAvatarColor($candidate->id) }}">
@@ -392,12 +395,12 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
 
                                         <div class="mb-3">
                                             <h6
-                                                class="text-xs md:text-sm font-black leading-tight mb-1 {{ $isSelected ? 'text-emerald-700' : 'text-gray-900' }}">
+                                                class="text-[12px] md:text-[13px] font-black leading-tight mb-1 {{ $isSelected ? 'text-emerald-700' : 'text-gray-900' }}">
                                                 {{ $candidate->student->first_name }}<br class="md:hidden">
                                                 {{ $candidate->student->last_name }}
                                             </h6>
                                             <p
-                                                class="text-[8px] md:text-[9px] font-bold text-[#10b981] uppercase tracking-[0.1em] md:tracking-[0.15em] truncate">
+                                                class="text-[8px] md:text-[9px] font-black text-[#10b981] uppercase tracking-[0.1em] md:tracking-[0.15em] truncate">
                                                 {{ $candidate->party_name ?? 'No Party Name' }}
                                             </p>
                                         </div>
@@ -486,9 +489,6 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                                             class="w-12 h-12 md:w-16 md:h-16 rounded-full overflow-hidden border-2 border-white shadow-md mx-auto ring-1 ring-emerald-100 mb-3">
                                             @if ($candidate->photo)
                                                 <img src="{{ asset('storage/' . $candidate->photo) }}"
-                                                    class="w-full h-full object-cover">
-                                            @elseif ($candidate->student?->photo)
-                                                <img src="{{ asset('storage/' . $candidate->student->photo) }}"
                                                     class="w-full h-full object-cover">
                                             @else
                                                 <div class="w-full h-full flex items-center justify-center text-white text-lg md:text-xl font-bold"

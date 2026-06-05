@@ -2,6 +2,7 @@
 
 namespace App\Events;
 
+use App\Models\Course;
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
@@ -13,12 +14,14 @@ class VoteUpdated implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
+    public string $courseName;
+
     /**
      * Create a new event instance.
      */
-    public function __construct(public string $courseId)
+    public function __construct(Course $course)
     {
-        //
+        $this->courseName = strtoupper($course->name);
     }
 
     /**
@@ -29,7 +32,7 @@ class VoteUpdated implements ShouldBroadcast
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('election-results.' . $this->courseId),
+            new PrivateChannel('election-results.' . $this->courseName),
             new Channel('election-results'),
         ];
     }

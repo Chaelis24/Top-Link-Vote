@@ -21,6 +21,7 @@ export default defineConfig({
         host: "0.0.0.0",
         hmr: {
             // host: "192.168.254.109",
+            host: "localhost",
         },
     },
 });
