@@ -17,6 +17,8 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
     #[Url]
     public string $course = 'All Courses';
     #[Url]
+    public string $block_id = 'All Blocks';
+    #[Url]
     public string $year = 'All Years';
     #[Url]
     public string $status = 'All Status';
@@ -81,6 +83,9 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
             })
             ->when($this->course !== 'All Courses' && $this->course !== '', function ($q) {
                 $q->whereHas('block.course', fn($sub) => $sub->where('name', $this->course));
+            })
+            ->when($this->block_id !== 'All Blocks' && $this->block_id !== '', function ($q) {
+                $q->where('block_id', $this->block_id);
             })
             ->when($this->year !== 'All Years' && $this->year !== '', function ($q) {
                 $q->whereHas('block', fn($sub) => $sub->where('year_level', $this->year));
@@ -338,7 +343,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
             <div class="col-6 col-lg-3">
                 <div class="glass-card p-2 p-md-3 border-0 shadow-sm">
                     <div class="stat-value-sm text-danger text-lg md:text-2xl">{{ $disabledCount }}</div>
-                    <div class="stat-label text-[10px] md:text-xs uppercase font-semibold">Disabled</div>
+                    <div class="stat-label text-[10px] md:text-xs uppercase font-semibold">Deactivated</div>
                 </div>
             </div>
         </div>
@@ -346,7 +351,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
         <div class="glass-card p-3 mb-3 border-0 shadow-sm bg-white">
             <div class="row g-2 align-items-center">
 
-                <div class="col-8 col-md-4">
+                <div class="col-4 col-md-2">
                     <div class="search-wrap-modern">
                         <i class="bi bi-search"></i>
                         <input type="text" wire:model.live.debounce.300ms="search" placeholder="Search..."
@@ -357,31 +362,31 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                 <div class="col-4 col-md-2 order-md-last ms-md-auto">
                     <button type="button" class="btn btn-outline-primary btn-sm w-100 py-2 flex-shrink-0"
                         x-on:click="
-                Swal.fire({
-                    title: 'Export Data?',
-                    text: 'Do you want to download the student list as CSV?',
-                    icon: 'question',
-                    showCancelButton: true,
-                    confirmButtonColor: '#0d6efd',
-                    cancelButtonColor: '#6c757d',
-                    confirmButtonText: 'Yes, download it!',
-                    cancelButtonText: 'Cancel'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        $wire.exportStudents()
-                        const Toast = Swal.mixin({
-                            toast: true,
-                            position: 'top-end',
-                            showConfirmButton: false,
-                            timer: 3000
-                        });
-                        Toast.fire({
-                            icon: 'success',
-                            title: 'Preparing download...'
-                        });
-                    }
-                })
-            ">
+                            Swal.fire({
+                                title: 'Export Data?',
+                                text: 'Do you want to download the student list as CSV?',
+                                icon: 'question',
+                                showCancelButton: true,
+                                confirmButtonColor: '#0d6efd',
+                                cancelButtonColor: '#6c757d',
+                                confirmButtonText: 'Yes, download it!',
+                                cancelButtonText: 'Cancel'
+                            }).then((result) => {
+                                if (result.isConfirmed) {
+                                    $wire.exportStudents()
+                                    const Toast = Swal.mixin({
+                                        toast: true,
+                                        position: 'top-end',
+                                        showConfirmButton: false,
+                                        timer: 3000
+                                    });
+                                    Toast.fire({
+                                        icon: 'success',
+                                        title: 'Preparing download...'
+                                    });
+                                }
+                            })
+                        ">
                         <i class="bi bi-download"></i>
                         <span class="d-none d-md-inline ms-1">Export</span>
                     </button>
@@ -392,6 +397,15 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                         <option value="All Courses">🏢 All Courses</option>
                         @foreach (\App\Models\Course::all() as $c)
                             <option value="{{ $c->name }}">🏢 {{ $c->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="col-4 col-md-2">
+                    <select wire:model.live="block_id" class="form-select-modern py-2 w-100">
+                        <option value="All Blocks">🏫 All Blocks</option>
+                        @foreach (\App\Models\Block::all() as $b)
+                            <option value="{{ $b->id }}">🏫{{ $b->year_level }} - {{ $b->section }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -423,18 +437,18 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                 <table class="table table-hover mb-0">
                     <thead class="bg-light">
                         <tr class="align-middle">
-                            <th class="ps-4" style="width: 50px;">
+                            <th class="p-3 ps-4" style="width: 50px;">
                                 <div class="form-check">
                                     <input type="checkbox" wire:model.live="selectAll" class="form-check-input"
                                         id="selectAll">
                                 </div>
                             </th>
-                            <th>ID</th>
-                            <th>Student Name</th>
-                            <th>Course</th>
-                            <th>Email</th>
-                            <th>Status</th>
-                            <th class="text-center pe-4">Actions</th>
+                            <th class="p-3">ID</th>
+                            <th class="p-3">Student Name</th>
+                            <th class="p-3">Course</th>
+                            <th class="p-3">Email</th>
+                            <th class="p-3">Status</th>
+                            <th class="p-3 text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="align-middle">

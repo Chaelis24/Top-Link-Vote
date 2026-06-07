@@ -276,6 +276,12 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
             DB::transaction(function () {
                 ElectionCycle::where('status', 'active')->update(['status' => 'completed']);
 
+                Student::query()->update([
+                    'vote_reference' => null,
+                    'has_voted' => 0,
+                    'voted_at' => null,
+                ]);
+
                 ElectionCycle::create([
                     'name' => $this->cycle_name,
                     'academic_year' => $this->academic_year,
@@ -445,7 +451,6 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
             $active = $this->active;
             if ($active) {
                 $active->update(['status' => 'completed']);
-
             }
 
             Cache::forget('active_election_cycle');

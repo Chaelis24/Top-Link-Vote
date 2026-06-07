@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\{Layout, On, Title, Computed};
 use App\Traits\{ChecksMaintenance, AuthenticatesLogout};
 use App\Services\Student\DashboardService;
+use App\Models\ElectionCycle;
 
 new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Component {
     use ChecksMaintenance, AuthenticatesLogout;
@@ -163,7 +164,7 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
                             </a>
                         @else
                             @php
-                                $latestCycle = ElectionCycle::latest()->first();
+                                $latestCycle = ElectionCycle::where('status', 'active')->first();
                             @endphp
 
                             @if ($latestCycle && ($latestCycle->status === 'finished' || $latestCycle->status === 'completed'))
@@ -203,7 +204,8 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
                 <div class="glass-card p-2 md:p-6 mb-3 border-0 shadow-sm">
                     <div class="flex flex-row justify-between items-center mb-3 px-1 md-px-3">
                         <h5 class="text-dark mb-0 font-bold flex items-center">
-                            <i class="bi bi-bar-chart-line-fill text-primary me-2"></i>Live Election Standings
+                            <i class="bi bi-bar-chart-line-fill text-primary me-2 fs-6 py-1 py-md-3"></i>Live Election
+                            Standings
                         </h5>
                         <span class="badge px-2 py-1 rounded-full shadow-sm text-white"
                             style="background-color: #10b981; font-size: 0.75rem;">

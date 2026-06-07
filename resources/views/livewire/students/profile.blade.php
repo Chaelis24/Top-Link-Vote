@@ -1,7 +1,6 @@
 <?php
 
 use Carbon\Carbon;
-use App\Models\Setting;
 use Livewire\Volt\Component;
 use Livewire\WithFileUploads;
 use Livewire\Attributes\{Layout, Title};
@@ -9,12 +8,12 @@ use Illuminate\Validation\Rules\Password;
 use App\Http\Requests\Students\UpdateProfileRequest;
 use App\Http\Requests\Students\UpdatePasswordRequest;
 use App\Traits\{ChecksMaintenance, AuthenticatesLogout};
-use Illuminate\Support\Facades\{Hash, Auth, Session, Storage, DB, Log};
+use Illuminate\Support\Facades\Auth;
+use App\Services\Student\ProfileService;
 
 new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
     use ChecksMaintenance, AuthenticatesLogout, WithFileUploads;
 
-    // 1. STATE PROPERTIES
     public $name = '';
     public $email = '';
     public $student;
@@ -27,6 +26,7 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
     public $course = '';
     public $status = '';
     public $year_level = '';
+    public $block_section = '';
     public $phone = '';
     public $address = '';
     public $birthday = '';
@@ -40,101 +40,65 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
     public $new_password_confirmation = '';
     public bool $isVotingOpen = false;
 
-    // 2. LIFECYCLE HOOKS
+    private ProfileService $profileService;
+
+    public function boot(ProfileService $profileService)
+    {
+        $this->profileService = $profileService;
+    }
+
     public function mount()
     {
-        $user = Auth::user()?->load('student.block');
-        $profile = $user?->student;
+        $user = Auth::user();
+        if (!$user) {
+            return;
+        }
 
-        $activeCycle = \App\Models\ElectionCycle::where('status', 'active')->first();
-        $settings = Setting::pluck('value', 'key')->toArray();
-
-        $isSettingOpen = (bool) ($settings['allowVoting'] ?? false);
-        $isDateValid = $activeCycle && now()->lte($activeCycle->voting_end);
-
-        $this->isVotingOpen = $isSettingOpen && $isDateValid;
-
-        $this->name = $user?->name ?? '';
-        $this->email = $user?->email ?? '';
-
-        if ($profile) {
-            $this->user_id = $profile->user_id;
-            $this->student_id = $profile->student_id;
-            $this->first_name = $profile->first_name;
-            $this->middle_name = $profile->middle_name;
-            $this->last_name = $profile->last_name;
-            $this->suffix = $profile->suffix;
-            $this->course = $profile->block->course->name ?? 'N/A';
-            $this->year_level = $profile->block->year_level ?? 'N/A';
-            $this->status = $profile->status;
-            $this->phone = $profile->phone;
-            $this->address = $profile->address;
-            $this->birthday = $profile->birthday ? date('Y-m-d', strtotime($profile->birthday)) : '';
-            $this->gender = $profile->gender;
-            $this->profile_photo_path = $profile->photo;
-            $this->has_voted = (bool) $profile->has_voted;
-            $this->voted_at = $profile->voted_at;
+        $data = $this->profileService->getProfileData($user);
+        foreach ($data as $key => $value) {
+            if (property_exists($this, $key)) {
+                $this->{$key} = $value;
+            }
         }
     }
 
-    // 3. ACTION METHODS
     public function saveProfile(UpdateProfileRequest $request)
     {
         $validated = $request->validated();
         $user = Auth::user();
 
-        try {
-            DB::beginTransaction();
+        $result = $this->profileService->updateProfile($user, $validated, $this->photo);
 
-            if (!empty($validated['email'])) {
-                $user->update(['email' => $validated['email']]);
-            }
-
-            if ($user?->student) {
-                $data = ['phone' => $this->phone];
-
-                if ($this->photo && !is_string($this->photo)) {
-                    if ($this->profile_photo_path) {
-                        Storage::disk('public')->delete($this->profile_photo_path);
-                    }
-
-                    $path = $this->photo->store('student-profile', 'public');
-                    $data['photo'] = $path;
-                    $this->profile_photo_path = $path;
-
-                    $this->reset('photo');
-                }
-                $user->student->update($data);
-            }
-
-            DB::commit();
-
-            $this->dispatch('swal', [
-                'title' => 'Profile Updated',
-                'text' => 'Your personal information has been saved successfully.',
-                'icon' => 'success',
-                'timer' => 3000,
-                'showConfirmButton' => false,
-            ]);
-            $this->dispatch('close-modal');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Profile Save Error: ' . $e->getMessage());
+        if (isset($result['error'])) {
             $this->dispatch('swal', [
                 'title' => 'Update Failed',
-                'text' => 'Something went wrong while saving your profile.',
+                'text' => $result['error'],
                 'icon' => 'error',
             ]);
+            return;
         }
+
+        if (isset($result['profile_photo_path'])) {
+            $this->profile_photo_path = $result['profile_photo_path'];
+        }
+
+        $this->reset('photo');
+
+        $this->dispatch('swal', [
+            'title' => 'Profile Updated',
+            'text' => 'Your personal information has been saved successfully.',
+            'icon' => 'success',
+            'timer' => 3000,
+            'showConfirmButton' => false,
+        ]);
+        $this->dispatch('close-modal');
     }
 
     public function updatePassword(UpdatePasswordRequest $request)
     {
         $validated = $request->validated();
 
-        Auth::user()->update([
-            'password' => Hash::make($validated['new_password']),
-        ]);
+        $this->profileService->updatePassword(Auth::user(), $validated['new_password']);
 
         $this->reset(['current_password', 'new_password', 'new_password_confirmation']);
 
@@ -161,27 +125,36 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
         <div class="glass-card profile-header m-2 m-md-4 fade-in-up delay-1 border-0 shadow-sm overflow-hidden">
             <div class="row align-items-center g-0">
                 <div class="col-md-auto text-center text-md-start p-3 p-md-4">
-                    <div class="position-relative d-inline-block">
-                        @if ($photo)
-                            <img src="{{ $photo->temporaryUrl() }}" class="profile-avatar-lg border shadow-sm"
-                                style="width: 80px; height: 80px; object-fit: cover; border-radius: 50%;"
-                                alt="Student">
-                        @elseif($profile_photo_path)
-                            <img src="{{ asset('storage/' . $profile_photo_path) }}"
-                                class="profile-avatar-lg border shadow-sm"
-                                style="width: 80px; height: 80px; object-fit: cover; border-radius: 50%;"
-                                alt="Student">
-                        @else
-                            <div class="profile-avatar-lg d-flex align-items-center justify-content-center bg-emerald-light fw-bold text-primary border shadow-sm"
-                                style="width: 80px; height: 80px; border-radius: 50%; font-size: 1.5rem;">
-                                {{ strtoupper(substr($first_name ?: 'U', 0, 1) . substr($last_name ?: 'P', 0, 1)) }}
+                    <div class="d-inline-flex flex-column align-items-center">
+                        <label class="position-relative d-inline-block cursor-pointer"
+                            style="width: 80px; height: 80px;" data-bs-toggle="modal"
+                            data-bs-target="#editProfileModal">
+
+                            <div class="rounded-circle overflow-hidden border shadow-sm w-100 h-100">
+                                @if ($photo)
+                                    <img src="{{ $photo->temporaryUrl() }}" class="w-100 h-100 object-fit-cover">
+                                @elseif($profile_photo_path)
+                                    <img src="{{ asset('storage/' . $profile_photo_path) }}"
+                                        class="w-100 h-100 object-fit-cover">
+                                @else
+                                    <div
+                                        class="w-100 h-100 d-flex align-items-center justify-center bg-emerald-light fw-bold text-primary">
+                                        {{ strtoupper(substr($first_name ?: 'U', 0, 1) . substr($last_name ?: 'P', 0, 1)) }}
+                                    </div>
+                                @endif
                             </div>
-                        @endif
+                        </label>
+
+                        <div class="mt-2 text-muted fw-bold"
+                            style="font-size: 10px; cursor: pointer; text-transform: uppercase;" data-bs-toggle="modal"
+                            data-bs-target="#editProfileModal">
+                            Tap to change profile
+                        </div>
                     </div>
                 </div>
 
                 <div class="col-md px-3 px-md-0 py-2 py-md-4 text-center text-md-start">
-                    <h4 class="fw-bold mb-1 text-dark text-truncate">
+                    <h4 class="fw-bold mb-1 text-dark text-truncate text-lg">
                         {{ $first_name ?: 'Student' }}
                         {{ $middle_name ? substr($middle_name, 0, 1) . '.' : '' }}
                         {{ $last_name ?: '' }}
@@ -189,7 +162,8 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                     </h4>
                     <p class="text-secondary mb-2 fw-semibold small">
                         <i class="bi bi-mortarboard-fill me-1 text-primary"></i>
-                        <span class="d-inline-block">{{ $course ?: 'N/A' }}</span>
+                        <span class="d-inline-block">{{ $course ?: 'N/A' }} -
+                            {{ $year_level ?: 'N/A' }}{{ $block_section ?: 'N/A' }}</span>
                         <span class="mx-1 d-none d-md-inline">|</span>
                         <br class="d-block d-md-none">
                         <span class="text-muted">Student ID: {{ $student_id ?? 'N/A' }}</span>
@@ -223,14 +197,6 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                             SY : {{ $formattedYear }}
                         </span>
                     </div>
-                </div>
-
-                <div class="w-full md:w-auto p-3 md:p-4 text-center relative z-[1060]">
-                    <button
-                        class="btn-outline-glow text-sm w-3/4 md:w-auto px-3 py-1.5 rounded 2xl:text-base 2xl:px-5 2xl:py-2 transition-all duration-200"
-                        type="button" data-bs-toggle="modal" data-bs-target="#editProfileModal">
-                        <i class="bi bi-pencil-square mr-1 2xl:mr-2"></i>Edit Profile
-                    </button>
                 </div>
             </div>
         </div>
@@ -362,8 +328,7 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                         <span
                             class="badge bg-primary-light text-primary border border-primary-subtle px-3 py-2 mb-3 rounded-pill">Eligible</span>
                         <p class="text-secondary mb-0 small">You are eligible to vote in this election.</p>
-                        <a href="{{ url('students/cast-vote') }}" wire:navigate
-                            class="btn btn-glow btn-sm mt-4 mt-md-2 w-100 w-md-50">
+                        <a href="{{ url('students/cast-vote') }}" wire:navigate class="btn btn-glow w-100 py-1">
                             <i class="bi bi-check2-square me-1"></i>Cast Vote Now
                         </a>
                     @else

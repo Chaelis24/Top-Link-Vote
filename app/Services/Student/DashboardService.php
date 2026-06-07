@@ -21,7 +21,10 @@ class DashboardService
 
     public function getActiveCycle(): ?ElectionCycle
     {
-        return ElectionCycle::where('status', 'active')->latest()->first();
+        return ElectionCycle::where('status', 'active')
+            ->where('voting_start', '<=', now())
+            ->where('voting_end', '>=', now())
+            ->first();
     }
 
     public function isVotingOpen(?ElectionCycle $activeCycle): bool

@@ -425,10 +425,10 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                 <table class="table table-hover mb-0">
                     <thead class="bg-light">
                         <tr>
-                            <th class="ps-4 py-3">Candidate Name</th>
-                            <th>Position & Party Name</th>
-                            <th>Profile Status</th>
-                            <th class="text-center pe-4">Actions</th>
+                            <th class="p-3">Candidate Name</th>
+                            <th class="p-3">Position & Party Name</th>
+                            <th class="p-3">Profile Status</th>
+                            <th class="p-3 text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="align-middle">

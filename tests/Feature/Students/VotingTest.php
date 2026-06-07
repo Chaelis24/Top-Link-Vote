@@ -17,6 +17,8 @@ test('student can cast a vote successfully', function () {
 
     $component = Volt::test('students.cast-vote')
         ->set('selections', [$position->id => $candidate->id])
+        ->call('nextPosition')
+        ->call('setStep', 3)
         ->call('submitVote');
 
     $component->assertDispatched('swal', [

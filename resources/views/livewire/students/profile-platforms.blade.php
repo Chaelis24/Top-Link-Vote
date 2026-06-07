@@ -1,18 +1,16 @@
 <?php
 
-use Illuminate\Support\Str;
 use Livewire\Volt\Component;
 use Livewire\WithFileUploads;
-use App\Http\Requests\Students\UpdateCandidateRequest;
 use Livewire\Attributes\{Layout, Title, Computed, Url};
 use App\Traits\{ChecksMaintenance, AuthenticatesLogout};
-use Illuminate\Support\Facades\{Auth, Session, Storage, Log};
-use App\Models\{Candidate, Position, ElectionCycle, Platform, Setting, ActivityLog};
+use Illuminate\Support\Facades\{Auth, Storage, Log};
+use App\Services\Student\ProfilePlatformService;
+use App\Models\{ElectionCycle, Platform, Student, Candidate, Block, Course};
 
 new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Component {
     use ChecksMaintenance, AuthenticatesLogout, WithFileUploads;
 
-    // 1. STATE PROPERTIES
     #[Url]
     public string $selectedPosition = 'All Positions';
     public bool $lockChanges = false;
@@ -29,125 +27,82 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
     public $profile_photo_path = '';
     public $student;
 
-    // 2. LIFECYCLE HOOKS
+    private ProfilePlatformService $profilePlatformService;
+
+    public function boot(ProfilePlatformService $profilePlatformService)
+    {
+        $this->profilePlatformService = $profilePlatformService;
+    }
+
     public function mount()
     {
-        $settings = Setting::pluck('value', 'key')->toArray();
-        $user = Auth::user()?->load('student', 'candidate');
-
-        $this->student = $user?->student;
-
-        if ($this->student) {
-            $this->profile_photo_path = $this->student->photo;
+        $user = Auth::user();
+        if (!$user) {
+            return;
         }
 
-        if ($this->isEligibleToEdit) {
-            $candidate = Auth::user()->candidate;
-            $this->achievements = $candidate->achievements ? (is_array($candidate->achievements) ? $candidate->achievements : explode("\n", $candidate->achievements)) : [''];
-            $this->party_name = $candidate->party_name ?? '';
-            $this->previous_position = is_array($candidate->previous_position) ? $candidate->previous_position : [''];
-            $this->previous_school_project = is_array($candidate->previous_school_project) ? $candidate->previous_school_project : [''];
-            $this->average_grade = $candidate->average_grade ?? '';
-            $this->existing_candidate_photo = $candidate->photo;
+        $studentData = $this->profilePlatformService->getStudentData($user);
+        $this->student = $studentData['student'];
+        $this->profile_photo_path = $studentData['profile_photo_path'];
 
-            $platform = Platform::where('candidate_id', $candidate->id)->first();
-            if ($platform) {
-                $this->platform_title = $platform->title ?? '';
-                $this->tagline = $platform->tagline ?? '';
-                $this->agenda = is_array($platform->agenda) ? implode("\n", $platform->agenda) : $platform->agenda ?? '';
-            }
+        if ($this->isEligibleToEdit) {
+            $candidateData = $this->profilePlatformService->loadCandidateData($user);
+            $this->achievements = $candidateData['achievements'];
+            $this->party_name = $candidateData['party_name'];
+            $this->previous_position = $candidateData['previous_position'];
+            $this->previous_school_project = $candidateData['previous_school_project'];
+            $this->average_grade = $candidateData['average_grade'];
+            $this->existing_candidate_photo = $candidateData['existing_candidate_photo'];
+            $this->platform_title = $candidateData['platform_title'];
+            $this->tagline = $candidateData['tagline'];
+            $this->agenda = $candidateData['agenda'];
         }
     }
 
-    // 3. COMPUTED PROPERTIES
     #[Computed]
     public function activeCycle()
     {
-        return ElectionCycle::where('status', 'active')->first();
+        return $this->profilePlatformService->getActiveCycle();
     }
 
     #[Computed]
     public function isEligibleToEdit()
     {
-        $user = Auth::user();
-        return $user && $user->hasRole('candidate') && $user->candidate;
+        return $this->profilePlatformService->isEligibleToEdit();
     }
 
     #[Computed]
     public function isFilingOpen()
     {
-        $cycle = $this->activeCycle;
-
-        if (!$cycle || $cycle->status !== 'active') {
-            return false;
-        }
-        return now()->between($cycle->filing_start, $cycle->filing_end);
+        return $this->profilePlatformService->isFilingOpen($this->activeCycle);
     }
 
     #[Computed]
     public function isCampaignOpen()
     {
-        $cycle = $this->activeCycle;
-        if (!$cycle || $cycle->status !== 'active') {
-            return false;
-        }
-
-        return now()->between($cycle->campaign_start, $cycle->campaign_end);
+        return $this->profilePlatformService->isCampaignOpen($this->activeCycle);
     }
 
     #[Computed]
     public function isVotingOpen()
     {
-        $cycle = $this->activeCycle;
-        if (!$cycle || $cycle->status !== 'active') {
-            return false;
-        }
-
-        return now()->between($cycle->voting_start, $cycle->voting_end);
+        return $this->profilePlatformService->isVotingOpen($this->activeCycle);
     }
 
     #[Computed]
     public function positionsList()
     {
-        $voterCourseId = $this->student->course_id ?? '';
-
-        $activeCycle = $this->activeCycle;
-        if (!$activeCycle) {
-            return collect(['All Positions']);
-        }
-
-        $positions = Position::where('election_cycle_id', $activeCycle->id)
-            ->where(function ($query) use ($voterCourseId) {
-                $query->whereNull('student_department')->orWhere('student_department', '')->orWhere('student_department', $voterCourseId);
-            })
-            ->whereHas('candidates', fn($q) => $q->whereIn('status', ['approved', 'active']))
-            ->pluck('name')
-            ->unique();
-
-        return collect(['All Positions'])->concat($positions);
+        $courseId = $this->profilePlatformService->getStudentCourseId($this->student);
+        return $this->profilePlatformService->getPositionsList($this->activeCycle, $courseId);
     }
 
     #[Computed]
     public function filteredCandidates()
     {
-        $voterCourseId = $this->student->course_id ?? '';
-
-        $activeCycle = $this->activeCycle;
-        if (!$activeCycle) {
-            return collect();
-        }
-
-        return Candidate::with(['student.user', 'position', 'platforms' => fn($q) => $q->latest()])
-            ->where('election_cycle_id', $activeCycle->id)
-            ->whereIn('status', ['approved', 'active'])
-            ->whereHas('position', function ($q) use ($voterCourseId) {
-                $q->where(fn($sub) => $sub->whereNull('student_department')->orWhere('student_department', '')->orWhere('student_department', $voterCourseId));
-            })
-            ->when($this->selectedPosition !== 'All Positions', fn($query) => $query->whereHas('position', fn($q) => $q->where('name', $this->selectedPosition)))
-            ->get();
+        $courseId = $this->profilePlatformService->getStudentCourseId($this->student);
+        return $this->profilePlatformService->getFilteredCandidates($this->activeCycle, $courseId, $this->selectedPosition);
     }
 
-    // 4. ACTION METHODS
     public function addField($property)
     {
         $this->{$property}[] = '';
@@ -182,8 +137,7 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
             return;
         }
 
-        $request = new UpdateCandidateRequest();
-
+        $request = new \App\Http\Requests\Students\UpdateCandidateRequest();
         $validated = $this->validate(
             array_merge($request->rules(), [
                 'candidate_photo' => 'nullable|image|max:2048',
@@ -214,7 +168,7 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
                 'photo' => $photoPath,
             ]);
 
-            Platform::updateOrCreate(
+            \App\Models\Platform::updateOrCreate(
                 ['candidate_id' => $candidate->id],
                 [
                     'title' => $validated['platform_title'],
@@ -256,11 +210,9 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
         }
     }
 
-    // 5. HELPER / UTILITY METHODS
     public function getAvatarColor($id)
     {
-        $colors = ['#10b981', '#1976D2', '#D32F2F', '#FBC02D', '#8E24AA', '#E64A19'];
-        return $colors[$id % count($colors)];
+        return $this->profilePlatformService->getAvatarColor($id);
     }
 }; ?>
 
@@ -435,7 +387,7 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
             </div>
         @else
             @php
-                $latestCycle = ElectionCycle::latest()->first();
+                $latestCycle = ElectionCycle::where('status', 'active')->first();
             @endphp
 
             @if ($latestCycle && $latestCycle->status === 'completed')
@@ -458,16 +410,15 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
                 </div>
             @elseif ($isFiling && $isStudentOnly)
                 <div class="p-5 text-center my-5 rounded-4">
-<<<<<<< HEAD
-                    <h3 class="text-primary fw-bold">Filing of Candidacy Ongoing</h3>
-                    <p class="text-secondary">The candidates are currently finalizing their platforms. Campaigning
-                        will start soon!</p>
+                    <<<<<<< HEAD <h3 class="text-primary fw-bold">Filing of Candidacy Ongoing</h3>
+                        <p class="text-secondary">The candidates are currently finalizing their platforms. Campaigning
+                            will start soon!</p>
                 </div>
             @elseif ($isCampaign && $isStudentOnly)
                 <div class="p-5 text-center my-5 rounded-4">
                     <h3 class="text-primary fw-bold">Campaign of Candidacy Ongoing</h3>
                     <p class="text-secondary">The candidates are currently campaigning. Voting will start soon!</p>
-=======
+                    =======
                     <div class="p-5 text-center my-5 rounded-4">
                         <h3 class="text-primary fw-bold">Filing of Candidacy Ongoing</h3>
                         <p class="text-secondary">The candidates are currently finalizing their platforms. Campaigning
@@ -481,7 +432,7 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
                         <h3 class="text-primary fw-bold">Campaign of Candidacy Ongoing</h3>
                         <p class="text-secondary">The candidates are currently campaigning. Voting will start soon!</p>
                     </div>
->>>>>>> 4d6096382b3a3fdd28850ef1d2274061908ae07e
+                    >>>>>>> 4d6096382b3a3fdd28850ef1d2274061908ae07e
                 </div>
             @else
                 <div class="p-5 text-center">

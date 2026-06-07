@@ -1,127 +1,159 @@
 <?php
 
-use App\Mail\VoteConfirmed;
 use Livewire\Volt\Component;
 use Livewire\Attributes\{Layout, Title, Computed};
 use App\Traits\{ChecksMaintenance, AuthenticatesLogout};
-use Illuminate\Support\Facades\{Auth, Mail, DB, Session, Log, RateLimiter};
-use App\Models\{Position, Candidate, Vote, ElectionCycle, ActivityLog, Setting};
+use Illuminate\Support\Facades\Auth;
+use App\Services\Student\CastVoteService;
+use App\Models\Vote;
 
 new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component {
     use ChecksMaintenance, AuthenticatesLogout;
 
-    // 1. STATE PROPERTIES
     public $profile_photo_path = '';
     public int $currentStep = 1;
+    public int $currentPositionIndex = 0;
     public array $selections = [];
     public $student;
+    public bool $showNames = false;
 
-    // 2. LIFECYCLE HOOKS
+    private CastVoteService $castVoteService;
+
+    public function boot(CastVoteService $castVoteService)
+    {
+        $this->castVoteService = $castVoteService;
+    }
+
     public function mount()
     {
-        $user = Auth::user()?->load('student');
-        $this->student = $user?->student;
-
-        if ($this->student) {
-            $this->profile_photo_path = $this->student->photo;
+        $user = Auth::user();
+        if (!$user) {
+            return;
         }
 
-        if ($this->isVotingOpen && !$this->hasVoted) {
+        $data = $this->castVoteService->getStudentData($user);
+        $this->student = $data['student'];
+        $this->profile_photo_path = $data['profile_photo_path'];
+
+        if ($this->isVotingOpen) {
+            if ($this->hasVoted) {
+                return;
+            }
+
             foreach ($this->electionData as $position) {
                 $this->selections[$position->id] = null;
+            }
+
+            $existingVotes = Vote::where('student_id', $this->student->id)->where('election_cycle_id', $this->activeCycle->id)->get();
+
+            if ($existingVotes->isNotEmpty()) {
+                foreach ($existingVotes as $vote) {
+                    $this->selections[$vote->position_id] = $vote->candidate_id;
+                }
+
+                $positionIds = $this->electionData->pluck('id')->toArray();
+                $votedIds = $existingVotes->pluck('position_id')->toArray();
+                $remaining = array_values(array_diff($positionIds, $votedIds));
+
+                if (empty($remaining)) {
+                    $this->currentStep = 2;
+                } else {
+                    $firstRemainingId = $remaining[0];
+                    foreach ($this->electionData as $index => $position) {
+                        if ($position->id === $firstRemainingId) {
+                            $this->currentPositionIndex = $index;
+                            break;
+                        }
+                    }
+                }
             }
         }
     }
 
-    // 3. COMPUTED PROPERTIES
     #[Computed]
     public function hasVoted()
     {
-        return $this->student && $this->student->has_voted;
+        return $this->castVoteService->hasStudentVoted($this->student);
     }
 
     #[Computed]
     public function activeCycle()
     {
-        return ElectionCycle::where('status', 'active')->first();
+        return $this->castVoteService->getActiveCycle();
     }
 
     #[Computed]
     public function isVotingOpen()
     {
-        $setting = Setting::where('key', 'allowVoting')->first();
-        $activeCycle = $this->activeCycle;
-
-        if (!$setting || !(bool) $setting->value) {
-            return false;
-        }
-
-        if (!$activeCycle || now()->gt($activeCycle->voting_end)) {
-            return false;
-        }
-
-        return true;
+        return $this->castVoteService->isVotingOpen($this->activeCycle);
     }
 
     #[Computed]
     public function electionData()
     {
-        if (!$this->activeCycle || !$this->isVotingOpen) {
-            return collect();
-        }
-
-        $voterCourseId = auth()->user()->student->course_id;
-
-        return Position::where('election_cycle_id', $this->activeCycle->id)
-            ->where(function ($query) use ($voterCourseId) {
-                $query->whereNull('student_department')->orWhere('student_department', '')->orWhere('student_department', $voterCourseId); // Gamitin ang ID
-            })
-            ->whereHas('candidates', function ($query) use ($voterCourseId) {
-                $query->whereIn('status', ['approved', 'active'])->whereHas('student', function ($q) use ($voterCourseId) {
-                    $q->where('course_id', $voterCourseId);
-                });
-            })
-            ->with([
-                'candidates' => function ($query) use ($voterCourseId) {
-                    $query->whereIn('status', ['approved', 'active'])->with('student');
-                },
-            ])
-            ->orderBy('priority', 'asc')
-            ->get();
+        $courseId = $this->castVoteService->getVoterCourseId();
+        return $this->castVoteService->getElectionData($this->activeCycle, $this->isVotingOpen, $courseId);
     }
 
-    // 4. ACTION METHODS (User Interactions)
-    public function setStep($step)
+    #[Computed]
+    public function currentPosition()
     {
-        if ($step > $this->currentStep) {
-            $unselectedPositions = [];
-            foreach ($this->electionData as $position) {
-                if (!isset($this->selections[$position->id]) || is_null($this->selections[$position->id])) {
-                    $unselectedPositions[] = $position->name;
-                }
-            }
+        return $this->electionData[$this->currentPositionIndex] ?? null;
+    }
 
-            if (count($unselectedPositions) > 0) {
+    #[Computed]
+    public function isLastPosition()
+    {
+        return $this->currentPositionIndex >= count($this->electionData) - 1;
+    }
+
+    public function selectCandidate($positionId, $candidateId)
+    {
+        if ($this->currentStep !== 1) {
+            return;
+        }
+        $this->selections[$positionId] = $candidateId;
+    }
+
+    public function nextPosition()
+    {
+        if ($this->currentStep !== 1) {
+            return;
+        }
+
+        $position = $this->currentPosition;
+        if (!$position) {
+            return;
+        }
+
+        if ($position->candidates->isNotEmpty()) {
+            $candidateId = $this->selections[$position->id] ?? null;
+            if (!$candidateId) {
                 $this->dispatch('swal', [
-                    'title' => 'Incomplete Selection',
-                    'text' => 'Please select a candidate for: ' . implode(', ', $unselectedPositions),
+                    'title' => 'No Selection',
+                    'text' => 'Please select a candidate before proceeding.',
                     'icon' => 'warning',
                 ]);
                 return;
             }
         }
 
+        if ($this->isLastPosition) {
+            $this->currentStep = 2;
+        } else {
+            $this->currentPositionIndex++;
+
+            $this->currentPosition = $this->electionData[$this->currentPositionIndex] ?? null;
+        }
+    }
+
+    public function setStep($step)
+    {
         $this->currentStep = $step;
     }
 
     public function submitVote()
     {
-<<<<<<< HEAD
-        sleep(1);
-=======
-        sleep(2);
->>>>>>> 4d6096382b3a3fdd28850ef1d2274061908ae07e
-
         if (!$this->isVotingOpen || $this->hasVoted) {
             $this->dispatch('swal', [
                 'title' => 'Access Denied',
@@ -131,7 +163,7 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
             return;
         }
 
-        if (empty($this->selections)) {
+        if (empty(array_filter($this->selections))) {
             $this->dispatch('swal', [
                 'title' => 'Empty Ballot',
                 'text' => 'Please select at least one candidate before submitting.',
@@ -141,108 +173,33 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
         }
 
         $user = auth()->user();
+        $cycle = $this->activeCycle;
 
-        $throttleKey = 'submit-vote:' . $user->id;
-        if (RateLimiter::tooManyAttempts($throttleKey, 1)) {
+        $result = $this->castVoteService->submitVote($user, $this->selections, $cycle);
+
+        if (isset($result['error'])) {
             $this->dispatch('swal', [
-                'title' => 'Please Wait',
-                'text' => 'Your vote is currently being processed. Please wait a few seconds.',
-                'icon' => 'warning',
+                'title' => 'Error!',
+                'text' => $result['error'],
+                'icon' => 'error',
             ]);
             return;
         }
 
-        RateLimiter::hit($throttleKey, 10);
+        $this->student = $result['student'];
+        auth()->user()->setRelation('student', $this->student);
 
-        $student = $user->student;
-        $cycle = $this->activeCycle;
-
-        try {
-            DB::transaction(function () use ($student, $cycle, $user) {
-                $lockedStudent = $user->student()->lockForUpdate()->first();
-                if ($lockedStudent->has_voted) {
-                    throw new \Exception('Student has already voted.');
-                }
-                $referenceNumber = 'REF-' . strtoupper(bin2hex(random_bytes(4)));
-                foreach ($this->selections as $positionId => $candidateId) {
-                    Vote::create([
-                        'student_id' => $student->id,
-                        'candidate_id' => $candidateId,
-                        'position_id' => $positionId,
-                        'election_cycle_id' => $cycle->id,
-                        'reference_number' => $referenceNumber,
-                        'voted_at' => now(),
-                    ]);
-
-                    Candidate::where('id', $candidateId)->increment('votes_count');
-                }
-
-                $lockedStudent->update([
-                    'has_voted' => true,
-                    'voted_at' => now(),
-                    'vote_reference' => $referenceNumber,
-                ]);
-
-                $clientIp = request()->header('X-Forwarded-For') ? explode(',', request()->header('X-Forwarded-For'))[0] : request()->ip();
-
-                if ($clientIp === '::1') {
-                    $clientIp = '127.0.0.1';
-                }
-
-                \App\Jobs\LogActivity::dispatch([
-                    'user_id' => $user->id,
-                    'student_id' => $student->id,
-                    'action' => 'Voted',
-                    'description' => "$referenceNumber",
-                    'properties' => json_encode([
-                        'selections' => $this->selections,
-                        'reference' => $referenceNumber,
-                    ]),
-                    'ip_address' => $clientIp,
-                    'user_agent' => request()->userAgent(),
-                ])->onQueue('logs');
-
-                try {
-                    Mail::to($user->email)->send(new VoteConfirmed($student, $cycle, $referenceNumber));
-                } catch (\Exception $e) {
-                    Log::error('Mail Error: ' . $e->getMessage());
-                }
-            });
-
-            $this->student = $student->fresh();
-            auth()->user()->setRelation('student', $this->student);
-
-            $this->hasVoted = true;
-
-            RateLimiter::clear($throttleKey);
-
-<<<<<<< HEAD
-            event(new \App\Events\VoteUpdated($student->course));
-=======
-            event(new \App\Events\VoteUpdated((string) $student->course));
->>>>>>> 4d6096382b3a3fdd28850ef1d2274061908ae07e
-
-            $this->dispatch('swal', [
-                'title' => 'Success!',
-                'text' => 'Your vote has been cast.',
-                'icon' => 'success',
-                'timer' => 4000,
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Vote Error: ' . $e->getMessage());
-            $this->dispatch('swal', [
-                'title' => 'Error!',
-                'text' => 'Something went wrong while casting your vote.',
-                'icon' => 'error',
-            ]);
-        }
+        $this->dispatch('swal', [
+            'title' => 'Success!',
+            'text' => 'Your vote has been cast.',
+            'icon' => 'success',
+            'timer' => 4000,
+        ]);
     }
 
-    // 5. HELPER / UTILITY METHODS
     public function getAvatarColor($id)
     {
-        $colors = ['#10b981', '#3b82f6', '#6366f1', '#f59e0b', '#ef4444'];
-        return $colors[$id % count($colors)];
+        return $this->castVoteService->getAvatarColor($id);
     }
 }; ?>
 
@@ -345,8 +302,24 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
             </div>
 
             @if ($currentStep == 1)
-                <div class="fade-in px-2 py-2" x-transition>
-                    @forelse ($this->electionData as $position)
+                @php
+                    $position = $this->currentPosition;
+                    $totalPositions = count($this->electionData);
+                    $positionNumber = $this->currentPositionIndex + 1;
+                    $hasCandidates = $position && $position->candidates->isNotEmpty();
+                    $hasSelection =
+                        $position && isset($selections[$position->id]) && !is_null($selections[$position->id]);
+                @endphp
+
+                @if ($position)
+                    <div class="fade-in px-2 py-2" wire:key="position-{{ $position->id }}">
+                        <div class="mb-2 text-center">
+                            <span
+                                class="text-[10px] md:text-[11px] font-bold text-gray-400 uppercase tracking-[0.15em]">
+                                Position {{ $positionNumber }} of {{ $totalPositions }}
+                            </span>
+                        </div>
+
                         <div class="mb-6 text-center">
                             <h5
                                 class="text-sm md:text-base font-bold text-gray-800 tracking-tight flex items-center justify-center gap-2 uppercase">
@@ -354,117 +327,121 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                                 {{ $position->name }}
                                 <span class="h-px w-6 md:w-8 bg-[#10b981]"></span>
                             </h5>
-                            @if ($position->candidates->isNotEmpty())
+                            @if ($hasCandidates)
                                 <p class="text-[10px] md:text-[11px] text-gray-500 mt-1 uppercase tracking-[0.1em]">
                                     Select one candidate</p>
                             @endif
                         </div>
 
-                        <div class="grid grid-cols-2 md:flex md:flex-wrap justify-center gap-3 md:gap-6 mb-8">
-                            @forelse ($position->candidates as $candidate)
-                                @php
-                                    $isSelected = ($selections[$position->id] ?? null) == $candidate->id;
-                                @endphp
+                        @if ($hasCandidates)
+                            <div class="grid grid-cols-2 md:flex md:flex-wrap justify-center gap-3 md:gap-6 mb-8">
+                                @foreach ($position->candidates as $candidate)
+                                    @php
+                                        $isSelected = ($selections[$position->id] ?? null) == $candidate->id;
+                                    @endphp
 
-                                <div wire:click="$set('selections.{{ $position->id }}', {{ $candidate->id }})"
-                                    class="relative bg-white rounded-[1.2rem] md:rounded-[2rem] shadow-sm border transition-all duration-300 cursor-pointer overflow-hidden group
-                        {{ $isSelected ? 'border-[#10b981] ring-2 md:ring-4 ring-emerald-50 shadow-xl scale-[1.02] md:scale-[1.05]' : 'hover:shadow-lg hover:border-gray-300' }} w-full md:max-w-[240px]">
+                                    <div wire:click="selectCandidate({{ $position->id }}, {{ $candidate->id }})"
+                                        class="relative bg-white rounded-[1.2rem] md:rounded-[2rem] shadow-sm border transition-all duration-300 cursor-pointer overflow-hidden group
+                                        {{ $isSelected ? 'border-[#10b981] ring-2 md:ring-4 ring-emerald-50 shadow-xl scale-[1.02] md:scale-[1.05]' : 'hover:shadow-lg hover:border-gray-300' }} w-full md:max-w-[240px]">
 
-                                    <div class="flex justify-end p-3 md:p-4 pb-0">
-                                        @if ($isSelected)
-                                            <i class="bi bi-check-circle-fill text-[#10b981] text-lg md:text-xl"></i>
-                                        @else
-                                            <i
-                                                class="bi bi-circle text-gray-200 text-lg md:text-xl group-hover:text-emerald-200 transition-colors"></i>
-                                        @endif
-                                    </div>
-
-                                    <div class="px-5 pb-6 text-center">
-                                        <div class="relative inline-block mb-3 md:mb-4">
-                                            <div
-                                                class="w-16 h-16 md:w-20 md:h-20 rounded-full overflow-hidden border-2 border-white shadow-md mx-auto ring-1 ring-gray-100">
-                                                @if ($candidate->photo)
-                                                    <img src="{{ asset('storage/' . $candidate->photo) }}"
-                                                        class="w-full h-full object-cover">
-                                                @else
-                                                    <div class="w-full h-full flex items-center justify-center text-white text-2xl font-bold"
-                                                        style="background: {{ $this->getAvatarColor($candidate->id) }}">
-                                                        {{ strtoupper(substr($candidate->student?->first_name ?? 'A', 0, 1)) }}
-                                                    </div>
-                                                @endif
-                                            </div>
+                                        <div class="flex justify-end p-3 md:p-4 pb-0">
                                             @if ($isSelected)
-                                                <div
-                                                    class="absolute bottom-0 right-1 bg-[#10b981] text-white w-6 h-6 flex items-center justify-center rounded-full border-2 border-white shadow-sm">
-                                                    <i class="bi bi-check-lg text-[10px]"></i>
-                                                </div>
+                                                <i
+                                                    class="bi bi-check-circle-fill text-[#10b981] text-lg md:text-xl"></i>
+                                            @else
+                                                <i
+                                                    class="bi bi-circle text-gray-200 text-lg md:text-xl group-hover:text-emerald-200 transition-colors"></i>
                                             @endif
                                         </div>
 
-                                        <div class="mb-3">
-                                            <h6
-                                                class="text-[12px] md:text-[13px] font-black leading-tight mb-1 {{ $isSelected ? 'text-emerald-700' : 'text-gray-900' }}">
-                                                {{ $candidate->student->first_name }}<br class="md:hidden">
-                                                {{ $candidate->student->last_name }}
-                                            </h6>
-                                            <p
-                                                class="text-[8px] md:text-[9px] font-black text-[#10b981] uppercase tracking-[0.1em] md:tracking-[0.15em] truncate">
-                                                {{ $candidate->party_name ?? 'No Party Name' }}
-                                            </p>
-                                        </div>
+                                        <div class="px-5 pb-6 text-center">
+                                            <div class="relative inline-block mb-3 md:mb-4">
+                                                <div
+                                                    class="w-16 h-16 md:w-20 md:h-20 rounded-full overflow-hidden border-2 border-white shadow-md mx-auto ring-1 ring-gray-100">
+                                                    @if ($candidate->photo)
+                                                        <img src="{{ asset('storage/' . $candidate->photo) }}"
+                                                            class="w-full h-full object-cover">
+                                                    @else
+                                                        <div class="w-full h-full flex items-center justify-center text-white text-2xl font-bold"
+                                                            style="background: {{ $this->getAvatarColor($candidate->id) }}">
+                                                            {{ strtoupper(substr($candidate->student?->first_name ?? 'A', 0, 1)) }}
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                                @if ($isSelected)
+                                                    <div
+                                                        class="absolute bottom-0 right-1 bg-[#10b981] text-white w-6 h-6 flex items-center justify-center rounded-full border-2 border-white shadow-sm">
+                                                        <i class="bi bi-check-lg text-[10px]"></i>
+                                                    </div>
+                                                @endif
+                                            </div>
 
-                                        <div class="mt-auto px-1 md:px-2">
-                                            <div
-                                                class="w-full py-1.5 md:py-2 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all {{ $isSelected ? 'bg-[#10b981] text-white' : 'bg-gray-100 text-gray-400' }}">
-                                                {{ $isSelected ? 'Selected' : 'Vote' }}
+                                            <div class="mb-3">
+                                                <h6
+                                                    class="text-[12px] md:text-[13px] font-black leading-tight mb-1 {{ $isSelected ? 'text-emerald-700' : 'text-gray-900' }}">
+                                                    {{ $candidate->student->first_name }}<br class="md:hidden">
+                                                    {{ $candidate->student->last_name }}
+                                                </h6>
+                                                <p
+                                                    class="text-[8px] md:text-[9px] font-black text-[#10b981] uppercase tracking-[0.1em] md:tracking-[0.15em] truncate">
+                                                    {{ $candidate->party_name ?? 'No Party Name' }}
+                                                </p>
+                                            </div>
+
+                                            <div class="mt-auto px-1 md:px-2">
+                                                <div
+                                                    class="w-full py-1.5 md:py-2 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all {{ $isSelected ? 'bg-[#10b981] text-white' : 'bg-gray-100 text-gray-400' }}">
+                                                    {{ $isSelected ? 'Selected' : 'Vote' }}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
-                            @empty
+                                @endforeach
+                            </div>
+                        @else
+                            <div class="flex justify-center mb-8">
                                 <div
-                                    class="col-span-2 w-full py-10 flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-[2rem] bg-gray-50/50">
+                                    class="w-full max-w-md py-12 flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-[2rem] bg-gray-50/50">
                                     <i class="bi bi-people text-gray-300 text-4xl mb-2"></i>
                                     <p class="text-gray-400 font-bold text-xs uppercase tracking-widest">No candidates
                                         available</p>
                                 </div>
-                            @endforelse
-                        </div>
-                    @empty
-                        <div class="text-center py-20">
-                            <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gray-50 mb-4">
-                                <i class="bi bi-folder-x text-gray-300 text-4xl"></i>
                             </div>
-                            <h3 class="text-gray-800 font-black text-lg">No Election Data Found</h3>
-                            <p class="text-gray-500 text-sm">There are no positions available for your department at
-                                this time.</p>
-                        </div>
-                    @endforelse
+                        @endif
 
-                    @if ($this->electionData->isNotEmpty())
-                        <div class="mt-12 flex justify-end pb-10 mb-3 md:mb-4">
-                            <button wire:click="setStep(2)" wire:loading.attr="disabled" wire:target="setStep(2)"
-                                class="group relative inline-flex items-center justify-center px-4 md:px-6 py-1.5 md:py-2.5 font-bold text-white transition-all duration-200 bg-[#10b981] rounded-full shadow-lg hover:bg-emerald-600 active:scale-95 disabled:opacity-75">
+                        <div class="mt-8 flex justify-end pb-10 mb-3 md:mb-4">
+                            <button wire:click="nextPosition" wire:loading.attr="disabled" wire:target="nextPosition"
+                                class="group relative inline-flex items-center justify-center px-4 md:px-6 py-1.5 md:py-2.5 font-bold text-white transition-all duration-200 bg-[#10b981] rounded-full shadow-lg hover:bg-emerald-600 active:scale-95 disabled:opacity-75 {{ !$hasSelection && $hasCandidates ? 'opacity-50 cursor-not-allowed' : '' }}"
+                                {{ !$hasSelection && $hasCandidates ? 'disabled' : '' }}>
 
-                                <span wire:loading.remove wire:target="setStep(2)"
+                                <span wire:loading.remove wire:target="nextPosition"
                                     class="flex items-center gap-1.5 md:gap-2 uppercase tracking-wider text-[9px] md:text-[11px]">
-                                    Review Selections
+                                    {{ $this->isLastPosition ? 'Review Selections' : 'Next Position' }}
                                     <i
                                         class="bi bi-arrow-right group-hover:translate-x-1 transition-transform text-[10px] md:text-xs"></i>
                                 </span>
 
-                                <span wire:loading wire:target="setStep(2)"
+                                <span wire:loading wire:target="nextPosition"
                                     class="flex items-center gap-1.5 md:gap-2 uppercase tracking-wider text-[9px] md:text-[11px]">
                                     <span class="spinner-border spinner-border-sm"></span>
-                                    Preparing Review...
+                                    Saving...
                                 </span>
                             </button>
                         </div>
-                    @endif
-                </div>
+                    </div>
+                @else
+                    <div class="text-center py-20">
+                        <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gray-50 mb-4">
+                            <i class="bi bi-folder-x text-gray-300 text-4xl"></i>
+                        </div>
+                        <h3 class="text-gray-800 font-black text-lg">No Election Data Found</h3>
+                        <p class="text-gray-500 text-sm">There are no positions available for your department at
+                            this time.</p>
+                    </div>
+                @endif
             @elseif ($currentStep == 2)
-                <div class="fade-in px-2 py-4">
-                    <div class="mb-8 text-center">
+                <div class="fade-in px-2 py-3">
+                    <div class="mb-3 text-center">
                         <h5
                             class="text-xl font-bold text-gray-800 tracking-tight flex items-center justify-center gap-2">
                             <span class="h-px w-8 bg-[#10b981]"></span>
@@ -473,7 +450,7 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                         </h5>
                     </div>
 
-                    <div class="grid grid-cols-2 md:flex md:flex-wrap justify-center gap-3 md:gap-6 mb-12">
+                    <div class="grid grid-cols-2 md:flex md:flex-wrap justify-center gap-3 md:gap-4 mb-12">
                         @forelse ($this->electionData as $position)
                             @php
                                 $candidate = $position->candidates->firstWhere(
@@ -484,41 +461,13 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
 
                             @if ($candidate)
                                 <div
-                                    class="relative bg-white rounded-[1.5rem] md:rounded-[2rem] shadow-md border border-emerald-100 overflow-hidden w-full md:max-w-[240px] p-4 md:p-6 text-center transition-all">
-                                    <div class="absolute top-0 left-0 right-0 bg-emerald-50 py-1.5 px-1">
-                                        <span
-                                            class="text-[8px] md:text-[9px] font-black text-emerald-700 uppercase tracking-widest truncate block">
-                                            {{ $position->name }}
-                                        </span>
-                                    </div>
-
-                                    <div class="mt-4">
-                                        <div
-                                            class="w-12 h-12 md:w-16 md:h-16 rounded-full overflow-hidden border-2 border-white shadow-md mx-auto ring-1 ring-emerald-100 mb-3">
-                                            @if ($candidate->photo)
-                                                <img src="{{ asset('storage/' . $candidate->photo) }}"
-                                                    class="w-full h-full object-cover">
-                                            @else
-                                                <div class="w-full h-full flex items-center justify-center text-white text-lg md:text-xl font-bold"
-                                                    style="background: {{ $this->getAvatarColor($candidate->id) }}">
-                                                    {{ strtoupper(substr($candidate->student?->first_name ?? 'A', 0, 1)) }}
-                                                </div>
-                                            @endif
-                                        </div>
-
-                                        <h6 class="text-[11px] md:text-sm font-black text-gray-900 leading-tight mb-1">
+                                    class="relative bg-white rounded-[1.5rem] md:rounded-[rem] shadow-md border border-emerald-100 overflow-hidden w-full md:max-w-[240px] p-4 md:p-4 text-center transition-all">
+                                    <div>
+                                        <h6
+                                            class="transition-all text-[11px] md:text-sm font-black text-gray-900 leading-tight mb-1 {{ $showNames ? '' : 'blur-[4px] select-none' }}">
                                             {{ $candidate->student->first_name }}<br class="md:hidden">
                                             {{ $candidate->student->last_name }}
                                         </h6>
-                                        <p
-                                            class="text-[8px] md:text-[9px] font-bold text-[#10b981] uppercase tracking-[0.1em] mb-3 truncate">
-                                            {{ $candidate->party_name ?? 'No Party Name' }}
-                                        </p>
-
-                                        <div
-                                            class="inline-flex items-center gap-1 px-3 md:px-4 py-1 rounded-full bg-emerald-500 text-white text-[8px] md:text-[9px] font-black uppercase tracking-tighter shadow-sm">
-                                            <i class="bi bi-check2-all"></i> Selected
-                                        </div>
                                     </div>
                                 </div>
                             @else
@@ -541,25 +490,24 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                         @endforelse
                     </div>
 
-                    <div class="flex items-center justify-between mt-4 pb-10">
-                        <button wire:click="setStep(1)"
-                            class="group relative inline-flex items-center justify-center px-4 md:px-6 py-1.5 md:py-2.5 font-bold text-emerald-600 transition-all duration-200 bg-emerald-50 rounded-full focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm hover:bg-emerald-100 active:scale-95">
-                            <span
-                                class="flex items-center gap-1.5 md:gap-2 uppercase tracking-wider text-[9px] md:text-[11px]">
-                                <i
-                                    class="bi bi-arrow-left group-hover:-translate-x-1 transition-transform text-[10px] md:text-xs"></i>
-                                <span class="xs:hidden">Back</span>
-                            </span>
+                    <div class="mt-8 flex items-center justify-end gap-4 pb-10 mb-3 md:mb-4">
+                        <button wire:click="$toggle('showNames')"
+                            class="flex items-center gap-2 px-3 py-2 text-[10px] font-bold text-gray-500 hover:text-[#10b981] transition-colors uppercase tracking-widest"
+                            title="{{ $showNames ? 'Hide Names' : 'Show Names' }}">
+                            <i class="bi {{ $showNames ? 'bi-eye-slash' : 'bi-eye' }} text-lg"></i>
+                            <span>{{ $showNames ? 'Hide' : 'Show' }}</span>
                         </button>
 
                         <button wire:click="setStep(3)" wire:loading.attr="disabled" wire:target="setStep(3)"
                             class="group relative inline-flex items-center justify-center px-4 md:px-6 py-1.5 md:py-2.5 font-bold text-white transition-all duration-200 bg-[#10b981] rounded-full shadow-lg hover:bg-emerald-600 active:scale-95 disabled:opacity-75">
+
                             <span wire:loading.remove wire:target="setStep(3)"
                                 class="flex items-center gap-1.5 md:gap-2 uppercase tracking-wider text-[9px] md:text-[11px]">
                                 Confirm
                                 <i
                                     class="bi bi-shield-check group-hover:scale-110 transition-transform text-[10px] md:text-xs"></i>
                             </span>
+
                             <span wire:loading wire:target="setStep(3)"
                                 class="flex items-center gap-1.5 md:gap-2 uppercase tracking-wider text-[9px] md:text-[11px]">
                                 <span class="spinner-border spinner-border-sm"></span>
@@ -602,24 +550,24 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                             window.addEventListener('offline', () => isOffline = true)">
 
                                 <button wire:click="submitVote" wire:loading.attr="disabled" :disabled="isOffline"
-                                    class="w-full xs:w-auto group relative inline-flex items-center justify-center px-6 py-3 md:py-2.5 font-bold text-white transition-all duration-200 rounded-full shadow-lg active:scale-95 disabled:opacity-75"
+                                    class="w-full xs:w-auto group relative inline-flex items-center justify-center px-6 py-3 md:py-2.5 font-bold text-white transition-all duration-200 rounded-full shadow-lg active:scale-95 disabled:opacity-75 min-h-[44px] md:min-h-[42px]"
                                     :class="isOffline ? 'bg-secondary cursor-not-allowed' : 'bg-[#10b981] hover:bg-emerald-600'">
 
                                     <span x-show="!isOffline" wire:loading.remove wire:target="submitVote"
-                                        class="flex items-center gap-2 uppercase tracking-wider text-[10px] md:text-[11px]">
+                                        class="flex items-center gap-2 uppercase tracking-wider text-[10px] md:text-[11px] h-full">
                                         Cast Official Vote
                                         <i
                                             class="bi bi-send-fill group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform text-xs"></i>
                                     </span>
 
                                     <span x-show="isOffline" x-cloak
-                                        class="flex items-center gap-2 uppercase tracking-wider text-[10px] md:text-[11px]">
+                                        class="flex items-center gap-2 uppercase tracking-wider text-[10px] md:text-[11px] h-full">
                                         <i class="bi bi-wifi-off text-xs"></i>
-                                        Offline: Check Connection
+                                        No Internet
                                     </span>
 
                                     <span wire:loading wire:target="submitVote"
-                                        class="flex items-center gap-2 uppercase tracking-wider text-[10px] md:text-[11px]">
+                                        class="flex items-center gap-2 uppercase tracking-wider text-[10px] md:text-[11px] h-full">
                                         <span class="spinner-border spinner-border-sm" role="status"
                                             aria-hidden="true"></span>
                                         Recording...

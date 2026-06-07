@@ -194,8 +194,7 @@ new #[Layout('layouts.admin')] #[Title('User Activity')] class extends Component
                                         {{ $log->student ? $log->student->first_name . ' ' . $log->student->last_name : $log->user->name ?? 'System' }}
                                     </div>
                                 </div>
-                                <span
-                                    class="badge {{ $badgeClass }}">{{ $log->action }}</span>
+                                <span class="badge {{ $badgeClass }}">{{ $log->action }}</span>
                             </div>
 
                             <p class="text-muted small mb-2">{{ $log->description }}</p>

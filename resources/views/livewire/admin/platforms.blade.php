@@ -135,11 +135,11 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                 <table class="table table-hover mb-0">
                     <thead class="bg-light">
                         <tr>
-                            <th class="ps-4">Candidate Name & Party Name</th>
-                            <th>Platform Title</th>
-                            <th>Status</th>
-                            <th>Submitted</th>
-                            <th class="text-end pe-4">Actions</th>
+                            <th class="p-3">Candidate Name & Party Name</th>
+                            <th class="p-3">Platform Title</th>
+                            <th class="p-3">Status</th>
+                            <th class="p-3">Submitted</th>
+                            <th class="p-3 text-end">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="align-middle">
@@ -275,11 +275,7 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                                         <img src="{{ asset('storage/' . $platform->candidate->photo) }}"
                                             class="w-full h-full object-cover">
                                     @else
-<<<<<<< HEAD
-                                        {{ strtoupper(substr($platform->candidate->student?->first_name ?? 'A', 0, 1)) }}{{ strtoupper(substr($platform->candidate->student?->last_name ?? '', 0, 1)) }}
-=======
-                                        {{ strtoupper(substr($platform->candidate->student?->first_name ?? 'A', 0, 1)) }}{{ strtoupper(substr($candidate->student?->last_name ?? '', 0, 1)) }}
->>>>>>> 4d6096382b3a3fdd28850ef1d2274061908ae07e
+                                        {{ strtoupper(substr($platform->candidate->student?->first_name ?? 'A', 0, 1)) }}{{ strtoupper(substr($platform->candidate->student?->last_name ?? '', 0, 1)) }}======={{ strtoupper(substr($platform->candidate->student?->first_name ?? 'A', 0, 1)) }}{{ strtoupper(substr($candidate->student?->last_name ?? '', 0, 1)) }}>
                                     @endif
                                 </div>
                                 <div>
@@ -390,11 +386,7 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                                     <img src="{{ asset('storage/' . $platform->candidate->photo) }}"
                                         class="w-full h-full object-cover">
                                 @else
-<<<<<<< HEAD
                                     {{ strtoupper(substr($platform->candidate->student?->first_name ?? 'A', 0, 1)) }}{{ strtoupper(substr($platform->candidate->student?->last_name ?? '', 0, 1)) }}
-=======
-                                    {{ strtoupper(substr($platform->candidate->student?->first_name ?? 'A', 0, 1)) }}{{ strtoupper(substr($candidate->student?->last_name ?? '', 0, 1)) }}
->>>>>>> 4d6096382b3a3fdd28850ef1d2274061908ae07e
                                 @endif
                             </div>
                             <div>
