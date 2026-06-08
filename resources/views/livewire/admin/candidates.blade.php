@@ -6,7 +6,7 @@ use Livewire\{WithFileUploads, WithPagination};
 use App\Http\Requests\Admin\UpdateCandidateRequest;
 use Livewire\Attributes\{Layout, Title, Url, Computed};
 use Illuminate\Support\Facades\{Auth, Session, DB, Storage};
-use App\Models\{Student, User, Candidate, Position, ElectionCycle, Platform, Course};
+use App\Models\{Student, User, Candidate, Position, ElectionCycle, Platform};
 
 new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class extends Component {
     use WithFileUploads, WithPagination, AuthenticatesLogout;
@@ -247,7 +247,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                             'student_department' => $student->block->course_id ?? null,
                         ],
                         [
-                            'max_candidate' => 10,
+                            'max_candidates' => 10,
                             'max_winners' => 1,
                             'priority' => 1,
                             'is_active' => true,
@@ -321,9 +321,10 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
         }
     }
 
-    public function getAvatarColor()
+    public function getAvatarColor($id)
     {
-        return '#3b82f6';
+        $colors = ['#10b981', '#3b82f6', '#6366f1', '#f59e0b', '#ef4444'];
+        return $colors[$id % count($colors)];
     }
 }; ?>
 

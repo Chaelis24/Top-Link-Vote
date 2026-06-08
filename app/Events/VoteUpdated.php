@@ -21,7 +21,7 @@ class VoteUpdated implements ShouldBroadcast
      */
     public function __construct(Course $course)
     {
-        $this->courseName = strtoupper($course->name);
+        $this->courseName = $course->name;
     }
 
     /**

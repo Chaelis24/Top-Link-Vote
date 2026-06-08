@@ -72,6 +72,8 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
             'status' => 'approved',
         ]);
 
+        $this->dispatch('close-modal', id: 'viewPlatformModal');
+
         $this->dispatch('swal', [
             'title' => 'Platform Published!',
             'text' => 'The candidate profile and platform are now live.',
@@ -107,7 +109,8 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
 
     public function getAvatarColor($candidateId)
     {
-        return '#3b82f6';
+        $colors = ['#10b981', '#3b82f6', '#6366f1', '#f59e0b', '#ef4444'];
+        return $colors[$candidateId % count($colors)];
     }
 }; ?>
 
@@ -283,7 +286,7 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                                         <img src="{{ asset('storage/' . $platform->candidate->photo) }}"
                                             class="w-full h-full object-cover">
                                     @else
-                                        {{ strtoupper(substr($platform->candidate->student?->first_name ?? 'A', 0, 1)) }}{{ strtoupper(substr($platform->candidate->student?->last_name ?? '', 0, 1)) }}======={{ strtoupper(substr($platform->candidate->student?->first_name ?? 'A', 0, 1)) }}{{ strtoupper(substr($candidate->student?->last_name ?? '', 0, 1)) }}>
+                                        {{ strtoupper(substr($platform->candidate->student?->first_name ?? 'A', 0, 1)) }}{{ strtoupper(substr($platform->candidate->student?->last_name ?? '', 0, 1)) }}>
                                     @endif
                                 </div>
                                 <div>
@@ -389,12 +392,12 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                         <div
                             class="p-3 p-md-4 bg-white border-bottom d-flex flex-column flex-md-row align-items-center gap-2 gap-md-4 text-center text-md-start">
                             <div class="profile-avatar-sm shadow-sm text-white flex-shrink-0 d-flex align-items-center justify-content-center"
-                                style="background: {{ $this->getAvatarColor($platform->candidate->id) }}; ; width: 60px; height: 60px; border-radius: 50%; overflow: hidden;">
-                                @if ($platform->candidate?->photo)
-                                    <img src="{{ asset('storage/' . $platform->candidate->photo) }}"
+                                style="background: {{ $this->getAvatarColor($selectedPlatform->candidate->id) }}; ; width: 60px; height: 60px; border-radius: 50%; overflow: hidden;">
+                                @if ($selectedPlatform->candidate?->photo)
+                                    <img src="{{ asset('storage/' . $selectedPlatform->candidate->photo) }}"
                                         class="w-full h-full object-cover">
                                 @else
-                                    {{ strtoupper(substr($platform->candidate->student?->first_name ?? 'A', 0, 1)) }}{{ strtoupper(substr($platform->candidate->student?->last_name ?? '', 0, 1)) }}
+                                    {{ strtoupper(substr($selectedPlatform->candidate->student?->first_name ?? 'A', 0, 1)) }}{{ strtoupper(substr($selectedPlatform->candidate->student?->last_name ?? '', 0, 1)) }}
                                 @endif
                             </div>
                             <div>
@@ -492,7 +495,7 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                         </x-button>
                         @if ($selectedPlatform && $selectedPlatform->status === 'pending')
                             <x-button type="button" variant="glow"
-                                wire:click="publishPlatform({{ $selectedPlatform->id }})" data-bs-dismiss="modal"
+                                wire:click="publishPlatform({{ $selectedPlatform->id }})"
                                 wire:target="publishPlatform"
                                 style="height: 28px; width: 90px; font-size: 0.75rem; padding: 0 10px;">
 

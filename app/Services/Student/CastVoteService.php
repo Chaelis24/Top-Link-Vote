@@ -5,7 +5,7 @@ namespace App\Services\Student;
 use App\Mail\VoteConfirmed;
 use App\Models\{Setting, ElectionCycle, Position, Candidate, Vote, User};
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\{DB, Mail, Log, RateLimiter};
+use Illuminate\Support\Facades\{Cache, DB, Mail, Log, RateLimiter};
 use Illuminate\Support\Facades\Auth;
 
 class CastVoteService
@@ -98,9 +98,14 @@ class CastVoteService
                 $referenceNumber = 'REF-' . strtoupper(bin2hex(random_bytes(4)));
 
                 foreach ($selections as $positionId => $candidateId) {
+                    $candidate = Candidate::findOrFail($candidateId);
+                    if ((int) $candidate->position_id !== (int) $positionId) {
+                        throw new \Exception('Invalid candidate selection for this position.');
+                    }
+
                     Vote::updateOrCreate(
                         [
-                            'student_id' => $student->id,
+                            'student_id' => $lockedStudent->id,
                             'position_id' => $positionId,
                             'election_cycle_id' => $cycle->id,
                         ],
@@ -130,19 +135,21 @@ class CastVoteService
 
                 \App\Jobs\LogActivity::dispatch([
                     'user_id' => $user->id,
-                    'student_id' => $student->id,
+                    'student_id' => $lockedStudent->id,
                     'action' => 'Voted',
                     'description' => $referenceNumber,
-                    'properties' => json_encode([
+                    'properties' => [
                         'selections' => $selections,
                         'reference' => $referenceNumber,
-                    ]),
+                    ],
                     'ip_address' => $clientIp,
                     'user_agent' => request()->userAgent(),
                 ])->onQueue('logs');
 
+                $this->forgetTallyCache($cycle, $lockedStudent->course_id);
+
                 try {
-                    Mail::to($user->email)->send(new VoteConfirmed($student, $cycle, $referenceNumber));
+                    Mail::to($user->email)->send(new VoteConfirmed($lockedStudent, $cycle, $referenceNumber));
                 } catch (\Exception $e) {
                     Log::error('Mail Error: ' . $e->getMessage());
                 }
@@ -152,7 +159,9 @@ class CastVoteService
 
             RateLimiter::clear($throttleKey);
 
-            event(new \App\Events\VoteUpdated($student->course));
+            if ($lockedStudent->course) {
+                event(new \App\Events\VoteUpdated($lockedStudent->course));
+            }
 
             return ['success' => true, 'reference' => $referenceNumber, 'student' => $student->fresh()];
         } catch (\Exception $e) {
@@ -163,19 +172,10 @@ class CastVoteService
         }
     }
 
-    public function saveVote($student, int $positionId, int $candidateId, ElectionCycle $cycle): void
+    private function forgetTallyCache(ElectionCycle $cycle, ?int $courseId): void
     {
-        Vote::updateOrCreate(
-            [
-                'student_id' => $student->id,
-                'position_id' => $positionId,
-                'election_cycle_id' => $cycle->id,
-            ],
-            [
-                'candidate_id' => $candidateId,
-                'voted_at' => now(),
-            ]
-        );
+        $cacheKey = "tally_data_cycle_{$cycle->id}_course_{$courseId}";
+        Cache::forget($cacheKey);
     }
 
     public function getAvatarColor(int $id): string

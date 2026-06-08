@@ -16,12 +16,14 @@ class SendElectionStartedEmail implements ShouldQueue
 
     public function handle(): void
     {
-        $students = Student::where('status', 'active')->with('user')->get();
-
-        foreach ($students as $student) {
-            if ($student->user) {
-                $student->user->notify(new ElectionAlert('started'));
-            }
-        }
+        Student::where('status', 'active')
+            ->with('user')
+            ->chunk(200, function ($students) {
+                foreach ($students as $student) {
+                    if ($student->user) {
+                        $student->user->notify(new ElectionAlert('started'));
+                    }
+                }
+            });
     }
 }

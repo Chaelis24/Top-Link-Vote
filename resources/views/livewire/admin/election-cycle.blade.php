@@ -244,8 +244,20 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                 'icon' => 'success',
             ]);
 
-            if ($setting === 'maintenanceMode') {
+            if ($setting === 'maintenanceMode' && $this->maintenanceMode) {
+                if (Auth::user() && Auth::user()->hasAnyRole(['student', 'candidate'])) {
+                    Cache::forget('maintenanceMode');
+                    Auth::logout();
+                    session()->invalidate();
+                    session()->regenerateToken();
+                    $this->redirect('/');
+                    return;
+                }
+            }
+
+            if ($setting === 'maintenanceMode' && !$this->maintenanceMode) {
                 Cache::forget('maintenanceMode');
+                $this->dispatch('maintenance-updated');
                 return;
             }
         }
@@ -698,7 +710,7 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                         <i class="bi bi-sliders me-2"></i>Live Controls
                     </h6>
                     <div wire:poll.5s="checkAutoOff">
-                        @foreach ([['key' => 'allowVoting', 'label' => 'Allow Voting', 'desc' => 'Open the voting portal for students'], ['key' => 'showResults', 'label' => 'Show Election Results', 'desc' => 'Display the tally to the student dashboard'], ['key' => 'maintenanceMode', 'label' => 'Maintenance', 'desc' => 'Instantly freeze site activity']] as $setting)
+                        @foreach ([['key' => 'allowVoting', 'label' => 'Allow Voting', 'desc' => 'Open the voting portal for students'], ['key' => 'showResults', 'label' => 'Show Election Results', 'desc' => 'Display the tally to the student dashboard'], ['key' => 'maintenanceMode', 'label' => 'Maintenance', 'desc' => 'Freeze site activity']] as $setting)
                             <div
                                 class="control-item d-flex justify-content-between align-items-center mb-2 mb-md-3 p-2 rounded-3 hover-bg-light border shadow-xs">
                                 <div class="pe-2">

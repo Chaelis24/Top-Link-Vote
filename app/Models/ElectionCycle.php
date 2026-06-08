@@ -23,6 +23,7 @@ class ElectionCycle extends Model
         'voting_end',
         'results_date',
         'status',
+        'notifications_sent',
     ];
 
     protected $casts = [

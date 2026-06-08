@@ -48,12 +48,20 @@
                 if (typeof Livewire !== 'undefined') {
                     Livewire.on("swal", (data) => {
                         const options = data[0];
+                        const isMobile = window.innerWidth < 480;
                         Swal.fire({
                             title: options.title || 'Notification',
                             text: options.text || '',
                             icon: options.icon || 'info',
+                            width: isMobile ? '90%' : (options.width || '400px'),
                             confirmButtonColor: options.icon === 'error' ? '#ef4444' : '#10b981',
-                            confirmButtonText: options.confirmButtonText || "Understood",
+                            confirmButtonText: options.confirmButtonText || "OK",
+                            padding: options.padding || '1rem',
+                            customClass: {
+                                title: isMobile ? 'fs-6' : 'fs-5',
+                                htmlContainer: isMobile ? 'fs-6' : 'fs-6',
+                                confirmButtonText: 'btn btn-sm px-4'
+                            }
                         });
                     });
 
@@ -78,15 +86,23 @@
                 if (typeof Echo !== 'undefined') {
                     Echo.private(`user.{{ auth()->id() }}`)
                         .listen('.account.duplicate-login', (e) => {
+                            console.log("Duplicate login detected!", e);
+                            const isMobile = window.innerWidth < 480;
                             Swal.fire({
                                 title: "Security Alert",
                                 html: "Someone else just logged into your account. You will be logged out in <b></b> seconds.",
                                 icon: "warning",
+                                width: isMobile ? '90%' : '400px',
                                 timer: 5000,
                                 timerProgressBar: true,
                                 confirmButtonText: "Log out now",
                                 allowOutsideClick: false,
                                 allowEscapeKey: false,
+                                customClass: {
+                                    title: isMobile ? 'fs-6' : 'fs-5',
+                                    htmlContainer: isMobile ? 'fs-6' : 'fs-6',
+                                    confirmButton: 'btn btn-sm btn-danger px-4'
+                                },
                                 didOpen: () => {
                                     const b = Swal.getHtmlContainer().querySelector('b');
                                     const timerInterval = setInterval(() => {
@@ -98,7 +114,8 @@
                                     Swal.getPopup().addEventListener('hidden', () => {
                                         clearInterval(timerInterval);
                                     });
-                                }
+                                },
+                                willClose: () => {}
                             }).then((result) => {
                                 window.location.href = "{{ route('force.logout') }}";
                             });
@@ -109,13 +126,20 @@
                         .listen('.App\\Events\\MaintenanceModeToggled', (e) => {
                             console.log('Maintenance Signal Received:', e);
                             if (e.isMaintenance) {
+                                const isMobile = window.innerWidth < 480;
                                 Swal.fire({
                                     title: "System Maintenance",
                                     text: "The voting system is currently undergoing maintenance. Please try again later.",
                                     icon: "info",
+                                    width: isMobile ? '90%' : '400px',
                                     confirmButtonText: "Understood",
                                     allowOutsideClick: false,
-                                    allowEscapeKey: false
+                                    allowEscapeKey: false,
+                                    customClass: {
+                                        title: isMobile ? 'fs-6' : 'fs-5',
+                                        htmlContainer: isMobile ? 'fs-6' : 'fs-6',
+                                        confirmButton: 'btn btn-sm btn-danger px-4'
+                                    },
                                 }).then((result) => {
                                     window.location.href = "{{ route('force.logout') }}";
                                 });

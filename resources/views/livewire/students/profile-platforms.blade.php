@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\{Auth, Storage, Log};
 use App\Services\Student\ProfilePlatformService;
 use App\Models\{ElectionCycle, Platform, Student, Candidate, Block, Course};
 
-new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Component {
+new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
     use ChecksMaintenance, AuthenticatesLogout, WithFileUploads;
 
     #[Url]
@@ -181,13 +181,13 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
 
             \App\Jobs\LogActivity::dispatch([
                 'user_id' => Auth::id(),
-                'student_id' => $candidate->id,
+                'student_id' => Auth::user()->student->id,
                 'action' => 'Update Platform',
                 'description' => 'Candidate updated their profile and platform.',
-                'properties' => json_encode([
+                'properties' => [
                     'candidate_id' => $candidate->id,
                     'party' => $validated['party_name'],
-                ]),
+                ],
                 'ip_address' => request()->ip(),
                 'user_agent' => request()->userAgent(),
             ])->onQueue('logs');
@@ -294,7 +294,7 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
                 @endforeach
             </div>
 
-            <div class="row g-2 g-md-4">
+            <div class="row g-2 g-md-4 mb-12 mb-md-0">
                 @forelse($this->filteredCandidates as $candidate)
                     <div class="col-6 col-md-6 col-lg-4 col-xl-3 mb-2 mb-md-3"
                         wire:key="candidate-box-{{ $selectedPosition }}-{{ $candidate->id }}">
@@ -307,7 +307,7 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
                         @endphp
 
                         <div
-                            class="position-relative bg-white rounded-5 shadow-sm border transition-all hover-translate-y hover-shadow-lg p-2 p-md-3 h-100 d-flex flex-column align-items-center text-center group-card {{ !$isApproved ? 'opacity-75' : '' }}">
+                            class="position-relative bg-white rounded-5 shadow-sm border transition-all hover-translate-y hover-shadow-lg p-2 p-md-3 h-100 d-flex flex-column align-items-center text-center group-card mb-0 mb-md-0 {{ !$isApproved ? 'opacity-75' : '' }}">
 
                             <div
                                 class="position-absolute top-0 start-0 w-100 p-2 p-md-3 d-flex justify-content-between align-items-center">
@@ -419,29 +419,16 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
                 </div>
             @elseif ($isFiling && $isStudentOnly)
                 <div class="p-5 text-center my-5 rounded-4">
-                    <<<<<<< HEAD <h3 class="text-primary fw-bold">Filing of Candidacy Ongoing</h3>
+                    <div class="p-5 text-center my-5 rounded-4">
+                        <h3 class="text-primary fw-bold">Filing of Candidacy Ongoing</h3>
                         <p class="text-secondary">The candidates are currently finalizing their platforms. Campaigning
                             will start soon!</p>
+                    </div>
                 </div>
             @elseif ($isCampaign && $isStudentOnly)
                 <div class="p-5 text-center my-5 rounded-4">
                     <h3 class="text-primary fw-bold">Campaign of Candidacy Ongoing</h3>
                     <p class="text-secondary">The candidates are currently campaigning. Voting will start soon!</p>
-                    =======
-                    <div class="p-5 text-center my-5 rounded-4">
-                        <h3 class="text-primary fw-bold">Filing of Candidacy Ongoing</h3>
-                        <p class="text-secondary">The candidates are currently finalizing their platforms. Campaigning
-                            will
-                            start soon!</p>
-                    </div>
-                </div>
-            @elseif ($isCampaign && $isStudentOnly)
-                <div class="p-5 text-center my-5 rounded-4">
-                    <div class="p-5 text-center my-5 rounded-4">
-                        <h3 class="text-primary fw-bold">Campaign of Candidacy Ongoing</h3>
-                        <p class="text-secondary">The candidates are currently campaigning. Voting will start soon!</p>
-                    </div>
-                    >>>>>>> 4d6096382b3a3fdd28850ef1d2274061908ae07e
                 </div>
             @else
                 <div class="p-5 text-center">
@@ -510,7 +497,6 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
 
                     <div class="modal-body p-3 pt-4">
                         <div class="tab-content">
-
                             <div class="tab-pane fade show active" id="profile-panel-{{ $candidate->id }}"
                                 role="tabpanel">
                                 <div class="row g-4 align-items-center">
@@ -518,7 +504,7 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
                                     <div class="col-12 col-md-4 text-center border-md-end pe-md-4">
                                         <div class="position-relative d-inline-block mb-3">
                                             <div class="rounded-circle mx-auto shadow border border-3 border-white"
-                                                style="width:90px; height:90px; overflow:hidden; background: {{ $this->getAvatarColor($candidate->id) }}">
+                                                style="width:70px; height:70px; overflow:hidden; background: {{ $this->getAvatarColor($candidate->id) }}">
                                                 @if ($candidate->photo)
                                                     <img src="{{ asset('storage/' . $candidate->photo) }}"
                                                         class="w-100 h-100 object-fit-cover">
@@ -531,12 +517,12 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
                                             </div>
                                         </div>
 
-                                        <h5 class="fw-black text-dark mb-1"
-                                            style="font-size: 1rem; letter-spacing: -0.3px;">
+                                        <h5 class="fw-black text-primary mb-1"
+                                            style="font-size: 1rem; letter-spacing: 0.5px;">
                                             {{ $candidate->student?->first_name }}
                                             {{ $candidate->student?->middle_name ? substr($candidate->student->middle_name, 0, 1) . '.' : '' }}
                                             {{ $candidate->student?->last_name }}
-                                            {{ $formattedSuffix ?? 'asd' }}
+                                            {{ $formattedSuffix ?? '' }}
                                         </h5>
 
                                         <p class="text-muted fw-semibold small mb-2" style="font-size: 0.75rem;">
@@ -554,7 +540,7 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
 
                                     <div class="col-12 col-md-8 ps-md-4">
                                         <div class="mb-3">
-                                            <h6 class="text-uppercase small fw-black mb-2 d-flex align-items-center text-emerald-600"
+                                            <h6 class="text-uppercase small fw-semibold mb-2 d-flex align-items-center text-emerald-600"
                                                 style="font-size: 0.75rem; letter-spacing: 0.5px;">
                                                 <i class="bi bi-trophy me-2"></i> Achievements
                                             </h6>
@@ -570,23 +556,22 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
                                         </div>
 
                                         <div class="row g-2 pt-2 border-top">
-                                            <div class="col-6">
+                                            <div class="col-4">
                                                 <div
                                                     class="bg-light p-2 rounded-3 text-center shadow-sm h-100 d-flex flex-column justify-content-center">
                                                     <span class="fw-black text-uppercase d-block mb-1 text-emerald-600"
-                                                        style="font-size: 0.65rem; letter-spacing: 0.5px;">General
-                                                        Weighted Average</span>
+                                                        style="font-size: 0.65rem; letter-spacing: 0.5px;">GWA</span>
                                                     <span class="text-dark fw-bold" style="font-size: 0.95rem;">
                                                         <i class="bi bi-star-fill text-warning me-1"
                                                             style="font-size: 0.8rem;"></i>{{ $candidate->average_grade ?: 'N/A' }}
                                                     </span>
                                                 </div>
                                             </div>
-                                            <div class="col-6">
+                                            <div class="col-4">
                                                 <div
                                                     class="bg-light p-2 rounded-3 text-center shadow-sm h-100 d-flex flex-column justify-content-center">
                                                     <span class="fw-black text-uppercase d-block mb-1 text-emerald-600"
-                                                        style="font-size: 0.65rem; letter-spacing: 0.5px;">Previous
+                                                        style="font-size: 0.65rem; letter-spacing: 0.5px;">Prev.
                                                         Project</span>
                                                     <span
                                                         class="text-dark fw-semibold small px-1 text-truncate d-block"
@@ -599,6 +584,23 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
                                                     </span>
                                                 </div>
                                             </div>
+                                            <div class="col-4">
+                                                <div
+                                                    class="bg-light p-2 rounded-3 text-center shadow-sm h-100 d-flex flex-column justify-content-center">
+                                                    <span class="fw-black text-uppercase d-block mb-1 text-emerald-600"
+                                                        style="font-size: 0.65rem; letter-spacing: 0.5px;">Prev.
+                                                        Project</span>
+                                                    <span
+                                                        class="text-dark fw-semibold small px-1 text-truncate d-block"
+                                                        style="font-size: 0.8rem;"
+                                                        title="{{ is_array($candidate->previous_position) ? implode(', ', $candidate->previous_position) : $candidate->previous_position }}">
+                                                        {{ is_array($candidate->previous_position)
+                                                            ? (implode(', ', $candidate->previous_position) ?:
+                                                                'None')
+                                                            : $candidate->previous_position ?? 'None' }}
+                                                    </span>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
 
@@ -606,21 +608,27 @@ new #[Layout('layouts.app')] #[Title('Profiles and Platforms')] class extends Co
                             </div>
 
                             <div class="tab-pane fade" id="platform-panel-{{ $candidate->id }}" role="tabpanel">
-                                <div class="p-3 rounded-3 mb-3 border border-emerald-600 bg-emerald-50/30 shadow-sm">
-                                    <h6 class="fw-black text-dark mb-1"
-                                        style="font-size: 0.85rem; letter-spacing: -0.2px;">
-                                        {{ blank($approvedPlatform?->title) ? 'No Title Listed' : $approvedPlatform->title }}
+                                <h6 class="text-uppercase text-emerald-600 fw-bold mb-3 d-flex align-items-center"
+                                    style="font-size: 0.70rem; letter-spacing: 1px;">
+                                    <i class="bi bi-journal-check me-2 fs-6"></i>
+                                    <span>Platform Title & Tagline</span>
+                                </h6>
+                                <div class="p-3 rounded-3 mb-4 border border-emerald-100 bg-emerald-50/50 shadow-sm">
+                                    <h6 class="fw-black text-emerald-900 mb-1" style="font-size: 0.9rem;">
+                                        {{ $approvedPlatform?->title ?? 'No Title Listed' }}
                                     </h6>
-                                    <p class="small fst-italic mb-0 opacity-80 text-emerald-600"
-                                        style="font-size: 0.72rem;">
-                                        <i
-                                            class="bi bi-quote me-1"></i>{{ $approvedPlatform?->tagline ?? 'No tagline provided.' }}
+                                    <p class="small fst-italic mb-0 opacity-75 text-emerald-800"
+                                        style="font-size: 0.78rem;">
+                                        <i class="bi bi-quote me-1"></i>
+                                        {{ $approvedPlatform?->tagline ?? 'No tagline provided.' }}
+                                        <i class="bi bi-quote ms-1 inline-block -scale-x-100"></i>
                                     </p>
                                 </div>
 
-                                <h6 class="text-uppercase small fw-black mb-2 px-1 text-emerald-600"
-                                    style="font-size: 0.75rem; letter-spacing: 0.5px;">
-                                    <i class="bi bi-journal-check me-2"></i> Key Agenda Points
+                                <h6 class="text-uppercase text-emerald-600 fw-bold mb-3 d-flex align-items-center"
+                                    style="font-size: 0.70rem; letter-spacing: 1px;">
+                                    <i class="bi bi-list-check me-2 fs-6"></i>
+                                    <span>Key Agenda Points</span>
                                 </h6>
 
                                 <div class="agenda-list pe-1" style="max-height: 140px; overflow-y: auto;">

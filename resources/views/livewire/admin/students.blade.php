@@ -70,9 +70,9 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
         ];
     }
 
-    public function loadStudents()
+    public function loadStudents($paginate = true)
     {
-        return Student::query()
+        $query = Student::query()
             ->with(['user', 'block.course'])
             ->when($this->search, function ($query) {
                 $query->where(function ($q) {
@@ -99,14 +99,15 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                     $q->whereIn('status', ['inactive', 'suspended']);
                 }
             })
-            ->orderBy('student_id', 'asc')
-            ->paginate(10);
+            ->orderBy('student_id', 'asc');
+
+        return $paginate ? $query->paginate(10) : $query->get();
     }
 
     public function updatedSelectAll($value)
     {
         if ($value) {
-            $this->selectedStudents = Student::pluck('id')->toArray();
+            $this->selectedStudents = $this->loadStudents(false)->pluck('id')->toArray();
         } else {
             $this->selectedStudents = [];
         }
@@ -141,11 +142,6 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                 'icon' => 'error',
             ]);
         }
-    }
-
-    public function updatedCsvFile()
-    {
-        $this->importCSV();
     }
 
     public function importCSV()
@@ -287,17 +283,18 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
     public function exportStudents()
     {
         $students = Student::with('block.course')->get();
-        $fileName = 'students_export.csv';
-        $headers = ['Content-type' => 'text/csv', 'Content-Disposition' => "attachment; filename=$fileName"];
-        $callback = function () use ($students) {
-            $file = fopen('php://output', 'w');
-            fputcsv($file, ['ID', 'Name', 'Course', 'Year', 'Status']);
-            foreach ($students as $s) {
-                fputcsv($file, [$s->student_id, $s->first_name . ' ' . $s->last_name, $s->block->course->name ?? 'N/A', $s->block->year_level ?? 'N/A', $s->status]);
-            }
-            fclose($file);
-        };
-        return response()->stream($callback, 200, $headers);
+        $csv = fopen('php://temp', 'w+');
+        fputcsv($csv, ['ID', 'Name', 'Course', 'Year', 'Status']);
+        foreach ($students as $s) {
+            fputcsv($csv, [$s->student_id, $s->first_name . ' ' . $s->last_name, $s->block->course->name ?? 'N/A', $s->block->year_level ?? 'N/A', $s->status]);
+        }
+        rewind($csv);
+        $content = stream_get_contents($csv);
+        fclose($csv);
+        $tempPath = tempnam(sys_get_temp_dir(), 'students_') . '.csv';
+        file_put_contents($tempPath, $content);
+
+        return response()->download($tempPath, 'students_export.csv')->deleteFileAfterSend(true);
     }
 }; ?>
 
@@ -318,8 +315,25 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                 <h2 class="fw-bold text-primary">Manage <span class="text-accent">Students</span></h2>
                 <p class="text-muted mb-0 small">Import & Update Student Profile</p>
             </div>
-            <div x-data="{ progress: 0 }" x-on:livewire-upload-progress="progress = $event.detail.progress">
-                <input type="file" x-ref="csvInput" wire:model.live="csvFile" class="d-none" accept=".csv">
+            <div x-data="{
+                confirmImport(event) {
+                    const file = event.target.files[0];
+                    if (!file) return;
+                    Swal.fire({
+                        title: 'Import Students?',
+                        text: `Process student data from '${file.name}'?`,
+                        icon: 'question',
+                        showCancelButton: true,
+                        confirmButtonColor: '#1e3a8a',
+                        confirmButtonText: 'Yes, import!'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            @this.upload('csvFile', file, () => { @this.importCSV(); });
+                        }
+                    });
+                }
+            }">
+                <input type="file" x-ref="csvInput" class="d-none" accept=".csv" @change="confirmImport($event)">
                 <x-button variant="glow" class="w-full xs:w-auto px-4 md:px-6" @click="$refs.csvInput.click()"
                     title="Import CSV">
                     <i class="bi bi-file-earmark-arrow-up fs-7 p-1"></i>

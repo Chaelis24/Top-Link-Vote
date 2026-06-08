@@ -58,7 +58,6 @@ class User extends Authenticatable
                 'token' => $token,
                 'email' => $this->email,
             ]);
-            $this->notify(new \Illuminate\Auth\Notifications\ResetPassword($token));
 
             Mail::to($this->email)->send(new AdminResetPasswordMail($url, $this));
             return;

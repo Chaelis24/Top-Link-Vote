@@ -18,7 +18,10 @@ class ImportStudentsJob implements ShouldQueue
 
     public $timeout = 600;
 
-    public function __construct(protected array $rows) {}
+    public function __construct(protected array $rows)
+    {
+        $this->onQueue('imports');
+    }
 
     public function handle(): void
     {
@@ -44,8 +47,12 @@ class ImportStudentsJob implements ShouldQueue
                             ]
                         );
 
-                        if ($role = Role::findByName($row['role'])) {
-                            $user->syncRoles([$role->name]);
+                        try {
+                            if ($role = Role::findByName($row['role'])) {
+                                $user->syncRoles([$role->name]);
+                            }
+                        } catch (\Spatie\Permission\Exceptions\RoleDoesNotExist $e) {
+                            Log::warning("Import: Role '{$row['role']}' not found for student {$row['student_id']}. Skipping role assignment.");
                         }
 
                         Student::updateOrCreate(

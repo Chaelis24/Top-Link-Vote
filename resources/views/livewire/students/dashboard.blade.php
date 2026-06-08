@@ -163,7 +163,7 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
                         </div>
 
                         @if ($this->isVotingOpen)
-                            <p class="text-success small pb-2">
+                            <p class="text-success text-sx text-md-base pb-2">
                                 <i class="bi bi-check-circle-fill me-1"></i> The election is live.
                             </p>
                             <a href="/students/cast-vote" wire:navigate wire:loading.attr="disabled"
@@ -211,12 +211,13 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
             <div class="col-12 w-full">
                 <div class="glass-card p-2 md:p-6 mb-3 border-0 shadow-sm">
                     <div class="flex flex-row justify-between items-center mb-3 px-1 md-px-3">
-                        <h5 class="text-dark mb-0 font-bold flex items-center">
+                        <h5 class="text-dark mb-0 font-bold flex items-center text-xs text-md-base">
                             <i class="bi bi-bar-chart-line-fill text-primary me-2 fs-6 py-1 py-md-3"></i>Live Election
                             Standings
                         </h5>
-                        <span class="badge px-2 py-1 rounded-full shadow-sm text-white"
-                            style="background-color: #10b981; font-size: 0.75rem;">
+                        <span
+                            class="badge px-2 py-1 rounded-full shadow-sm text-white inline-block max-w-[200px] whitespace-normal break-words"
+                            style="background-color: #10b981; font-size: 0.65rem;">
                             <i class="bi bi-mortarboard-fill me-1"></i>
                             {{ app(\App\Services\Student\DashboardService::class)->getCourseDisplayName($student->block->course->name ?? null) }}
                         </span>
@@ -297,7 +298,7 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
                         labels: {
                             style: {
                                 fontSize: '12px',
-                                fontWeight: 600
+                                fontWeight: 700
                             }
                         }
                     },

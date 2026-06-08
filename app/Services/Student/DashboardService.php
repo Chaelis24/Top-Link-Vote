@@ -60,7 +60,6 @@ class DashboardService
                 ->with(['student.block.course', 'position'])
                 ->withCount(['votes' => fn($q) => $q->where('election_cycle_id', $activeCycle->id)])
                 ->where('candidates.election_cycle_id', $activeCycle->id)
-                ->join('positions', 'candidates.position_id', '=', 'positions.id')
                 ->whereHas('position', function ($query) use ($studentCourseId) {
                     $query->where(function ($q) use ($studentCourseId) {
                         $q->whereNull('student_department')

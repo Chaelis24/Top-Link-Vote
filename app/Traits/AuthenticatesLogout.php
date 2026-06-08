@@ -14,6 +14,10 @@ trait AuthenticatesLogout
         session()->invalidate();
         session()->regenerateToken();
 
+        if (method_exists($this, 'redirect')) {
+            return $this->redirect(route($route), navigate: false);
+        }
+
         return redirect(route($route));
     }
 }

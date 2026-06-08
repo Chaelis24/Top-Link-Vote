@@ -51,7 +51,10 @@ new #[Layout('layouts.admin')] #[Title('User Activity')] class extends Component
     }
 
     #[On('echo-private:admin.audit-trail,AuditLogCreated')]
-    public function refreshLogs() {}
+    public function refreshLogs()
+    {
+        $this->dispatch('$refresh');
+    }
 
     public function updatingFilterCourse()
     {

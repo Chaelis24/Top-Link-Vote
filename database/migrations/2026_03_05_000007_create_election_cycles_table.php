@@ -22,6 +22,7 @@ return new class extends Migration
             $table->dateTime('voting_start');
             $table->dateTime('voting_end');
             $table->dateTime('results_date')->nullable();
+            $table->boolean('notifications_sent')->default(false);
             $table->enum('status', ['active', 'completed'])->default('active');
             $table->timestamps();
             $table->softDeletes();

@@ -269,7 +269,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
                     <x-button variant="gray" data-bs-dismiss="modal" width="100px">
                         Cancel
                     </x-button>
-                    <x-button variant="glow" wire:click="savePosition" data-bs-dismiss="modal" width="160px"
+                    <x-button variant="glow" wire:click="savePosition" width="160px"
                         height="42px">
                         {{ $editingId ? 'Save Changes' : 'Create Position' }}
                     </x-button>

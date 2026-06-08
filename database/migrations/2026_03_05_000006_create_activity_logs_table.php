@@ -23,6 +23,11 @@ return new class extends Migration
             $table->text('user_agent')->nullable();
             $table->json('properties')->nullable();
             $table->timestamps();
+
+            $table->index('user_id');
+            $table->index('student_id');
+            $table->index('action');
+            $table->index('created_at');
         });
     }
 
