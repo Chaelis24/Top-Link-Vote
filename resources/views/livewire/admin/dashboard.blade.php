@@ -182,6 +182,15 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
 }; ?>
 
 <div>
+    <div
+        class="d-lg-none d-flex align-items-center justify-content-start p-2 px-4 bg-white/opacity-50 shadow-sm gap-2 border-bottom">
+        <img src="{{ asset('images/logo.png') }}" alt="Logo" style="height: 45px; width: 45px; object-fit: contain;">
+
+        <h4 class="mb-0 text-primary" style="font-size: 0.95rem; font-weight: 600; color: #1e293b;">
+            Top Link Global College, Inc.
+        </h4>
+    </div>
+
     @include('layouts.partials.admin-sidebar')
 
     <main class="main-content" x-data="{
@@ -301,13 +310,13 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
                 <div class="stat-card p-3 p-md-3 shadow-sm h-100" x-data="{
                     remainingSeconds: {{ $targetDate ? now()->diffInSeconds($targetDate, false) : -1 }},
                     displayValue: '...',
-
+                
                     updateTimer() {
                         if (this.remainingSeconds <= 0) {
                             this.displayValue = 'Closed';
                             return;
                         }
-
+                
                         let s = this.remainingSeconds;
                         let d = Math.floor(s / (24 * 3600));
                         s %= (24 * 3600);
@@ -315,7 +324,7 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
                         s %= 3600;
                         let m = Math.floor(s / 60);
                         let sc = s % 60;
-
+                
                         this.displayValue = `${String(d).padStart(2, '0')}d ${String(h).padStart(2, '0')}h ${String(m).padStart(2, '0')}m`;
                     }
                 }" x-init="updateTimer();

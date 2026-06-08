@@ -117,6 +117,14 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
     }
 }; ?>
 <div>
+    <div
+        class="d-lg-none d-flex align-items-center justify-content-start p-2 px-4 bg-white/opacity-50 shadow-sm gap-2 border-bottom">
+        <img src="{{ asset('images/logo.png') }}" alt="Logo" style="height: 45px; width: 45px; object-fit: contain;">
+
+        <h4 class="mb-0 text-primary" style="font-size: 0.95rem; font-weight: 600; color: #1e293b;">
+            Top Link Global College, Inc.
+        </h4>
+    </div>
     @include('layouts.partials.admin-sidebar')
 
     <main class="main-content">
