@@ -16,6 +16,13 @@ class ElectionCycleSeeder extends Seeder
     public function run(): void
     {
         DB::transaction(function () {
+
+            ElectionCycle::where('status', 'active')
+                ->update(['status' => 'completed',
+                    'filing_end'    => Carbon::now(),
+                    'campaign_end'  => Carbon::now(),
+                ]);
+
             Student::query()->update([
                 'vote_reference' => null,
                 'has_voted'       => 0,
