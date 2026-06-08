@@ -31,7 +31,7 @@
                     <a href="{{ url('students/profile-platforms') }}" wire:navigate class="nav-link"
                         :class="currentPath.includes('students/profile-platforms') ? 'active' : ''">
                         <i class="bi bi-person-vcard"></i>
-                        <span>Profile & Platforms</span>
+                        <span>Platforms</span>
                     </a>
                 </li>
 
@@ -39,7 +39,7 @@
                     <a href="{{ url('students/cast-vote') }}" wire:navigate class="nav-link"
                         :class="currentPath.includes('students/cast-vote') ? 'active' : ''">
                         <i class="bi bi-check2-square"></i>
-                        <span>Cast Your Vote</span>
+                        <span>Cast Vote</span>
                     </a>
                 </li>
 

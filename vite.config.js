@@ -20,8 +20,11 @@ export default defineConfig({
     server: {
         host: "0.0.0.0",
         hmr: {
-            host: "192.168.254.100",
+            // host: "192.168.254.100",
             // host: "localhost",
+            host: "nursery-enable-unsaid.ngrok-free.dev",
+            // protocol: "wss",
+            // clientPort: 443,
         },
     },
 });

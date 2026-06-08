@@ -11,6 +11,16 @@ use Symfony\Component\HttpFoundation\Response;
 
 class MaintenanceMiddleware
 {
+    protected array $except = [
+        '/',
+        'admin-login',
+        'admin-forgot-password',
+        'admin-reset-password/*',
+        'verify-account',
+        'forgot-password',
+        'reset-password/*',
+    ];
+
     /**
      * Handle an incoming request.
      *
@@ -18,7 +28,13 @@ class MaintenanceMiddleware
      */
     public function handle(Request $request, Closure $next)
     {
-        $isMaintenance = Cache::remember('maintenance_mode', 60, function () {
+        foreach ($this->except as $path) {
+            if ($request->is($path)) {
+                return $next($request);
+            }
+        }
+
+        $isMaintenance = Cache::remember('maintenanceMode', 60, function () {
             return (bool) Setting::where('key', 'maintenanceMode')->value('value');
         });
 

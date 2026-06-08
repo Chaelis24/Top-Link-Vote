@@ -244,7 +244,16 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                 'icon' => 'success',
             ]);
 
-            if ($setting === 'maintenanceMode') {
+            if ($setting === 'maintenanceMode' && $this->maintenanceMode) {
+                Cache::forget('maintenanceMode');
+                Auth::logout();
+                session()->invalidate();
+                session()->regenerateToken();
+                $this->redirect('/');
+                return;
+            }
+
+            if ($setting === 'maintenanceMode' && !$this->maintenanceMode) {
                 Cache::forget('maintenanceMode');
                 return;
             }

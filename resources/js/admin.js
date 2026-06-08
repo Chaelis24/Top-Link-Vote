@@ -1,12 +1,20 @@
 document.addEventListener("livewire:init", () => {
     Livewire.on("swal", (data) => {
         const options = data[0];
+        const isMobile = window.innerWidth < 480;
         Swal.fire({
             title: options.title || "Notification",
             text: options.text || "",
             icon: options.icon || "info",
+            width: isMobile ? "90%" : options.width || "400px",
             confirmButtonColor: "#1e3a8a",
             confirmButtonText: options.confirmButtonText || "OK",
+            padding: options.padding || "1rem",
+            customClass: {
+                title: isMobile ? "fs-6" : "fs-5",
+                htmlContainer: isMobile ? "fs-6" : "fs-6",
+                confirmButtonText: "btn btn-sm px-4",
+            },
         }).then((result) => {
             if (result.isConfirmed) {
                 if (data.redirect) {
@@ -42,24 +50,39 @@ document.addEventListener("livewire:init", () => {
     window.addEventListener("confirm-csv-import", (e) => {
         const rowCount =
             e.detail.count || (e.detail[0] ? e.detail[0].count : 0);
-
+        const isMobile = window.innerWidth < 480;
         Swal.fire({
             title: "Import Students?",
             text: `Found ${rowCount} rows. Do you want to proceed?`,
             icon: "question",
+            width: isMobile ? "90%" : options.width || "400px",
             showCancelButton: true,
             confirmButtonColor: "#1e3a8a",
             cancelButtonColor: "#64748b",
             confirmButtonText: "Yes, Import it!",
             allowOutsideClick: false,
+            padding: options.padding || "1rem",
+            customClass: {
+                title: isMobile ? "fs-6" : "fs-5",
+                htmlContainer: isMobile ? "fs-6" : "fs-6",
+                confirmButtonText: "btn btn-sm px-4",
+            },
         }).then((result) => {
             if (result.isConfirmed) {
+                const isMobile = window.innerWidth < 480;
                 Swal.fire({
                     title: "Importing...",
                     text: "Please wait while we process the records.",
                     didOpen: () => Swal.showLoading(),
                     allowOutsideClick: false,
                     showConfirmButton: false,
+                    width: isMobile ? "90%" : options.width || "400px",
+                    padding: options.padding || "1rem",
+                    customClass: {
+                        title: isMobile ? "fs-6" : "fs-5",
+                        htmlContainer: isMobile ? "fs-6" : "fs-6",
+                        confirmButtonText: "btn btn-sm px-4",
+                    },
                 });
 
                 const lwElement = document.querySelector("[wire\\:id]");
