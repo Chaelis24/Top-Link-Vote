@@ -20,7 +20,6 @@ class ImportStudentsJob implements ShouldQueue
 
     public function __construct(protected array $rows)
     {
-        $this->onQueue('imports');
     }
 
     public function handle(): void
@@ -47,12 +46,16 @@ class ImportStudentsJob implements ShouldQueue
                             ]
                         );
 
-                        try {
-                            if ($role = Role::findByName($row['role'])) {
-                                $user->syncRoles([$role->name]);
+                        if (!empty($row['role'])) {
+                            try {
+                                if ($role = Role::findByName($row['role'])) {
+                                    if (!$user->hasRole($role)) {
+                                        $user->assignRole($role);
+                                    }
+                                }
+                            } catch (\Spatie\Permission\Exceptions\RoleDoesNotExist $e) {
+                                Log::warning("Import: Role '{$row['role']}' not found for student {$row['student_id']}. Skipping role assignment.");
                             }
-                        } catch (\Spatie\Permission\Exceptions\RoleDoesNotExist $e) {
-                            Log::warning("Import: Role '{$row['role']}' not found for student {$row['student_id']}. Skipping role assignment.");
                         }
 
                         Student::updateOrCreate(

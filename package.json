@@ -4,7 +4,8 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
-        "dev": "vite"
+        "dev": "vite",
+        "services": "concurrently -n \"REVERB,HORIZON\" -c \"green,yellow\" \"php artisan reverb:start\" \"php artisan horizon\""
     },
     "devDependencies": {
         "@tailwindcss/forms": "^0.5.2",

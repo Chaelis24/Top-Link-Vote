@@ -38,7 +38,7 @@ class ElectionCycle extends Model
 
     public static function getActiveCycle()
     {
-        return Cache::remember('active_election_cycle', 3600, function () {
+        return Cache::remember('active_election_cycle', 60, function () {
             return self::where('status', 'active')->latest()->first();
         });
     }

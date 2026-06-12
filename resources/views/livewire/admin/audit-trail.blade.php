@@ -169,7 +169,7 @@ new #[Layout('layouts.admin')] #[Title('User Activity')] class extends Component
                                 </td>
                                 <td class="text-end pe-4">
                                     <div
-                                        class="fw-bold small {{ str_contains($log->ip_address, 'Campus') ? 'text-success' : 'text-danger' }}">
+                                        class="fw-bold small {{ str_contains($log->ip_address, 'Campus Network') ? 'text-success' : 'text-danger' }}">
                                         <i class="bi bi-geo-alt-fill me-1"></i>{{ $log->ip_address }}
                                     </div>
                                     <div class="text-muted x-small">{{ $log->created_at?->diffForHumans() }}</div>

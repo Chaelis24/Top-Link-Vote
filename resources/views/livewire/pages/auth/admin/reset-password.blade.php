@@ -40,11 +40,7 @@ new #[Layout('layouts.guest')] class extends Component {
         });
 
         if ($status != Password::PASSWORD_RESET) {
-            $this->dispatch('swal:modal', [
-                'icon' => 'error',
-                'title' => 'Error',
-                'text' => __($status),
-            ]);
+            session()->flash('error', __($status));
             return;
         }
 
@@ -81,15 +77,22 @@ new #[Layout('layouts.guest')] class extends Component {
             </div>
 
             <div class="md:w-1/2 p-6 md:p-8 flex flex-col justify-center bg-white">
-                <div class="mb-3 md:mb-6">
-                    <div
-                        class="inline-block px-3 py-2 rounded-full bg-blue-50 text-[#1e3a8a] text-[9px] font-black uppercase tracking-widest mb-3">
-                        Identity Confirmed
+                    <div class="mb-3 md:mb-6">
+                        <div
+                            class="inline-block px-3 py-2 rounded-full bg-blue-50 text-[#1e3a8a] text-[9px] font-black uppercase tracking-widest mb-3">
+                            Identity Confirmed
+                        </div>
+                        <h2 class="text-lg md:text-xl font-bold text-[#252525] mb-1 md:mb-2 tracking-tighter">New Password
+                        </h2>
+                        <p class="text-gray-500 text-xs md:text-sm">Finalize your account recovery below.</p>
                     </div>
-                    <h2 class="text-lg md:text-xl font-bold text-[#252525] mb-1 md:mb-2 tracking-tighter">New Password
-                    </h2>
-                    <p class="text-gray-500 text-xs md:text-sm">Finalize your account recovery below.</p>
-                </div>
+
+                    @if (session('error'))
+                        <div
+                            class="mb-4 text-red-600 text-[10px] md:text-[11px] font-bold uppercase p-3 bg-red-50 rounded-lg border border-red-200">
+                            {{ session('error') }}
+                        </div>
+                    @endif
 
                 <form wire:submit="resetPassword" class="space-y-4 md:space-y-5">
                     <div>
@@ -99,28 +102,28 @@ new #[Layout('layouts.guest')] class extends Component {
                             class="w-full px-4 py-2.5 rounded-lg border border-gray-100 bg-gray-50 text-gray-400 text-sm outline-none cursor-not-allowed">
                     </div>
 
-                    <div>
+                    <div x-data="{ show: false }" class="relative">
                         <label class="text-[10px] font-bold uppercase text-gray-500 mb-1 block ms-1">New
                             Password</label>
-                        <input wire:model="password" type="password" placeholder="At least 8 characters" required
+                        <input :type="show ? 'text' : 'password'" wire:model="password" placeholder="At least 8 characters" required
                             autofocus
                             class="w-full px-4 py-2.5 md:py-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-blue-100 focus:border-[#1e3a8a] outline-none transition-all text-sm text-[#1e293b]">
                         <x-input-error :messages="$errors->get('password')" class="mt-1 text-red-600 text-[10px]" />
                         <button type="button" @click="show = !show" aria-label="Toggle password visibility"
-                            class="absolute right-3 top-1/2 -translate-y-1/2 {{ $errors->has('form.password') ? 'text-red-500' : 'text-gray-400 hover:text-[#3b82f6]' }} transition-colors">
+                            class="absolute right-3 top-1/2 -translate-y-1/2 {{ $errors->has('password') ? 'text-red-500' : 'text-gray-400 hover:text-[#3b82f6]' }} transition-colors">
                             <i :class="show ? 'bi bi-eye-slash-fill' : 'bi bi-eye-fill'" class="text-md"></i>
                         </button>
                     </div>
 
-                    <div>
+                    <div x-data="{ show: false }" class="relative">
                         <label class="text-[10px] font-bold uppercase text-gray-500 mb-1 block ms-1">Confirm
                             Password</label>
-                        <input wire:model="password_confirmation" type="password" placeholder="Re-type new password"
+                        <input :type="show ? 'text' : 'password'" wire:model="password_confirmation" placeholder="Re-type new password"
                             required
                             class="w-full px-4 py-2.5 md:py-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-blue-100 focus:border-[#1e3a8a] outline-none transition-all text-sm text-[#1e293b]">
                         <x-input-error :messages="$errors->get('password_confirmation')" class="mt-1 text-red-600 text-[10px]" />
                         <button type="button" @click="show = !show" aria-label="Toggle password visibility"
-                            class="absolute right-3 top-1/2 -translate-y-1/2 {{ $errors->has('form.password') ? 'text-red-500' : 'text-gray-400 hover:text-[#3b82f6]' }} transition-colors">
+                            class="absolute right-3 top-1/2 -translate-y-1/2 {{ $errors->has('password') ? 'text-red-500' : 'text-gray-400 hover:text-[#3b82f6]' }} transition-colors">
                             <i :class="show ? 'bi bi-eye-slash-fill' : 'bi bi-eye-fill'" class="text-md"></i>
                         </button>
                     </div>

@@ -39,8 +39,6 @@ new #[Layout('layouts.admin')] #[Title('Settings')] class extends Component {
             abort(403, 'Unauthorized access.');
         }
 
-        $this->authorize('admin');
-
         $validated = $this->validate(AdminSettingsRequest::profileRules());
 
         $this->user->update($validated);
@@ -57,8 +55,6 @@ new #[Layout('layouts.admin')] #[Title('Settings')] class extends Component {
         if (!auth()->user()->hasRole('admin')) {
             abort(403, 'Unauthorized access.');
         }
-
-        $this->authorize('admin');
 
         $validated = $this->validate(AdminSettingsRequest::passwordRules());
 

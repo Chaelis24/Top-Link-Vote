@@ -89,8 +89,12 @@ class CastVoteService
         $student = $user->student;
 
         try {
-                $referenceNumber = DB::transaction(function () use ($student, $cycle, $user, $selections) {
+            $voteStudent = null;
+
+            $referenceNumber = DB::transaction(function () use ($student, $cycle, $user, $selections, &$voteStudent) {
                 $lockedStudent = $user->student()->lockForUpdate()->first();
+                $voteStudent = $lockedStudent;
+
                 if ($lockedStudent->has_voted) {
                     throw new \Exception('Student has already voted.');
                 }
@@ -159,8 +163,8 @@ class CastVoteService
 
             RateLimiter::clear($throttleKey);
 
-            if ($lockedStudent->course) {
-                event(new \App\Events\VoteUpdated($lockedStudent->course));
+            if ($voteStudent && $voteStudent->course) {
+                event(new \App\Events\VoteUpdated($voteStudent->course));
             }
 
             return ['success' => true, 'reference' => $referenceNumber, 'student' => $student->fresh()];

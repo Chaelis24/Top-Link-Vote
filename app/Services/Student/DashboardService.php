@@ -15,16 +15,13 @@ class DashboardService
         return [
             'student' => $student,
             'studentCourse' => $student?->block?->course?->name ?? 'No Course Assigned',
-            'profile_photo_path' => $student?->photo ?? ($student?->profile_photo_path ?? null),
+            'profile_photo_path' => $student?->photo ?? '',
         ];
     }
 
     public function getActiveCycle(): ?ElectionCycle
     {
-        return ElectionCycle::where('status', 'active')
-            ->where('voting_start', '<=', now())
-            ->where('voting_end', '>=', now())
-            ->first();
+        return ElectionCycle::where('status', 'active')->first();
     }
 
     public function isVotingOpen(?ElectionCycle $activeCycle): bool

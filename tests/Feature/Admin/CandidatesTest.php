@@ -12,8 +12,11 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
+    $role = Spatie\Permission\Models\Role::firstOrCreate(['name' => 'admin']);
     $this->cycle = ElectionCycle::factory()->create(['status' => 'active']);
-    $this->actingAs(User::factory()->create());
+    $user = User::factory()->create();
+    $user->assignRole($role);
+    $this->actingAs($user);
 });
 
 test('admin can view candidates page', function () {

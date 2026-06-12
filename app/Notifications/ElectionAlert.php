@@ -37,8 +37,12 @@ class ElectionAlert extends Notification implements ShouldQueue
         $cycle = \App\Models\ElectionCycle::where('status', 'active')->first();
         $student = \App\Models\Student::where('user_id', $notifiable->id)->first();
 
+        $subject = $this->type === 'reminder'
+            ? 'Reminder: Cast Your Vote in the Ongoing Election!'
+            : 'Official Election: Voting is Now Open!';
+
         return (new \Illuminate\Notifications\Messages\MailMessage)
-            ->subject('🗳️ Official Election: Voting is Now Open!')
+            ->subject($subject)
             ->view('emails.students.election-alert', [
                 'type' => $this->type,
                 'student' => $student,

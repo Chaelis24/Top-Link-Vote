@@ -547,10 +547,10 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                 </table>
             </div>
 
-            <div class="md:hidden mb-12">
+            <div class="md:hidden mb-3">
                 @forelse($students as $student)
                     <div wire:key="student-mobile-{{ $student->id }}"
-                        class="p-3 mb-4 border-bottom {{ $loop->index >= 6 ? 'd-none' : '' }}">
+                        class="p-3 border-bottom {{ $loop->index >= 6 ? 'd-none' : '' }}">
                         <div class="d-flex justify-content-between align-items-start mb-2">
                             <div>
                                 <div class="text-xs text-muted fw-bold mb-1">ID: {{ $student->student_id }}</div>

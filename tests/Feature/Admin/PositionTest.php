@@ -1,6 +1,6 @@
 <?php
 
-use App\Models\{ElectionCycle, Position};
+use App\Models\{User, ElectionCycle, Position};
 use Livewire\Volt\Volt;
 use Spatie\Permission\Models\Role;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -8,7 +8,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    Role::create(['name' => 'admin']);
+    $role = Role::create(['name' => 'admin']);
+    $user = User::factory()->create();
+    $user->assignRole($role);
+    $this->actingAs($user);
 });
 
 test('admin can create a position', function () {
@@ -36,8 +39,10 @@ test('admin can delete a position', function () {
 });
 
 test('validation prevents saving invalid position', function () {
+    ElectionCycle::factory()->create(['status' => 'active']);
+
     Volt::test('admin.positions')
         ->set('name', '')
         ->call('savePosition')
-        ->assertHasNoErrors();
+        ->assertHasErrors('name');
 });

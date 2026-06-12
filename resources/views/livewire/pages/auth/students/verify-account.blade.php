@@ -34,19 +34,21 @@ new #[Layout('layouts.guest')] #[Title('Verify Account')] class extends Componen
             ]);
         }
 
+        if (Cache::has('otp_student_' . $this->student_id)) {
+            session()->flash('warning', 'OTP has already been sent. Please check your email.');
+            return;
+        }
+
         $otp = rand(100000, 999999);
         Cache::put('otp_student_' . $this->student_id, $otp, now()->addMinutes(10));
 
-        Mail::to($user->email)->send(new OtpVerificationMail($otp));
+        Mail::to($user->email)->send(new OtpVerificationMail($otp, $student));
 
         $parts = explode('@', $user->email);
         $this->maskedEmail = substr($parts[0], 0, 2) . str_repeat('*', strlen($parts[0]) - 2) . '@' . $parts[1];
 
         $this->step = 2;
-        $this->dispatch('swal:toast', [
-            'icon' => 'success',
-            'title' => 'OTP sent successfully!',
-        ]);
+        session()->flash('status', 'OTP sent successfully!');
     }
 
     public function verifyOtp()
@@ -58,11 +60,7 @@ new #[Layout('layouts.guest')] #[Title('Verify Account')] class extends Componen
         $cachedCode = Cache::get('otp_student_' . $this->student_id);
 
         if (!$cachedCode || $cachedCode != $this->code) {
-            $this->dispatch('swal:modal', [
-                'icon' => 'error',
-                'title' => 'Invalid OTP',
-                'text' => 'The verification code is invalid or has expired.',
-            ]);
+            session()->flash('error', 'The verification code is invalid or has expired.');
             return;
         }
         $this->step = 3;
@@ -159,6 +157,18 @@ new #[Layout('layouts.guest')] #[Title('Verify Account')] class extends Componen
                             {{ session('status') }}
                         </div>
                     @endif
+                    @if (session('warning'))
+                        <div
+                            class="mb-4 text-[#b8860b] text-[10px] md:text-[11px] font-bold uppercase p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                            {{ session('warning') }}
+                        </div>
+                    @endif
+                    @if (session('error'))
+                        <div
+                            class="mb-4 text-red-600 text-[10px] md:text-[11px] font-bold uppercase p-3 bg-red-50 rounded-lg border border-red-200">
+                            {{ session('error') }}
+                        </div>
+                    @endif
 
                     @if ($step === 1)
                         <form wire:submit="sendOtp" class="space-y-4 md:space-y-5">
@@ -173,10 +183,10 @@ new #[Layout('layouts.guest')] #[Title('Verify Account')] class extends Componen
                                 <x-input-error :messages="$errors->get('student_id')" class="mt-2 text-red-600 text-[10px]" />
                             </div>
 
-                            <button type="submit"
+                            <button type="submit" wire:loading.attr="disabled"
                                 class="w-full bg-[#108500] hover:bg-[#0d6b00] text-white font-semibold py-3 rounded-lg transition-all uppercase tracking-widest text-xs">
-                                <span wire:loading.remove wire:target="sendOtp">Get Verification Code</span>
-                                <span wire:loading wire:target="sendOtp">Sending Code...</span>
+                                <span wire:loading.remove>Get Verification Code</span>
+                                <span wire:loading>Sending Code...</span>
                             </button>
                         </form>
                     @endif
@@ -218,7 +228,7 @@ new #[Layout('layouts.guest')] #[Title('Verify Account')] class extends Componen
                                     placeholder="At least 8 characters" required
                                     class="w-full px-4 py-2.5 md:py-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-[#9cff00]/30 focus:border-[#108500] outline-none transition-all text-[#252525] text-sm">
                                 <button type="button" @click="show = !show" aria-label="Toggle password visibility"
-                                    class="absolute right-3 top-1/2 -translate-y-1/2 {{ $errors->has('form.password') ? 'text-red-500' : 'text-gray-400 hover:text-[#108500]' }} transition-colors">
+                                    class="absolute right-3 top-1/2 -translate-y-1/2 mt-3 {{ $errors->has('password') ? 'text-red-500' : 'text-gray-400 hover:text-[#108500]' }} transition-colors">
                                     <i :class="show ? 'bi bi-eye-slash-fill' : 'bi bi-eye-fill'" class="text-md"></i>
                                 </button>
                                 <x-input-error :messages="$errors->get('password')" class="mt-2 text-red-600 text-[10px]" />
@@ -233,7 +243,7 @@ new #[Layout('layouts.guest')] #[Title('Verify Account')] class extends Componen
                                     placeholder="Re-type new password" required
                                     class="w-full px-4 py-2.5 md:py-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-[#9cff00]/30 focus:border-[#108500] outline-none transition-all text-[#252525] text-sm">
                                 <button type="button" @click="show = !show" aria-label="Toggle password visibility"
-                                    class="absolute right-3 top-1/2 -translate-y-1/2 {{ $errors->has('form.password') ? 'text-red-500' : 'text-gray-400 hover:text-[#108500]' }} transition-colors">
+                                    class="absolute right-3 top-1/2 -translate-y-1/2 mt-3 {{ $errors->has('password') ? 'text-red-500' : 'text-gray-400 hover:text-[#108500]' }} transition-colors">
                                     <i :class="show ? 'bi bi-eye-slash-fill' : 'bi bi-eye-fill'" class="text-md"></i>
                                 </button>
                             </div>

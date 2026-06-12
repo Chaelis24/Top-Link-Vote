@@ -424,6 +424,7 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                     $active->update([
                         'filing_start' => $now->copy()->subMinute(),
                         'filing_end' => $now,
+                        'campaign_start' => $now->copy()->subMinute(),
                     ]);
                     break;
 

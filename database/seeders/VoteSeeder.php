@@ -29,14 +29,18 @@ class VoteSeeder extends Seeder
                         ->first();
 
                     if ($candidate) {
-                        Vote::updateOrCreate([
-                            'student_id'        => $student->id,
-                            'candidate_id'      => $candidate->id,
-                            'position_id'       => $position->id,
-                            'election_cycle_id' => $activeCycle->id,
-                            'reference_number'  => $referenceNumber,
-                            'voted_at'          => now(),
-                        ]);
+                        Vote::updateOrCreate(
+                            [
+                                'student_id'        => $student->id,
+                                'position_id'       => $position->id,
+                                'election_cycle_id' => $activeCycle->id,
+                            ],
+                            [
+                                'candidate_id'      => $candidate->id,
+                                'reference_number'  => $referenceNumber,
+                                'voted_at'          => now(),
+                            ]
+                        );
 
                         $selections[$position->id] = $candidate->id;
                     }

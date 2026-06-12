@@ -50,7 +50,10 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
             return collect();
         }
 
-        return Position::where('election_cycle_id', $this->activeCycle->id)->orderBy('priority', 'asc')->get();
+        return Position::where('election_cycle_id', $this->activeCycle->id)
+            ->withCount('candidates')
+            ->orderBy('priority', 'asc')
+            ->get();
     }
 
     public function savePosition()

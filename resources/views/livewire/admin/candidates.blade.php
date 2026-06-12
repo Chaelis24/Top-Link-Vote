@@ -6,7 +6,7 @@ use Livewire\{WithFileUploads, WithPagination};
 use App\Http\Requests\Admin\UpdateCandidateRequest;
 use Livewire\Attributes\{Layout, Title, Url, Computed};
 use Illuminate\Support\Facades\{Auth, Session, DB, Storage};
-use App\Models\{Student, User, Candidate, Position, ElectionCycle, Platform};
+use App\Models\{Student, User, Candidate, Position, ElectionCycle, Platform, Course};
 
 new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class extends Component {
     use WithFileUploads, WithPagination, AuthenticatesLogout;
@@ -459,29 +459,30 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                                                 style="font-size: 0.95rem;">
                                                 <span>{{ $candidate->student->first_name }}
                                                     {{ $candidate->student->last_name }}</span>
-                                                @if ($selectedCycleId !== 'active')
-                                                    @php
-                                                        $hasHigher = \App\Models\Candidate::where(
-                                                            'election_cycle_id',
-                                                            $candidate->election_cycle_id,
-                                                        )
-                                                            ->where('position_id', $candidate->position_id)
-                                                            ->where('id', '!=', $candidate->id)
-                                                            ->withCount('votes')
-                                                            ->get()
-                                                            ->max('votes_count');
-                                                        $isWinner =
-                                                            $candidate->votes_count >= $hasHigher &&
-                                                            $candidate->votes_count > 0;
-                                                    @endphp
-                                                    @if ($isWinner)
-                                                        <span
-                                                            class="badge bg-success-soft text-success x-small d-inline-flex align-items-center"
-                                                            style="font-size: 0.6rem; padding: 2px 4px; font-weight: 800;">
-                                                            <i class="bi bi-trophy-fill text-warning me-1"></i> WINNER
-                                                            ({{ $candidate->votes_count }})
-                                                        </span>
-                                                    @endif
+                                                @php
+                                                    $maxWinners = $candidate->position->max_winners ?? 1;
+                                                    $rankedCandidates = \App\Models\Candidate::where(
+                                                        'election_cycle_id',
+                                                        $candidate->election_cycle_id,
+                                                    )
+                                                        ->where('position_id', $candidate->position_id)
+                                                        ->whereIn('status', ['approved', 'active'])
+                                                        ->withCount('votes')
+                                                        ->orderByDesc('votes_count')
+                                                        ->get();
+                                                    $winningVoteCount = $rankedCandidates->first()?->votes_count ?? 0;
+                                                    $winnerThreshold = $rankedCandidates
+                                                        ->take($maxWinners)
+                                                        ->last()?->votes_count ?? 0;
+                                                    $isWinner = $candidate->votes_count >= $winnerThreshold && $candidate->votes_count > 0 && $candidate->votes_count >= $winningVoteCount - ($winningVoteCount > 0 ? 0 : 0);
+                                                @endphp
+                                                @if ($selectedCycleId !== 'active' && $isWinner)
+                                                    <span
+                                                        class="badge bg-success-soft text-success x-small d-inline-flex align-items-center"
+                                                        style="font-size: 0.6rem; padding: 2px 4px; font-weight: 800;">
+                                                        <i class="bi bi-trophy-fill text-warning me-1"></i> WINNER
+                                                        ({{ $candidate->votes_count }})
+                                                    </span>
                                                 @endif
                                             </div>
                                             <div class="small text-muted fw-bold">
@@ -592,7 +593,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                                     <span class="text-muted fw-bold" style="font-size: 0.75rem;">
                                         <i class="bi bi-person-badge me-1"></i>{{ $candidate->student->student_id }}
                                     </span>
-                                    @if ($candidate->platforms->first()?->platform_title)
+                                    @if ($candidate->platforms->first()?->title)
                                         <span class="badge-approved small px-2 py-1" style="font-size: 0.7rem;"><i
                                                 class="bi bi-check2-circle"></i> Complete</span>
                                     @else

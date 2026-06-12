@@ -72,7 +72,7 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
         class="d-lg-none d-flex align-items-center justify-content-start p-2 px-4 bg-white shadow-sm gap-2 border-bottom">
         <img src="{{ asset('images/logo.png') }}" alt="Logo" style="height: 45px; width: 45px; object-fit: contain;">
 
-        <h4 class="mb-0 text-primary global" style="font-size: 0.95rem; font-weight: 600; color: #1e293b;">
+        <h4 class="mb-0 text-primary" style="font-size: 0.95rem; font-weight: 600; color: #1e293b;">
             Top Link Global College, Inc.
         </h4>
     </div>
@@ -98,7 +98,7 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
 
         <div class="row g-3 mb-4">
             <div class="col-12 col-lg-8">
-                <div class="glass-card p-2 h-100 border-0 shadow-sm">
+                <div class="glass-card p-2 h-100 border-0 shadow-sm p-4">
                     <div class="d-flex align-items-center gap-2 mb-3">
                         <div class="icon-box bg-info-light p-2 rounded">
                             <i class="bi bi-info-circle text-info text-primary"></i>

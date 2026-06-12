@@ -34,6 +34,7 @@ test('admin can approve a platform', function () {
 });
 
 test('admin cannot approve empty platform details', function () {
+    $cycle = ElectionCycle::factory()->create(['status' => 'active']);
     $platform = Platform::factory()->create([
         'status' => 'pending',
         'title' => '',
@@ -43,4 +44,6 @@ test('admin cannot approve empty platform details', function () {
     Volt::test('admin.platforms')
         ->call('publishPlatform', $platform->id)
         ->assertHasNoErrors();
+
+    expect($platform->fresh()->status)->toBe('pending');
 });

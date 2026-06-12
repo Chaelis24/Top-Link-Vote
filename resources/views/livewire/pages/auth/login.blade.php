@@ -44,11 +44,7 @@ new #[Layout('layouts.guest')] #[Title('Login')] class extends Component {
         } catch (\Illuminate\Validation\ValidationException $e) {
             RateLimiter::hit($throttleKey, 60);
             if (RateLimiter::tooManyAttempts($throttleKey, 3)) {
-                $this->dispatch('swal', [
-                    'icon' => 'warning',
-                    'title' => 'Too many attempts!',
-                    'text' => 'Having trouble with your password? You may reset it to regain access.',
-                ]);
+                session()->flash('warning', 'Having trouble with your password? You may reset it to regain access.');
             }
             $this->form->password = '';
             throw $e;
@@ -107,6 +103,19 @@ new #[Layout('layouts.guest')] #[Title('Login')] class extends Component {
                         </h2>
                         <p class="text-gray-500 text-xs md:text-sm">Log in with your Student Credentials.</p>
                     </div>
+
+                    @if (session('status'))
+                        <div
+                            class="mb-4 text-[#108500] text-[10px] md:text-[11px] font-bold uppercase p-3 bg-green-50 rounded-lg border border-green-100">
+                            {{ session('status') }}
+                        </div>
+                    @endif
+                    @if (session('warning'))
+                        <div
+                            class="mb-4 text-[#b8860b] text-[10px] md:text-[11px] font-bold uppercase p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                            {{ session('warning') }}
+                        </div>
+                    @endif
 
                     <form wire:submit="login" class="space-y-4 md:space-y-5">
                         <div>

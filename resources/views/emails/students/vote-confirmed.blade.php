@@ -87,7 +87,7 @@
                 </div>
                 <div class="d-flex justify-content-between mb-2">
                     <strong>Timestamp:</strong>
-                    <span> {{ $student->voted_at->timezone('Asia/Manila')->format('M d, Y - h:i A') }}</span>
+                    <span> {{ $student->voted_at?->timezone('Asia/Manila')->format('M d, Y - h:i A') ?? now()->format('M d, Y - h:i A') }}</span>
                 </div>
             </div>
 

@@ -104,7 +104,7 @@
                     </div>
                 </div>
 
-                <i class="bi bi-chevron-up ms-auto transition-transform" :class="{ 'rotate-180': open }"></i>
+                <i class="bi bi-chevron-up ms-auto transition-transform text-white" :class="{ 'rotate-180': open }"></i>
             </div>
 
             <div x-show="open" @click.away="open = false" x-cloak x-transition:enter="transition ease-out duration-100"

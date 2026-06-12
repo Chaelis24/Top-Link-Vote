@@ -18,13 +18,14 @@ export default defineConfig({
         }),
     ],
     server: {
-        host: "0.0.0.0",
+        host: "192.168.254.100",
+        port: 5173,
+        strictPort: true,
         hmr: {
-            // host: "192.168.254.100",
-            // host: "localhost",
             host: "nursery-enable-unsaid.ngrok-free.dev",
-            // protocol: "wss",
-            // clientPort: 443,
+            protocol: "wss",
+            clientPort: 443,
         },
+        allowedHosts: ["nursery-enable-unsaid.ngrok-free.dev"],
     },
 });

@@ -78,7 +78,7 @@
             Swal.fire({
                 icon: 'success',
                 title: 'Success!',
-                text: "{{ session('status') }}",
+                text: @json(session('status')),
                 confirmButtonColor: '#108500',
             });
         @endif

@@ -1,6 +1,9 @@
 <?php
 
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Volt\Volt;
+
+uses(RefreshDatabase::class);
 
 test('dashboard displays correct voting status', function () {
     $user = \App\Models\User::factory()

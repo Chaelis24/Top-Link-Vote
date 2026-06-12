@@ -194,7 +194,7 @@
     <div class="footer-section">
         <div class="signature-wrapper">
             <p style="font-size: 12px; margin-bottom: 40px;">Certified by:</p>
-            <div class="signature-line">{{ strtoupper($admin_name ?? Auth::user()->name) }}</div>
+            <div class="signature-line">{{ strtoupper($admin_name ?? (Auth::user()?->name ?? 'System Administrator')) }}</div>
             <div class="designation">System Administrator</div>
         </div>
     </div>

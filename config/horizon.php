@@ -224,9 +224,12 @@ return [
         'local' => [
             'supervisor-1' => [
                 'connection' => 'redis',
-                'queue' => ['default', 'emails', 'logs'],
-                'maxProcesses' => 5,
+                'queue' => ['default', 'emails', 'logs', 'notification', 'imports'],
                 'balance' => 'auto',
+                'maxProcesses' => 3,
+                'minProcesses' => 1,
+                'tries' => 1,
+                'backoff' => 0,
             ],
         ],
     ],

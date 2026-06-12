@@ -8,7 +8,6 @@
 
         <div style="text-align: center; margin-bottom: 25px;">
             <h2 style="color: #1a1a1a; margin-bottom: 10px;">Password Reset Request</h2>
-            <div style="height: 2px; width: 50px; background-color: #007bff; margin: auto;"></div>
         </div>
 
         <p style="color: #4a4a4a; line-height: 1.6; font-size: 15px;">
@@ -25,7 +24,7 @@
 
         <div style="text-align: center; margin: 35px 0;">
             <a href="{{ $url }}"
-                style="background-color: #007bff; color: white; padding: 14px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; display: inline-block;">
+                style="background-color: #10b981; color: white; padding: 14px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; display: inline-block;">
                 Reset My Password
             </a>
         </div>

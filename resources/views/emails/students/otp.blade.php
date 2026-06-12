@@ -7,12 +7,14 @@
         style="max-width: 500px; margin: 20px auto; background: #ffffff; padding: 40px; border-radius: 12px; border: 1px solid #e1e1e1; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
 
         <div style="text-align: center; margin-bottom: 25px;">
-            <h2 style="color: #1a1a1a; margin-bottom: 10px;">Verify Your Account</h2>
-            <div style="height: 2px; width: 50px; background-color: #007bff; margin: auto;"></div>
+            <h2 style="color: #1a1a1a; margin-bottom: 10px; text-align: center;">Verify Your Account</h2>
         </div>
 
         <p style="color: #4a4a4a; line-height: 1.6; font-size: 15px;">
-            Hello,
+            Hello <strong>
+                {{ $student->first_name }}
+                {{ $student->middle_name ? substr($student->middle_name, 0, 1) . '.' : '' }}
+                {{ $student->last_name }}{{ $student->suffix ? ' ' . $student->suffix : '' }}</strong>,
         </p>
 
         <p style="color: #4a4a4a; line-height: 1.6; font-size: 15px;">
@@ -22,7 +24,7 @@
 
         <div style="text-align: center; margin: 35px 0;">
             <span
-                style="background-color: #f8f9fa; color: #007bff; padding: 15px 35px; border-radius: 8px; font-weight: bold; font-size: 28px; display: inline-block; letter-spacing: 5px; border: 2px dashed #007bff;">
+                style="background-color: #f8f9fa; color: #10b981; padding: 15px 35px; border-radius: 8px; font-weight: bold; font-size: 28px; display: inline-block; letter-spacing: 5px;">
                 {{ $code }}
             </span>
         </div>

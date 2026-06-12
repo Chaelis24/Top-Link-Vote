@@ -6,9 +6,9 @@ Broadcast::channel('user.{id}', function ($user, $id) {
     return (int) $user->id === (int) $id;
 });
 
-Broadcast::channel('election-results.{courseId}', function ($user, $courseId) {
+Broadcast::channel('election-results.{courseName}', function ($user, $courseName) {
     $userCourse = $user->student?->block?->course?->name;
-    return strtoupper((string) $userCourse) === strtoupper((string) $courseId);
+    return strtoupper((string) $userCourse) === strtoupper((string) $courseName);
 });
 
 Broadcast::channel('admin.audit-trail', function ($user) {

@@ -294,10 +294,7 @@
 }
 
 .btn-approve {
-    color: var(
-        --success-green,
-        #198754
-    );
+    color: var(--success-green, #198754);
 }
 .btn-approve:hover {
     background: var(--success-green, #198754);
@@ -509,4 +506,25 @@ pre {
     background-color: #f9fafb;
     color: #9ca3af;
     border-color: #e5e7eb;
+}
+
+@media (max-width: 480px) {
+    .glass-card.overflow-hidden {
+        overflow: visible !important;
+    }
+    .custom-pagination {
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: flex-end !important;
+        min-height: 100% !important;
+    }
+    .custom-pagination nav {
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+    .page-btn {
+        width: 28px;
+        height: 28px;
+        font-size: 0.7rem;
+    }
 }

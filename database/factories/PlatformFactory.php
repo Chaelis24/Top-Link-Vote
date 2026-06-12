@@ -21,7 +21,7 @@ class PlatformFactory extends Factory
             'candidate_id' => \App\Models\Candidate::factory(),
             'title' => fake()->sentence(3),
             'tagline' => fake()->catchPhrase(),
-            'agenda' => fake()->paragraphs(3),
+            'agenda' => [fake()->paragraph(3)],
             'status' => 'pending',
             'submitted_at' => now(),
         ];

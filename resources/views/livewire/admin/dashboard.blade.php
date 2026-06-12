@@ -38,7 +38,7 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
                 } elseif ($activeCycle->voting_start && $now->lt($activeCycle->voting_start)) {
                     $targetDate = $activeCycle->voting_start;
                     $timerLabel = 'Voting Starts In';
-                } elseif ($activeCycle && $activeCycle->filing_start && $activeCycle->voting_end && now()->between($activeCycle->filing_start, $activeCycle->voting_end)) {
+                } elseif ($activeCycle->filing_start && $activeCycle->voting_end && now()->between($activeCycle->filing_start, $activeCycle->voting_end)) {
                     $targetDate = $activeCycle->voting_end;
                     $timerLabel = 'Election Ends In';
                 } else {

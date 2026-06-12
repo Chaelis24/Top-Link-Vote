@@ -417,18 +417,16 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
                         Candidate profiles and ballot submissions are now locked while results are being finalized.
                     </p>
                 </div>
-            @elseif ($isFiling && $isStudentOnly)
+            @elseif (($isFiling || $isCampaign) && $isStudentOnly)
                 <div class="p-5 text-center my-5 rounded-4">
-                    <div class="p-5 text-center my-5 rounded-4">
-                        <h3 class="text-primary fw-bold">Filing of Candidacy Ongoing</h3>
-                        <p class="text-secondary">The candidates are currently finalizing their platforms. Campaigning
-                            will start soon!</p>
-                    </div>
-                </div>
-            @elseif ($isCampaign && $isStudentOnly)
-                <div class="p-5 text-center my-5 rounded-4">
-                    <h3 class="text-primary fw-bold">Campaign of Candidacy Ongoing</h3>
-                    <p class="text-secondary">The candidates are currently campaigning. Voting will start soon!</p>
+                    <h3 class="text-primary fw-bold">
+                        {{ $isFiling ? 'Filing of Candidacy Ongoing' : 'Campaign of Candidacy Ongoing' }}
+                    </h3>
+                    <p class="text-secondary">
+                        {{ $isFiling
+                            ? 'The candidates are currently finalizing their platforms. Campaigning will start soon!'
+                            : 'The candidates are currently campaigning. Voting will start soon!' }}
+                    </p>
                 </div>
             @else
                 <div class="p-5 text-center">
@@ -473,23 +471,22 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
                                 data-bs-dismiss="modal"></button>
                         </div>
 
-                        <ul class="nav nav-pills w-100 p-1 rounded-3 bg-transparent" role="tablist">
-                            <li class="nav-item flex-fill text-center" role="presentation">
+                        <ul class="nav nav-tabs border-0 nav-justified w-100" role="tablist">
+                            <li class="nav-item" role="presentation">
                                 <button
-                                    class="nav-link active fw-bold border-0 w-100 py-2 small rounded-3 !text-emerald-700 bg-transparent [&.active]:!bg-emerald-600 [&.active]:!text-white"
+                                    class="nav-link active border-0 rounded-3 py-2 fw-bold text-secondary w-100 small"
                                     id="profile-tab-{{ $candidate->id }}" data-bs-toggle="tab"
                                     data-bs-target="#profile-panel-{{ $candidate->id }}" type="button"
                                     style="font-size: 0.75rem; transition: all 0.2s ease;">
-                                    <i class="bi bi-person-badge me-1"></i> Introductory Profile
+                                    <i class="bi bi-person-circle me-1"></i>Introductory Profile
                                 </button>
                             </li>
-                            <li class="nav-item flex-fill text-center" role="presentation">
-                                <button
-                                    class="nav-link fw-bold border-0 w-100 py-2 small rounded-3 !text-emerald-700 bg-transparent [&.active]:!bg-emerald-600 [&.active]:!text-white"
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link border-0 rounded-3 py-2 fw-bold text-secondary w-100 small"
                                     id="platform-tab-{{ $candidate->id }}" data-bs-toggle="tab"
                                     data-bs-target="#platform-panel-{{ $candidate->id }}" type="button"
                                     style="font-size: 0.75rem; transition: all 0.2s ease;">
-                                    <i class="bi bi-megaphone me-1"></i> Platform & Agenda
+                                    <i class="bi bi-megaphone me-1"></i>Platform & Agenda
                                 </button>
                             </li>
                         </ul>
@@ -693,14 +690,14 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
                             <ul class="nav nav-tabs border-0 nav-justified w-100" id="editTabs" role="tablist">
                                 <li class="nav-item" role="presentation">
                                     <button
-                                        class="nav-link active border-0 rounded-0 py-2 fw-bold text-secondary w-100 small"
+                                        class="nav-link active border-0 rounded-3 py-2 fw-bold text-secondary w-100 small"
                                         id="profile-tab" data-bs-toggle="tab" data-bs-target="#profile-pane"
                                         type="button" role="tab" style="background: transparent;">
                                         <i class="bi bi-person-circle me-1"></i>Profile
                                     </button>
                                 </li>
                                 <li class="nav-item" role="presentation">
-                                    <button class="nav-link border-0 rounded-0 py-2 fw-bold text-secondary w-100 small"
+                                    <button class="nav-link border-0 rounded-3 py-2 fw-bold text-secondary w-100 small"
                                         id="platform-tab" data-bs-toggle="tab" data-bs-target="#platform-pane"
                                         type="button" role="tab" style="background: transparent;">
                                         <i class="bi bi-megaphone me-1"></i>Platform
@@ -762,14 +759,14 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
                                                         style="font-size: 0.7rem;">Party Name</label>
                                                     <input type="text" wire:model="party_name"
                                                         class="form-control form-control-sm border-0 bg-light py-2"
-                                                        placeholder="e.g. Alyansa ng Kabataan">
+                                                        placeholder="e.g. Independent">
                                                 </div>
                                                 <div class="col-6 mb-2">
                                                     <label class="small fw-bold text-primary"
                                                         style="font-size: 0.7rem;">GWA (Optional)</label>
                                                     <input type="text" wire:model="average_grade"
                                                         class="form-control form-control-sm border-0 bg-light py-2"
-                                                        placeholder="e.g. 1.75">
+                                                        placeholder="e.g. 1.25">
                                                 </div>
                                                 <div class="col-12">
                                                     <label class="small fw-bold text-primary"
@@ -811,7 +808,7 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
                                                     <input type="text"
                                                         wire:model="previous_school_project.{{ $index }}"
                                                         class="form-control form-control-sm border-0 bg-light py-1"
-                                                        placeholder="e.g. Coastal Cleanup Drive">
+                                                        placeholder="e.g. Water Dispenser">
                                                     <button type="button"
                                                         wire:click="removeField('previous_school_project', {{ $index }})"
                                                         class="btn btn-sm text-danger p-0">
@@ -833,7 +830,7 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
                                             Tagline</label>
                                         <input type="text" wire:model="tagline"
                                             class="form-control form-control-sm border-0 bg-light py-2"
-                                            placeholder="e.g. Matapat na Serbisyo para sa Lahat">
+                                            placeholder="e.g. Leadership with Action, Service with Integrity">
                                         @error('tagline')
                                             <span class="text-danger small">{{ $message }}</span>
                                         @enderror
@@ -843,7 +840,7 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
                                             Title</label>
                                         <input type="text" wire:model="platform_title"
                                             class="form-control form-control-sm border-0 bg-light py-2"
-                                            placeholder="e.g. THE 3-POINT AGENDA: Education, Environment, and Empowerment">
+                                            placeholder="e.g. THE 4-PILLAR INITIATIVE: Progress, Unity, and Excellence">
                                         @error('platform_title')
                                             <span class="text-danger small">{{ $message }}</span>
                                         @enderror
@@ -852,7 +849,7 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
                                         <label class="small fw-bold text-primary" style="font-size: 0.7rem;">Agenda
                                             Details (List your plans)</label>
                                         <textarea wire:model="agenda" rows="5" class="form-control form-control-sm border-0 bg-light"
-                                            placeholder="1. Transparent Budgeting&#10;2. Student Rights Advocacy&#10;3. Mental Health Support Programs"></textarea>
+                                            placeholder="1. Enhanced Student Services&#10;2. Sustainable Campus Projects&#10;3. Inclusive Community Engagement"></textarea>
                                         @error('agenda')
                                             <span class="text-danger small">{{ $message }}</span>
                                         @enderror

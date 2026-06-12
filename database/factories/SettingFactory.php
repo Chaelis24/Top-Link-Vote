@@ -19,7 +19,7 @@ class SettingFactory extends Factory
     {
         return [
             'key' => fake()->unique()->word(),
-            'value' => fake()->boolean(),
+            'value' => fake()->boolean() ? '1' : '0',
         ];
     }
 }

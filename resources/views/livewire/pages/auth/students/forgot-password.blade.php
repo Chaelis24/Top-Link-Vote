@@ -24,11 +24,12 @@ new #[Layout('layouts.guest')] #[Title('Forgot Password')] class extends Compone
         $student = Student::where('student_id', $this->student_id)->whereHas('user', fn($q) => $q->where('email', $this->email))->first();
 
         if (!$student) {
-            $this->dispatch('swal:toast', [
-                'icon' => 'error',
-                'title' => 'Verification failed',
-                'text' => 'The provided details do not match our records.',
-            ]);
+            session()->flash('error', 'The provided details do not match our records.');
+            return;
+        }
+
+        if ($student->user->email_verified_at === null) {
+            session()->flash('error', 'Please verify your account first before resetting your password.');
             return;
         }
 
@@ -40,11 +41,7 @@ new #[Layout('layouts.guest')] #[Title('Forgot Password')] class extends Compone
         }
 
         $this->isSent = true;
-        $this->dispatch('swal:toast', [
-            'icon' => 'success',
-            'title' => 'Reset link sent!',
-            'text' => 'Please check your inbox.',
-        ]);
+        session()->flash('status', 'Reset link sent!');
     }
 }; ?>
 
@@ -127,6 +124,13 @@ new #[Layout('layouts.guest')] #[Title('Forgot Password')] class extends Compone
                             <span class="text-[9px] md:text-[10px] mt-1 font-bold uppercase text-gray-400">Reset</span>
                         </div>
                     </div>
+
+                    @if (session('error'))
+                        <div
+                            class="mb-4 text-red-600 text-[10px] md:text-[11px] font-bold uppercase p-3 bg-red-50 rounded-lg border border-red-200">
+                            {{ session('error') }}
+                        </div>
+                    @endif
 
                     @if (!$isSent)
                         <form wire:submit="sendPasswordResetLink" class="space-y-4 md:space-y-5">

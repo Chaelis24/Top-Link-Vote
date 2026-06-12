@@ -62,9 +62,10 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
         }
     }
 
-    public function saveProfile(UpdateProfileRequest $request)
+    public function saveProfile()
     {
-        $validated = $request->validated();
+        $request = app(UpdateProfileRequest::class);
+        $validated = $this->validate($request->rules());
         $user = Auth::user();
 
         $result = $this->profileService->updateProfile($user, $validated, $this->photo);
@@ -94,9 +95,10 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
         $this->dispatch('close-modal');
     }
 
-    public function updatePassword(UpdatePasswordRequest $request)
+    public function updatePassword()
     {
-        $validated = $request->validated();
+        $request = app(UpdatePasswordRequest::class);
+        $validated = $this->validate($request->rules());
 
         $this->profileService->updatePassword(Auth::user(), $validated['new_password']);
 

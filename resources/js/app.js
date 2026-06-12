@@ -18,11 +18,3 @@ document.addEventListener("livewire:navigated", () => {
         remainingBackdrops.forEach((b) => b.remove());
     }
 });
-
-window.Echo.connector.pusher.connection.bind("connected", () => {
-    console.log("Echo Connected Successfully!");
-});
-
-window.Echo.connector.pusher.connection.bind("error", (err) => {
-    console.log("Echo Connection Error:", err);
-});

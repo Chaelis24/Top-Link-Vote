@@ -299,6 +299,7 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                             Dashboard</a>
                     </div>
                 </div>
+<<<<<<< HEAD
             @elseif (!$this->isVotingOpen)
                 <div class="d-flex flex-column align-items-center justify-content-center" style="min-height: 65vh;">
                     <div class="text-center" style="max-width: 550px; border-radius: 25px;">
@@ -327,6 +328,62 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                             <span class="step-label"
                                 style="font-size: 10px; margin-top: 4px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">
                                 {{ $label }}
+=======
+            </div>
+        @elseif (!$this->isVotingOpen)
+            <div class="p-5 text-center">
+                <div class="mb-6 relative inline-block">
+                    <div class="bg-emerald-50 p-6 rounded-full">
+                        <i class="bi bi-box-seam text-emerald-600/30 text-6xl"></i>
+                    </div>
+                    <div class="absolute -bottom-2 -right-2 bg-white rounded-full p-1">
+                        <i class="bi bi-exclamation-circle-fill text-amber-500 text-3xl"></i>
+                    </div>
+                </div>
+                <h2 class="text-2xl font-bold text-gray-800 mb-3">Waiting for Voting to Start</h2>
+                <p class="text-secondary mx-auto mb-4" style="max-width: 500px;">
+                    The election cycle is currently on standby or has not been officially opened by the administrator.
+                    Please wait for further announcements regarding the start of the voting period.
+                </p>
+            </div>
+        @else
+            <div class="d-flex align-items-center justify-content-center mb-0 px-md-5 pt-4 p-6 p-md-0">
+                @foreach ([1 => 'Select', 2 => 'Review', 3 => 'Confirm'] as $num => $label)
+                    <div
+                        class="step d-flex flex-column align-items-center {{ $currentStep == $num ? 'active' : ($currentStep > $num ? 'completed' : '') }}">
+                        <div class="step-circle" style="width: 28px; height: 28px; font-size: 12px; line-height: 28px;">
+                            {{ $num }}
+                        </div>
+                        <span class="step-label"
+                            style="font-size: 10px; margin-top: 4px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">
+                            {{ $label }}
+                        </span>
+                    </div>
+                    @if ($num < 3)
+                        <div class="step-line"
+                            style="width: 40px; margin: 0 8px; height: 2px; position: relative; top: -10px;">
+                        </div>
+                    @endif
+                @endforeach
+            </div>
+
+            @if ($currentStep == 1)
+                @php
+                    $position = $this->currentPosition;
+                    $totalPositions = count($this->electionData);
+                    $positionNumber = $this->currentPositionIndex + 1;
+                    $hasCandidates = $position && $position->candidates->isNotEmpty();
+                    $hasSelection =
+                        $position && isset($selections[$position->id]) && !is_null($selections[$position->id]);
+                @endphp
+
+                @if ($position)
+                    <div class="fade-in px-2 py-2" wire:key="position-{{ $position->id }}">
+                        <div class="mb-2 text-center">
+                            <span
+                                class="text-[10px] md:text-[11px] font-bold text-gray-400 uppercase tracking-[0.15em]">
+                                Position {{ $positionNumber }} of {{ $totalPositions }}
+>>>>>>> 7336729 (fixed bugs)
                             </span>
                         </div>
                         @if ($num < 3)

@@ -43,15 +43,11 @@ new #[Layout('layouts.guest')] #[Title('Reset Password')] class extends Componen
         });
 
         if ($status != Password::PASSWORD_RESET) {
-            $this->dispatch('swal:modal', [
-                'icon' => 'error',
-                'title' => 'Error',
-                'text' => __($status),
-            ]);
+            session()->flash('error', __($status));
             return;
         }
 
-        Session::flash('status', 'Your password has been reset successfully!');
+        session()->flash('status', 'Your password has been reset successfully!');
         $this->redirectRoute('login', navigate: true);
     }
 }; ?>
@@ -111,6 +107,13 @@ new #[Layout('layouts.guest')] #[Title('Reset Password')] class extends Componen
                         <p class="text-gray-500 text-xs md:text-sm">Final step of account recovery</p>
                     </div>
 
+                    @if (session('error'))
+                        <div
+                            class="mb-4 text-red-600 text-[10px] md:text-[11px] font-bold uppercase p-3 bg-red-50 rounded-lg border border-red-200">
+                            {{ session('error') }}
+                        </div>
+                    @endif
+
                     <div class="flex items-center justify-between mb-4 mb-md-8 px-1">
                         <div class="flex flex-col items-center">
                             <div
@@ -161,7 +164,7 @@ new #[Layout('layouts.guest')] #[Title('Reset Password')] class extends Componen
                                 placeholder="At least 8 characters" required autofocus
                                 class="w-full px-4 py-2.5 md:py-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-[#9cff00]/30 focus:border-[#108500] outline-none transition-all text-[#252525] text-sm">
                             <button type="button" @click="show = !show" aria-label="Toggle password visibility"
-                                class="absolute right-3 top-1/2 -translate-y-1/2 {{ $errors->has('form.password') ? 'text-red-500' : 'text-gray-400 hover:text-[#108500]' }} transition-colors">
+                                class="absolute right-3 top-1/2 -translate-y-1/2 mt-3 {{ $errors->has('password') ? 'text-red-500' : 'text-gray-400 hover:text-[#108500]' }} transition-colors">
                                 <i :class="show ? 'bi bi-eye-slash-fill' : 'bi bi-eye-fill'" class="text-md"></i>
                             </button>
                             <x-input-error :messages="$errors->get('password')" class="mt-2 text-red-600 text-[10px]" />
@@ -175,7 +178,7 @@ new #[Layout('layouts.guest')] #[Title('Reset Password')] class extends Componen
                                 placeholder="Re-type new password" required
                                 class="w-full px-4 py-2.5 md:py-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-[#9cff00]/30 focus:border-[#108500] outline-none transition-all text-[#252525] text-sm">
                             <button type="button" @click="show = !show" aria-label="Toggle password visibility"
-                                class="absolute right-3 top-1/2 -translate-y-1/2 {{ $errors->has('form.password') ? 'text-red-500' : 'text-gray-400 hover:text-[#108500]' }} transition-colors">
+                                class="absolute right-3 top-1/2 -translate-y-1/2 mt-3 {{ $errors->has('password') ? 'text-red-500' : 'text-gray-400 hover:text-[#108500]' }} transition-colors">
                                 <i :class="show ? 'bi bi-eye-slash-fill' : 'bi bi-eye-fill'" class="text-md"></i>
                             </button>
                         </div>

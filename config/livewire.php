@@ -195,5 +195,5 @@ return [
     |
     */
 
-    'release_token' => 'a',
+    'release_token' => env('APP_KEY', 'a'),
 ];

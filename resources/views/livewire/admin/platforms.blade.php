@@ -24,19 +24,14 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
         $activeCycleId = ElectionCycle::where('status', 'active')->value('id') ?? 0;
 
         return Platform::with(['candidate.student', 'candidate.position'])
-            ->whereIn('platforms.id', function ($query) {
-                $query->selectRaw('MAX(id)')->from('platforms')->groupBy('candidate_id');
+            ->whereHas('candidate', function ($q) use ($activeCycleId) {
+                $q->where('election_cycle_id', $activeCycleId);
             })
-            ->join('candidates', 'platforms.candidate_id', '=', 'candidates.id')
-            ->join('positions', 'candidates.position_id', '=', 'positions.id')
-            ->where('candidates.election_cycle_id', $activeCycleId)
-            ->whereNotNull('platforms.title')
-            ->where('platforms.title', '!=', '')
-            ->whereNotNull('platforms.agenda')
-            ->where('platforms.agenda', '!=', '')
+            ->whereNotNull('title')
+            ->where('title', '!=', '')
             ->where(function ($query) {
                 $query
-                    ->where('platforms.title', 'like', '%' . $this->search . '%')
+                    ->where('title', 'like', '%' . $this->search . '%')
                     ->orWhereHas('candidate.student', function ($q) {
                         $q->where('first_name', 'like', '%' . $this->search . '%')->orWhere('last_name', 'like', '%' . $this->search . '%');
                     })
@@ -44,9 +39,8 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                         $q->where('party_name', 'like', '%' . $this->search . '%');
                     });
             })
-            ->select('platforms.*')
-            ->orderByRaw("CASE WHEN platforms.status = 'pending' THEN 0 ELSE 1 END ASC")
-            ->latest('platforms.created_at')
+            ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END ASC")
+            ->latest('created_at')
             ->paginate(10);
     }
 
@@ -159,7 +153,7 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                                 <td class="ps-4">
                                     <div class="d-flex align-items-center gap-3">
                                         <div class="profile-avatar-sm shadow-sm text-white flex-shrink-0 d-flex align-items-center justify-content-center"
-                                            style="background: {{ $this->getAvatarColor($platform->candidate->id) }}; ; width: 40px; height: 40px; border-radius: 24px; overflow: hidden;">
+                                            style="background: {{ $this->getAvatarColor($platform->candidate->id) }}; width: 40px; height: 40px; border-radius: 24px; overflow: hidden;">
                                             @if ($platform->candidate?->photo)
                                                 <img src="{{ asset('storage/' . $platform->candidate->photo) }}"
                                                     class="w-100 h-100 object-fit-cover rounded-circle">
@@ -281,12 +275,12 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                         <div class="flex items-start justify-between">
                             <div class="flex items-center gap-3">
                                 <div class="profile-avatar-sm shadow-sm text-white flex-shrink-0 d-flex align-items-center justify-content-center"
-                                    style="background: {{ $this->getAvatarColor($platform->candidate->id) }}; ; width: 40px; height: 40px; border-radius: 24px; overflow: hidden;">
+                                    style="background: {{ $this->getAvatarColor($platform->candidate->id) }}; width: 40px; height: 40px; border-radius: 24px; overflow: hidden;">
                                     @if ($platform->candidate?->photo)
                                         <img src="{{ asset('storage/' . $platform->candidate->photo) }}"
                                             class="w-full h-full object-cover">
                                     @else
-                                        {{ strtoupper(substr($platform->candidate->student?->first_name ?? 'A', 0, 1)) }}{{ strtoupper(substr($platform->candidate->student?->last_name ?? '', 0, 1)) }}>
+                                        {{ strtoupper(substr($platform->candidate->student?->first_name ?? 'A', 0, 1)) }}{{ strtoupper(substr($platform->candidate->student?->last_name ?? '', 0, 1)) }}
                                     @endif
                                 </div>
                                 <div>
@@ -392,7 +386,7 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                         <div
                             class="p-3 p-md-4 bg-white border-bottom d-flex flex-column flex-md-row align-items-center gap-2 gap-md-4 text-center text-md-start">
                             <div class="profile-avatar-sm shadow-sm text-white flex-shrink-0 d-flex align-items-center justify-content-center"
-                                style="background: {{ $this->getAvatarColor($selectedPlatform->candidate->id) }}; ; width: 60px; height: 60px; border-radius: 50%; overflow: hidden;">
+                                style="background: {{ $this->getAvatarColor($selectedPlatform->candidate->id) }}; width: 60px; height: 60px; border-radius: 50%; overflow: hidden;">
                                 @if ($selectedPlatform->candidate?->photo)
                                     <img src="{{ asset('storage/' . $selectedPlatform->candidate->photo) }}"
                                         class="w-full h-full object-cover">

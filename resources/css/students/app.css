@@ -104,7 +104,7 @@ body {
 }
 
 .glass-card:hover {
-    transform: translateY(-4px);
+    transform: translateY(-2px);
     border-color: var(--accent);
     box-shadow:
         0 20px 25px -5px rgba(16, 185, 129, 0.1),
@@ -148,9 +148,7 @@ body {
 .brand-text .top-link {
     font-size: 1.2rem;
     font-weight: 900;
-    background: linear-gradient(to right, #059669, #10b981);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: #ffffff !important;
 }
 
 .brand-text .college,
