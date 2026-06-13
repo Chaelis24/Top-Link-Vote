@@ -43,21 +43,14 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
         $vEndIso = '',
         $rDateIso = '';
 
+    // --- Computed Properties ---
     #[Computed]
     public function active()
     {
         return ElectionCycle::getActiveCycle();
     }
 
-    public function with(): array
-    {
-        $active = ElectionCycle::getActiveCycle();
-        return [
-            'active' => $active,
-            'vEndIso' => $active?->voting_end?->format('Y-m-d\TH:i:s'),
-        ];
-    }
-
+    // --- Component Lifecycle ---
     public function mount()
     {
         $active = $this->active;
@@ -110,6 +103,17 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
         $this->maintenanceMode = (bool) ($settings['maintenanceMode'] ?? false);
     }
 
+    // --- Data Fetching ---
+    public function with(): array
+    {
+        $active = ElectionCycle::getActiveCycle();
+        return [
+            'active' => $active,
+            'vEndIso' => $active?->voting_end?->format('Y-m-d\TH:i:s'),
+        ];
+    }
+
+    // --- State Management & Progress ---
     public function updateProgress()
     {
         $active = $this->active;
@@ -263,6 +267,7 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
         }
     }
 
+    // --- Action / CRUD Methods ---
     public function createNewCycle()
     {
         $studentCount = Student::where('status', 'active')->count();
@@ -337,7 +342,7 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
     {
         $request = new ElectionCycleRequest();
         $rules = collect($request->rules())
-            ->only(['filing_start', 'filing_end', 'campaign_start', 'campaign_end', 'start_date', 'end_date'])
+            ->only(['filing_start', 'filing_end', 'campaign_start', 'campaign_end', 'start_date', 'end_date', 'results_date'])
             ->toArray();
 
         $this->validate($rules);
@@ -351,6 +356,7 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                     'campaign_end' => $this->campaign_end,
                     'voting_start' => $this->start_date,
                     'voting_end' => $this->end_date,
+                    'results_date' => $this->results_date,
                 ]);
 
                 Cache::forget('active_election_cycle');
@@ -453,34 +459,6 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
             $this->dispatch('swal', [
                 'title' => 'Error',
                 'text' => 'Something went wrong: ' . $e->getMessage(),
-                'icon' => 'error',
-            ]);
-        }
-    }
-
-    public function endElection()
-    {
-        try {
-            $active = $this->active;
-            if ($active) {
-                $active->update(['status' => 'completed']);
-            }
-
-            Cache::forget('active_election_cycle');
-
-            unset($this->active);
-            $this->mount();
-
-            $this->dispatch('swal', [
-                'title' => 'Election Completed!',
-                'text' => 'The election cycle has been successfully closed.',
-                'icon' => 'success',
-                'redirect' => '/admin/election-cycle',
-            ]);
-        } catch (\Exception $e) {
-            $this->dispatch('swal', [
-                'title' => 'Closure Error',
-                'text' => 'Could not end the election cycle: ' . $e->getMessage(),
                 'icon' => 'error',
             ]);
         }
@@ -706,7 +684,7 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
             </div>
 
             <div class="col-lg-4">
-                <div class="glass-card p-3 p-md-4 border-0 shadow-sm bg-white h-100">
+                <div class="glass-card p-3 p-md-4 border-0 shadow-sm bg-white">
                     <h6 class="fw-bold text-primary mb-3 mb-md-4 uppercase small">
                         <i class="bi bi-sliders me-2"></i>Live Controls
                     </h6>
@@ -798,24 +776,6 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                                 })
                                 ">
                                 <i class="bi bi-calendar-check me-2"></i>Update Cycle Dates
-                            </button>
-                            <button class="btn btn-outline-danger btn-sm w-100 py-2 fw-bold text-[12px] md:text-sm"
-                                @click.prevent="
-                                    Swal.fire({
-                                        title: 'Final Warning',
-                                        text: 'This will end the current election cycle. This action cannot be undone!',
-                                        icon: 'warning',
-                                        showCancelButton: true,
-                                        cancelButtonColor: '#6c757d',
-                                        confirmButtonColor: '#3085d6',
-                                        confirmButtonText: 'Yes, End it now'
-                                    }).then((result) => {
-                                        if (result.isConfirmed) {
-                                            $wire.endElection()
-                                        }
-                                    })
-                                    ">
-                                <i class="bi bi-stop-circle me-2"></i>End Election
                             </button>
                         </div>
                     </div>
@@ -1018,6 +978,22 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                                 </div>
                                 @error('end_date')
                                     <span class="text-danger small mt-2 d-block">{{ $message }}</span>
+                                @enderror
+                            </div>
+                            <div class="col-12 border-top pt-4 mt-2">
+                                <label
+                                    class="form-label fw-bold small text-success text-uppercase d-flex align-items-center">
+                                    <i class="bi bi-4-circle-fill me-2 text-success"></i> Phase 4: Results Proclamation
+                                </label>
+                                <div class="input-group shadow-sm">
+                                    <span class="input-group-text bg-white text-success">
+                                        <i class="bi bi-megaphone-fill"></i>
+                                    </span>
+                                    <input type="datetime-local" wire:model="results_date"
+                                        class="form-control @error('results_date') is-invalid @enderror">
+                                </div>
+                                @error('results_date')
+                                    <span class="text-danger small mt-1 d-block">{{ $message }}</span>
                                 @enderror
                             </div>
                         </div>

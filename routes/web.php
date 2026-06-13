@@ -18,14 +18,15 @@ Route::middleware(['auth', 'role:student|candidate'])
 
         Volt::route('/cast-vote', 'students.cast-vote')
             ->name('student.cast-vote');
-
-        Route::get('/force-logout', function () {
-            Auth::logout();
-            Session::invalidate();
-            Session::regenerateToken();
-            return redirect()->route('login');
-        })->name('force.logout');
     });
+
+Route::middleware('auth')->get('/force-logout', function () {
+    $isAdmin = auth()->user()?->hasRole('admin');
+    Auth::logout();
+    Session::invalidate();
+    Session::regenerateToken();
+    return redirect()->route($isAdmin ? 'admin.login' : 'login');
+})->name('force.logout');
 
 require __DIR__ . '/auth.php';
 require __DIR__ . '/admin.php';

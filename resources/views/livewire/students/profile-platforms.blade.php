@@ -307,58 +307,58 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
                         @endphp
 
                         <div
-                            class="position-relative bg-white rounded-5 shadow-sm border transition-all hover-translate-y hover-shadow-lg p-2 p-md-3 h-100 d-flex flex-column align-items-center text-center group-card mb-0 mb-md-0 {{ !$isApproved ? 'opacity-75' : '' }}">
+                            class="position-relative bg-white rounded-5 shadow-sm border transition-all hover-translate-y hover-shadow-lg p-2 h-100 d-flex flex-column align-items-center text-center group-card {{ !$isApproved ? 'opacity-75' : '' }}">
 
                             <div
-                                class="position-absolute top-0 start-0 w-100 p-2 p-md-3 d-flex justify-content-between align-items-center">
+                                class="position-absolute top-0 start-0 w-100 p-2 d-flex justify-content-between align-items-center">
                                 <span
-                                    class="badge rounded-pill {{ $isApproved ? 'bg-emerald-light text-primary' : 'bg-light text-muted' }} fw-bold px-2 px-md-3 py-1"
-                                    style="font-size: 0.55rem; max-width: 80%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                                    {{ Str::limit($candidate->party_name ?? 'No Party Name', 15) }}
+                                    class="badge rounded-pill {{ $isApproved ? 'bg-emerald-light text-primary' : 'bg-light text-muted' }} fw-bold px-2 py-0.5"
+                                    style="font-size: 0.5rem; max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                    {{ Str::limit($candidate->party_name ?? 'No Party Name', 12) }}
                                 </span>
 
                                 @if ($isApproved)
                                     <button type="button" class="btn p-0 border-0" data-bs-toggle="modal"
                                         data-bs-target="#unifiedModal{{ $candidate->id }}">
                                         <i class="bi bi-info-circle-fill text-primary opacity-50"
-                                            style="font-size: 0.8rem;"></i>
+                                            style="font-size: 0.7rem;"></i>
                                     </button>
                                 @else
-                                    <i class="bi bi-hourglass-split text-muted" style="font-size: 0.8rem;"></i>
+                                    <i class="bi bi-hourglass-split text-muted" style="font-size: 0.7rem;"></i>
                                 @endif
                             </div>
 
-                            <div class="mt-4 mt-md-4 mb-2 mb-md-3 position-relative">
-                                <div class="candidate-avatar-circle shadow-md border border-4 border-white overflow-hidden mx-auto"
-                                    style="width: clamp(60px, 15vw, 120px); height: clamp(60px, 15vw, 120px); background: {{ $this->getAvatarColor($candidate->id) }}; filter: {{ !$isApproved ? 'grayscale(100%)' : 'none' }};">
+                            <div class="mt-4 mt-md-3 mb-1 position-relative">
+                                <div class="candidate-avatar-circle shadow-sm border border-3 border-white overflow-hidden mx-auto"
+                                    style="width: clamp(50px, 12vw, 90px); height: clamp(50px, 12vw, 90px); background: {{ $this->getAvatarColor($candidate->id) }}; filter: {{ !$isApproved ? 'grayscale(100%)' : 'none' }};">
                                     @if ($candidate->photo)
                                         <img src="{{ asset('storage/' . $candidate->photo) }}"
                                             class="w-100 h-100 object-fit-cover">
                                     @else
                                         <div
-                                            class="w-100 h-100 d-flex align-items-center justify-content-center text-white fw-bold fs-4 fs-md-3">
+                                            class="w-100 h-100 d-flex align-items-center justify-content-center text-white fw-bold fs-5">
                                             {{ strtoupper(substr($candidate->student?->first_name ?? 'A', 0, 1)) }}
                                         </div>
                                     @endif
                                 </div>
                             </div>
 
-                            <div class="mb-1 mb-md-2 w-100">
+                            <div class="mb-1 w-100">
                                 <h6 class="fw-black text-dark mb-0 text-truncate px-1"
-                                    style="font-size: clamp(0.7rem, 2vw, 0.95rem);">
+                                    style="font-size: clamp(0.65rem, 1.8vw, 0.85rem);">
                                     {{ $candidate->student?->first_name }}
                                     {{ $candidate->student?->middle_name ? substr($candidate->student?->middle_name, 0, 1) . '.' : '' }}
                                     {{ $candidate->student?->last_name }} {{ $formattedSuffix ?? '' }}
                                 </h6>
                                 <p class="text-uppercase tracking-wider text-primary fw-bold mb-0"
-                                    style="font-size: 0.60rem;">
+                                    style="font-size: 0.55rem;">
                                     {{ $candidate->position?->name }}
                                 </p>
                             </div>
 
-                            <div class="bg-light rounded-4 p-2 p-md-3 mb-2 mb-md-3 w-100">
+                            <div class="bg-light rounded-4 p-1 p-md-2 mb-1 w-100">
                                 <p class="text-primary mb-0 fst-italic"
-                                    style="font-size: 0.70rem; line-height: 1.3; min-height: 3px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                                    style="font-size: 0.65rem; line-height: 1.2; min-height: 3px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
                                     @if ($isApproved)
                                         "{{ $latestPlatform?->tagline ?? 'No Tagline' }}"
                                     @else
@@ -367,18 +367,18 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
                                 </p>
                             </div>
 
-                            <div class="mt-auto w-100 d-flex flex-column gap-1 gap-md-2">
+                            <div class="mt-auto w-100">
                                 @if ($isApproved)
-                                    <button class="btn btn-outline-glow rounded-pill py-1 py-md-2 fw-bold w-100"
-                                        style="font-size: 0.65rem;" data-bs-toggle="modal"
+                                    <button class="btn btn-outline-glow rounded-pill py-0 py-md-1 fw-bold w-100"
+                                        style="font-size: 0.6rem;" data-bs-toggle="modal"
                                         data-bs-target="#unifiedModal{{ $candidate->id }}"
                                         onclick="const tab = bootstrap.Tab.getOrCreateInstance(document.querySelector('#profile-tab-{{ $candidate->id }}')); tab.show();">
                                         Profile
                                     </button>
                                 @else
                                     <button
-                                        class="btn btn-light rounded-pill py-1 py-md-2 fw-bold w-100 text-muted border border-dashed"
-                                        style="font-size: 0.65rem;" disabled>
+                                        class="btn btn-light rounded-pill py-0 py-md-1 fw-bold w-100 text-muted border border-dashed"
+                                        style="font-size: 0.6rem;" disabled>
                                         Review
                                     </button>
                                 @endif
@@ -458,8 +458,8 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
         @endphp
 
         <div class="modal fade" id="unifiedModal{{ $candidate->id }}" tabindex="-1" wire:ignore.self>
-            <div class="modal-dialog modal-dialog-centered modal-lg mx-3 mx-md-auto">
-                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden min-h-[50vh] md:h-[10px]">
+            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg mx-3 mx-md-auto">
+                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
 
                     <div class="modal-header border-0 p-3 pb-2 flex-column align-items-start bg-emerald-50">
                         <div class="d-flex justify-content-between align-items-center w-100 mb-2">
@@ -496,8 +496,7 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
                         <div class="tab-content">
                             <div class="tab-pane fade show active" id="profile-panel-{{ $candidate->id }}"
                                 role="tabpanel">
-                                <div class="row g-4 align-items-center">
-
+                                <div class="row g-4 align-items-center p-3">
                                     <div class="col-12 col-md-4 text-center border-md-end pe-md-4">
                                         <div class="position-relative d-inline-block mb-3">
                                             <div class="rounded-circle mx-auto shadow border border-3 border-white"
@@ -534,7 +533,6 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
                                             {{ $candidate->party_name ?? 'Independent' }}
                                         </span>
                                     </div>
-
                                     <div class="col-12 col-md-8 ps-md-4">
                                         <div class="mb-3">
                                             <h6 class="text-uppercase small fw-semibold mb-2 d-flex align-items-center text-emerald-600"
@@ -544,67 +542,131 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
                                             <div style="max-height: 110px; overflow-y: auto; padding-right: 4px;">
                                                 <div class="p-2.5 rounded-3 bg-white border border-emerald-600 shadow-sm"
                                                     style="font-size: 0.82rem; line-height: 1.5;">
-                                                    {{ is_array($candidate->achievements)
-                                                        ? (implode(', ', $candidate->achievements) ?:
-                                                            'No achievements listed.')
-                                                        : $candidate->achievements ?? 'No achievements listed.' }}
+
+                                                    @php
+                                                        $achievementsList = is_array($candidate->achievements)
+                                                            ? $candidate->achievements
+                                                            : ($candidate->achievements
+                                                                ? explode(',', $candidate->achievements)
+                                                                : []);
+
+                                                        $achievementsList = array_filter(
+                                                            array_map('trim', $achievementsList),
+                                                        );
+                                                    @endphp
+
+                                                    @if (count($achievementsList) > 0)
+                                                        <ul class="mb-0 ps-3 text-muted"
+                                                            style="list-style-type: disc;">
+                                                            @foreach ($achievementsList as $achievement)
+                                                                <li class="mb-1">{{ $achievement }}</li>
+                                                            @endforeach
+                                                        </ul>
+                                                    @else
+                                                        <span class="text-muted">No achievements listed.</span>
+                                                    @endif
+
                                                 </div>
                                             </div>
                                         </div>
 
-                                        <div class="row g-2 pt-2 border-top">
-                                            <div class="col-4">
+                                        <div class="row g-2 border-top">
+                                            <div class="col-6">
                                                 <div
-                                                    class="bg-light p-2 rounded-3 text-center shadow-sm h-100 d-flex flex-column justify-content-center">
-                                                    <span class="fw-black text-uppercase d-block mb-1 text-emerald-600"
-                                                        style="font-size: 0.65rem; letter-spacing: 0.5px;">GWA</span>
-                                                    <span class="text-dark fw-bold" style="font-size: 0.95rem;">
-                                                        <i class="bi bi-star-fill text-warning me-1"
-                                                            style="font-size: 0.8rem;"></i>{{ $candidate->average_grade ?: 'N/A' }}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            <div class="col-4">
-                                                <div
-                                                    class="bg-light p-2 rounded-3 text-center shadow-sm h-100 d-flex flex-column justify-content-center">
-                                                    <span class="fw-black text-uppercase d-block mb-1 text-emerald-600"
-                                                        style="font-size: 0.65rem; letter-spacing: 0.5px;">Prev.
-                                                        Project</span>
+                                                    class="bg-light p-2 rounded-3 shadow-sm h-100 d-flex flex-column justify-content-start">
                                                     <span
-                                                        class="text-dark fw-semibold small px-1 text-truncate d-block"
-                                                        style="font-size: 0.8rem;"
+                                                        class="fw-black text-uppercase d-block mb-1 text-emerald-600 text-center"
+                                                        style="font-size: 0.65rem; letter-spacing: 0.5px;">
+                                                        Prev. Project
+                                                    </span>
+                                                    <div class="text-dark fw-semibold small px-1 text-wrap w-100"
+                                                        style="font-size: 0.8rem; line-height: 1.3; max-height: 4.5em; overflow-y: auto;"
                                                         title="{{ is_array($candidate->previous_school_project) ? implode(', ', $candidate->previous_school_project) : $candidate->previous_school_project }}">
-                                                        {{ is_array($candidate->previous_school_project)
-                                                            ? (implode(', ', $candidate->previous_school_project) ?:
-                                                                'None')
-                                                            : $candidate->previous_school_project ?? 'None' }}
-                                                    </span>
+
+                                                        @php
+                                                            $projectsList = is_array(
+                                                                $candidate->previous_school_project,
+                                                            )
+                                                                ? $candidate->previous_school_project
+                                                                : ($candidate->previous_school_project
+                                                                    ? explode(',', $candidate->previous_school_project)
+                                                                    : []);
+                                                            $projectsList = array_filter(
+                                                                array_map('trim', $projectsList),
+                                                            );
+                                                        @endphp
+
+                                                        @if (count($projectsList) > 0)
+                                                            <ul class="mb-0 ps-3 text-start"
+                                                                style="list-style-type: disc;">
+                                                                @foreach ($projectsList as $project)
+                                                                    <li class="mb-0.5">{{ $project }}</li>
+                                                                @endforeach
+                                                            </ul>
+                                                        @else
+                                                            <span class="text-muted d-block text-center">None</span>
+                                                        @endif
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <div class="col-4">
+
+                                            <div class="col-6">
                                                 <div
-                                                    class="bg-light p-2 rounded-3 text-center shadow-sm h-100 d-flex flex-column justify-content-center">
-                                                    <span class="fw-black text-uppercase d-block mb-1 text-emerald-600"
-                                                        style="font-size: 0.65rem; letter-spacing: 0.5px;">Prev.
-                                                        Project</span>
+                                                    class="bg-light p-2 rounded-3 shadow-sm h-100 d-flex flex-column justify-content-start">
                                                     <span
-                                                        class="text-dark fw-semibold small px-1 text-truncate d-block"
-                                                        style="font-size: 0.8rem;"
-                                                        title="{{ is_array($candidate->previous_position) ? implode(', ', $candidate->previous_position) : $candidate->previous_position }}">
-                                                        {{ is_array($candidate->previous_position)
-                                                            ? (implode(', ', $candidate->previous_position) ?:
-                                                                'None')
-                                                            : $candidate->previous_position ?? 'None' }}
+                                                        class="fw-black text-uppercase d-block mb-1 text-emerald-600 text-center"
+                                                        style="font-size: 0.65rem; letter-spacing: 0.5px;">
+                                                        Prev. Position
                                                     </span>
+                                                    <div class="text-dark fw-semibold small px-1 text-wrap w-100"
+                                                        style="font-size: 0.8rem; line-height: 1.3; max-height: 4.5em; overflow-y: auto;"
+                                                        title="{{ is_array($candidate->previous_position) ? implode(', ', $candidate->previous_position) : $candidate->previous_position }}">
+
+                                                        @php
+                                                            $positionsList = is_array($candidate->previous_position)
+                                                                ? $candidate->previous_position
+                                                                : ($candidate->previous_position
+                                                                    ? explode(',', $candidate->previous_position)
+                                                                    : []);
+                                                            $positionsList = array_filter(
+                                                                array_map('trim', $positionsList),
+                                                            );
+                                                        @endphp
+
+                                                        @if (count($positionsList) > 0)
+                                                            <ul class="mb-0 ps-3 text-start"
+                                                                style="list-style-type: disc;">
+                                                                @foreach ($positionsList as $position)
+                                                                    <li class="mb-0.5">{{ $position }}</li>
+                                                                @endforeach
+                                                            </ul>
+                                                        @else
+                                                            <span class="text-muted d-block text-center">None</span>
+                                                        @endif
+                                                    </div>
                                                 </div>
                                             </div>
+                                            <div class="row g-2">
+                                                <div class="col-12">
+                                                    <div
+                                                        class="bg-light p-2 rounded-3 text-center shadow-sm h-100 d-flex flex-column justify-content-center">
+                                                        <span
+                                                            class="fw-black text-uppercase d-block mb-1 text-emerald-600"
+                                                            style="font-size: 0.65rem; letter-spacing: 0.5px;">GWA</span>
+                                                        <span class="text-dark fw-bold" style="font-size: 0.95rem;">
+                                                            <i class="bi bi-star-fill text-warning me-1"
+                                                                style="font-size: 0.8rem;"></i>{{ $candidate->average_grade ?: 'N/A' }}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
                                         </div>
                                     </div>
-
                                 </div>
                             </div>
 
-                            <div class="tab-pane fade" id="platform-panel-{{ $candidate->id }}" role="tabpanel">
+                            <div class="tab-pane fade p-3" id="platform-panel-{{ $candidate->id }}" role="tabpanel">
                                 <h6 class="text-uppercase text-emerald-600 fw-bold mb-3 d-flex align-items-center"
                                     style="font-size: 0.70rem; letter-spacing: 1px;">
                                     <i class="bi bi-journal-check me-2 fs-6"></i>
@@ -667,10 +729,8 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
                                     @endif
                                 </div>
                             </div>
-
                         </div>
                     </div>
-
                 </div>
             </div>
         </div>

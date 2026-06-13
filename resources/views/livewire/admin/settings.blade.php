@@ -21,6 +21,7 @@ new #[Layout('layouts.admin')] #[Title('Settings')] class extends Component {
     public string $password = '';
     public string $password_confirmation = '';
 
+    // --- Component Lifecycle ---
     public function mount()
     {
         $this->user = auth()->user();
@@ -33,6 +34,7 @@ new #[Layout('layouts.admin')] #[Title('Settings')] class extends Component {
         $this->email = $this->user->email;
     }
 
+    // --- Action Methods ---
     public function updateProfile()
     {
         if (!auth()->user()->hasRole('admin')) {

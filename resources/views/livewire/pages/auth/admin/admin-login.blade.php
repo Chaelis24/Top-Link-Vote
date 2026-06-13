@@ -1,8 +1,8 @@
 <?php
 
 use App\Livewire\Forms\AdminLoginForm;
-use Illuminate\Support\Facades\Session;
-use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\{Auth, DB, Password, Session};
+use App\Events\UserLoggedInElsewhere;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
@@ -12,17 +12,29 @@ new #[Layout('layouts.guest')] class extends Component {
     public function login(): void
     {
         try {
-            $this->form->authenticate();
-
-            $user = auth()->user();
+            $user = $this->form->validateCredentials();
 
             if (!$user->roles()->where('name', 'admin')->exists()) {
-                auth()->logout();
                 $this->addError('form.email', 'Unauthorized access. This portal is for administrators only.');
                 return;
             }
 
-            Session::regenerate();
+            DB::transaction(function () use ($user) {
+                DB::table('users')->where('id', $user->id)->lockForUpdate()->first();
+
+                $oldSessionIds = DB::table('sessions')
+                    ->where('user_id', $user->id)
+                    ->pluck('id');
+
+                DB::table('sessions')->where('user_id', $user->id)->delete();
+
+                Auth::login($user, $this->form->remember);
+                Session::regenerate();
+
+                if ($oldSessionIds->isNotEmpty()) {
+                    broadcast(new UserLoggedInElsewhere($user->id));
+                }
+            });
 
             $this->redirectIntended(route('admin.dashboard'), navigate: true);
         } catch (\Illuminate\Validation\ValidationException $e) {

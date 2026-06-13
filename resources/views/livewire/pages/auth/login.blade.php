@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\User;
 use App\Models\Setting;
 use Illuminate\Support\Str;
 use Livewire\Volt\Component;
@@ -8,7 +9,7 @@ use App\Livewire\Forms\LoginForm;
 use App\Traits\ChecksMaintenance;
 use Illuminate\Support\Facades\DB;
 use App\Events\UserLoggedInElsewhere;
-use Illuminate\Support\Facades\{Session, RateLimiter};
+use Illuminate\Support\Facades\{Auth, Hash, Session, RateLimiter};
 
 new #[Layout('layouts.guest')] #[Title('Login')] class extends Component {
     use ChecksMaintenance;
@@ -28,17 +29,25 @@ new #[Layout('layouts.guest')] #[Title('Login')] class extends Component {
 
         try {
             $this->validate();
-            $this->form->authenticate();
+            $user = $this->form->validateCredentials();
+
+            DB::transaction(function () use ($user) {
+                DB::table('users')->where('id', $user->id)->lockForUpdate()->first();
+
+                $oldSessionIds = DB::table('sessions')
+                    ->where('user_id', $user->id)
+                    ->pluck('id');
+
+                DB::table('sessions')->where('user_id', $user->id)->delete();
+
+                Auth::login($user, $this->form->remember);
+
+                if ($oldSessionIds->isNotEmpty()) {
+                    broadcast(new UserLoggedInElsewhere($user->id));
+                }
+            });
+
             RateLimiter::clear($throttleKey);
-
-            $user = auth()->user();
-            $currentSessionId = session()->getId();
-            $otherSessions = DB::table('sessions')->where('user_id', $user->id)->where('id', '!=', $currentSessionId)->exists();
-
-            if ($otherSessions) {
-                broadcast(new UserLoggedInElsewhere($user->id))->toOthers();
-                auth()->logoutOtherDevices($this->form->password);
-            }
 
             $this->redirectIntended(route('student.dashboard'));
         } catch (\Illuminate\Validation\ValidationException $e) {

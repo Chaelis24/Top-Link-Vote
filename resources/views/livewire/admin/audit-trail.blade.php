@@ -15,6 +15,28 @@ new #[Layout('layouts.admin')] #[Title('User Activity')] class extends Component
     public $filterCourse = '';
     public $filterBlock = '';
 
+    // --- Lifecycle / Updating Hooks ---
+    public function updatingSearch()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingFilterAction()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingFilterCourse()
+    {
+        $this->resetPage();
+    }
+
+    public function updatingFilterBlock()
+    {
+        $this->resetPage();
+    }
+
+    // --- Data Fetching ---
     public function with()
     {
         return [
@@ -50,27 +72,11 @@ new #[Layout('layouts.admin')] #[Title('User Activity')] class extends Component
         ];
     }
 
+    // --- Event Listeners ---
     #[On('echo-private:admin.audit-trail,AuditLogCreated')]
     public function refreshLogs()
     {
         $this->dispatch('$refresh');
-    }
-
-    public function updatingFilterCourse()
-    {
-        $this->resetPage();
-    }
-    public function updatingSearch()
-    {
-        $this->resetPage();
-    }
-    public function updatingFilterAction()
-    {
-        $this->resetPage();
-    }
-    public function updatingFilterBlock()
-    {
-        $this->resetPage();
     }
 }; ?>
 
@@ -221,10 +227,9 @@ new #[Layout('layouts.admin')] #[Title('User Activity')] class extends Component
                     @endforelse
                 </div>
             </div>
-
-            <div class="custom-pagination">
-                {{ $logs->links('layouts.partials.custom-pagination') }}
-            </div>
+        </div>
+        <div class="custom-pagination">
+            {{ $logs->links('layouts.partials.custom-pagination') }}
         </div>
     </main>
 </div>

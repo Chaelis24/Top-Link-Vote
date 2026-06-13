@@ -13,6 +13,7 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
     public string $search = '';
     public ?Platform $selectedPlatform = null;
 
+    // --- Computed & Magic Properties ---
     #[Computed]
     public function activeCycle()
     {
@@ -42,6 +43,19 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
             ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END ASC")
             ->latest('created_at')
             ->paginate(10);
+    }
+
+    // --- Lifecycle / Updating Hooks ---
+    public function updatingSearch()
+    {
+        $this->resetPage();
+    }
+
+    // --- Action / CRUD Methods ---
+    public function viewPlatform(int $id)
+    {
+        $this->selectedPlatform = Platform::with(['candidate.student', 'candidate.position'])->findOrFail($id);
+        $this->dispatch('open-modal', id: 'viewPlatformModal');
     }
 
     public function publishPlatform(int $id)
@@ -90,17 +104,7 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
         ]);
     }
 
-    public function viewPlatform(int $id)
-    {
-        $this->selectedPlatform = Platform::with(['candidate.student', 'candidate.position'])->findOrFail($id);
-        $this->dispatch('open-modal', id: 'viewPlatformModal');
-    }
-
-    public function updatingSearch()
-    {
-        $this->resetPage();
-    }
-
+    // --- Utilities ---
     public function getAvatarColor($candidateId)
     {
         $colors = ['#10b981', '#3b82f6', '#6366f1', '#f59e0b', '#ef4444'];
@@ -364,10 +368,9 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                     <div class="p-5 text-center text-muted small">No records found.</div>
                 @endforelse
             </div>
-
-            <div class="custom-pagination">
-                {{ $this->platforms->links('layouts.partials.custom-pagination') }}
-            </div>
+        </div>
+        <div class="custom-pagination">
+            {{ $this->platforms->links('layouts.partials.custom-pagination') }}
         </div>
     </main>
 
@@ -412,27 +415,31 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
 
                         <div class="p-3 p-md-4">
                             <div class="row g-3">
-                                <div class="col-md-5">
+                                <div class="col-md-6">
                                     <h6 class="fw-bold text-primary mb-2 text-uppercase"
-                                        style="font-size: 0.7rem; letter-spacing: 0.5px;">Introductory Profile</h6>
+                                        style="font-size: 0.7rem; letter-spacing: 0.5px;">
+                                        Introductory Profile
+                                    </h6>
+
                                     <div class="bg-light p-2 p-md-3 rounded-3 mb-2">
-                                        <small class="d-block fw-bold text-primary" style="font-size: 0.65rem;">GWA /
-                                            Average
-                                            Grade</small>
+                                        <small class="d-block fw-bold text-primary" style="font-size: 0.75rem;">GWA /
+                                            Average Grade</small>
                                         <span
                                             class="fw-bold text-muted small">{{ $selectedPlatform->candidate->average_grade ?? 'N/A' }}</span>
                                     </div>
-                                    <div class="mb-2">
-                                        <small class="d-block text-primary fw-bold"
-                                            style="font-size: 0.85rem;">Achievements</small>
-                                        <p class="text-dark mb-0" style="font-size: 0.80rem; line-height: 1.4;">
+
+                                    <div class="bg-light p-2 p-md-3 rounded-3 mb-2">
+                                        <small class="d-block fw-bold text-primary"
+                                            style="font-size: 0.75rem;">Achievements</small>
+                                        <span class="fw-bold text-muted small">
                                             {{ is_array($selectedPlatform->candidate->achievements) ? implode(', ', $selectedPlatform->candidate->achievements) : $selectedPlatform->candidate->achievements ?? 'None listed.' }}
-                                        </p>
+                                        </span>
                                     </div>
-                                    <div class="mb-0">
-                                        <small class="d-block text-primary fw-bold" style="font-size: 0.85rem;">Past
+
+                                    <div class="bg-light p-2 p-md-3 rounded-3 mb-2">
+                                        <small class="d-block fw-bold text-primary" style="font-size: 0.75rem;">Past
                                             Positions</small>
-                                        <ul class="ps-3 mb-0" style="font-size: 0.80rem;">
+                                        <ul class="fw-bold text-muted small mb-0 ps-3" style="font-size: 0.80rem;">
                                             @php
                                                 $roles = is_array($selectedPlatform->candidate->previous_position)
                                                     ? $selectedPlatform->candidate->previous_position
@@ -443,7 +450,31 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                                                 $roles = array_filter(array_map('trim', $roles));
                                             @endphp
                                             @forelse($roles as $role)
-                                                <li>{{ is_array($role) ? implode(', ', $role) : $role }}</li>
+                                                <li>• {{ is_array($role) ? implode(', ', $role) : $role }}</li>
+                                            @empty
+                                                <li>None</li>
+                                            @endforelse
+                                        </ul>
+                                    </div>
+
+                                    <div class="bg-light p-2 p-md-3 rounded-3 mb-2">
+                                        <small class="d-block fw-bold text-primary" style="font-size: 0.75rem;">Past
+                                            Projects</small>
+                                        <ul class="fw-bold text-muted small mb-0 ps-3" style="font-size: 0.80rem;">
+                                            @php
+                                                $projects = is_array(
+                                                    $selectedPlatform->candidate->previous_school_project,
+                                                )
+                                                    ? $selectedPlatform->candidate->previous_school_project
+                                                    : explode(
+                                                        ',',
+                                                        $selectedPlatform->candidate->previous_school_project ?? '',
+                                                    );
+                                                $projects = array_filter(array_map('trim', $projects));
+                                            @endphp
+                                            @forelse($projects as $project)
+                                                <li>• {{ is_array($project) ? implode(', ', $project) : $project }}
+                                                </li>
                                             @empty
                                                 <li>None</li>
                                             @endforelse
@@ -451,31 +482,32 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                                     </div>
                                 </div>
 
-                                <div class="col-md-7 border-start-0 border-md-start">
-                                    <div class="ps-md-4">
-                                        <div class="mb-2">
-                                            <small class="d-block text-muted fw-bold"
-                                                style="font-size: 0.85rem;">Platform
-                                                Title</small>
-                                            <p class="fw-bold text-primary mb-2" style="font-size: 0.80rem;">
-                                                {{ $selectedPlatform->title ?? 'No Title' }}</p>
-                                        </div>
-                                        <div class="mb-2">
-                                            <small class="d-block text-muted fw-bold"
-                                                style="font-size: 0.85rem;">Campaign
-                                                Tagline</small>
-                                            <p class="text-dark fst-italic mb-2" style="font-size: 0.80rem;">
-                                                "{{ $selectedPlatform->tagline ?? 'No Tagline' }}"</p>
-                                        </div>
-                                        <div class="bg-primary-subtle p-2 p-md-3 rounded-3"
-                                            style="max-height: 180px; overflow-y: auto;">
-                                            <small class="d-block text-primary fw-bold mb-1"
-                                                style="font-size: 0.85rem;">Agenda Details</small>
-                                            <p class="text-dark mb-0"
-                                                style="white-space: pre-line; font-size: 0.80rem; line-height: 1.4;">
-                                                {{ is_array($selectedPlatform->agenda) ? implode("\n", $selectedPlatform->agenda) : $selectedPlatform->agenda ?? 'No Agenda' }}
-                                            </p>
-                                        </div>
+                                <div class="col-md-6 border-start-0 border-md-start">
+                                    <h6 class="fw-bold text-primary mb-2 text-uppercase"
+                                        style="font-size: 0.7rem; letter-spacing: 0.5px;">
+                                        Platform & Agenda
+                                    </h6>
+
+                                    <div class="bg-light p-2 p-md-3 rounded-3 mb-2">
+                                        <small class="d-block fw-bold text-primary"
+                                            style="font-size: 0.75rem;">Platform Title</small>
+                                        <span
+                                            class="fw-bold text-muted small">{{ $selectedPlatform->title ?? 'No Title' }}</span>
+                                    </div>
+
+                                    <div class="bg-light p-2 p-md-3 rounded-3 mb-2">
+                                        <small class="d-block fw-bold text-primary"
+                                            style="font-size: 0.75rem;">Campaign Tagline</small>
+                                        <span
+                                            class="fw-bold text-muted small">"{{ $selectedPlatform->tagline ?? 'No Tagline' }}"</span>
+                                    </div>
+
+                                    <div class="bg-light p-2 p-md-3 rounded-3 mb-2">
+                                        <small class="d-block fw-bold text-primary" style="font-size: 0.75rem;">Agenda
+                                            Details</small>
+                                        <span class="fw-bold text-muted small" style="white-space: pre-line;">
+                                            {{ is_array($selectedPlatform->agenda) ? implode("\n", $selectedPlatform->agenda) : $selectedPlatform->agenda ?? 'No Agenda' }}
+                                        </span>
                                     </div>
                                 </div>
                             </div>

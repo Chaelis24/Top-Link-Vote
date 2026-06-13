@@ -16,6 +16,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
     public int $priority = 1;
     public ?int $editingId = null;
 
+    // --- Computed Properties ---
     #[Computed]
     public function activeCycle()
     {
@@ -50,10 +51,18 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
             return collect();
         }
 
-        return Position::where('election_cycle_id', $this->activeCycle->id)
-            ->withCount('candidates')
-            ->orderBy('priority', 'asc')
-            ->get();
+        return Position::where('election_cycle_id', $this->activeCycle->id)->withCount('candidates')->orderBy('priority', 'asc')->get();
+    }
+
+    // --- Action / CRUD Methods ---
+    public function editPosition(int $id)
+    {
+        $pos = Position::findOrFail($id);
+        $this->editingId = $pos->id;
+        $this->name = $pos->name;
+        $this->max_winners = $pos->max_winners;
+        $this->priority = $pos->priority;
+        $this->student_department = $pos->student_department;
     }
 
     public function savePosition()
@@ -99,16 +108,6 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
         ]);
     }
 
-    public function editPosition(int $id)
-    {
-        $pos = Position::findOrFail($id);
-        $this->editingId = $pos->id;
-        $this->name = $pos->name;
-        $this->max_winners = $pos->max_winners;
-        $this->priority = $pos->priority;
-        $this->student_department = $pos->student_department;
-    }
-
     public function deletePosition(int $id)
     {
         Position::destroy($id);
@@ -119,6 +118,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
         ]);
     }
 }; ?>
+
 <div>
     <div
         class="d-lg-none d-flex align-items-center justify-content-start p-2 px-4 bg-white/opacity-50 shadow-sm gap-2 border-bottom">
@@ -272,8 +272,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
                     <x-button variant="gray" data-bs-dismiss="modal" width="100px">
                         Cancel
                     </x-button>
-                    <x-button variant="glow" wire:click="savePosition" width="160px"
-                        height="42px">
+                    <x-button variant="glow" wire:click="savePosition" width="160px" height="42px">
                         {{ $editingId ? 'Save Changes' : 'Create Position' }}
                     </x-button>
                 </div>

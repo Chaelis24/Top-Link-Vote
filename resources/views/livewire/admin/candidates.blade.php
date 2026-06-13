@@ -39,19 +39,11 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
         'photo_url' => '',
     ];
 
-    public function addField($property)
+    // --- Computed & Magic Properties ---
+    #[Computed]
+    public function activeCycle()
     {
-        $this->editForm[$property][] = '';
-    }
-
-    public function removeField($property, $index)
-    {
-        unset($this->editForm[$property][$index]);
-        $this->editForm[$property] = array_values($this->editForm[$property]);
-
-        if (empty($this->editForm[$property])) {
-            $this->editForm[$property][] = '';
-        }
+        return ElectionCycle::getActiveCycle();
     }
 
     public function getElectionCyclesProperty()
@@ -59,6 +51,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
         return ElectionCycle::orderBy('created_at', 'desc')->get();
     }
 
+    // --- Lifecycle / Data Fetching ---
     public function with(): array
     {
         $activeCycleId = $this->activeCycle ? $this->activeCycle->id : 0;
@@ -83,12 +76,6 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
             'availablePositions' => $this->activeCycle ? Position::where('election_cycle_id', $this->activeCycle->id)->distinct()->pluck('name') : collect(),
             'availableDepartments' => Course::pluck('name')->toArray(),
         ];
-    }
-
-    #[Computed]
-    public function activeCycle()
-    {
-        return ElectionCycle::getActiveCycle();
     }
 
     public function loadCandidates()
@@ -121,6 +108,23 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
             ->paginate(10);
     }
 
+    // --- Dynamic Form Fields ---
+    public function addField($property)
+    {
+        $this->editForm[$property][] = '';
+    }
+
+    public function removeField($property, $index)
+    {
+        unset($this->editForm[$property][$index]);
+        $this->editForm[$property] = array_values($this->editForm[$property]);
+
+        if (empty($this->editForm[$property])) {
+            $this->editForm[$property][] = '';
+        }
+    }
+
+    // --- CRUD Operations ---
     public function editCandidate($id)
     {
         $this->resetErrorBag();
@@ -212,6 +216,25 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
         }
     }
 
+    public function deleteCandidate($id)
+    {
+        try {
+            Candidate::destroy($id);
+            $this->dispatch('swal', [
+                'title' => 'Deleted',
+                'text' => 'The candidate has been removed from the records.',
+                'icon' => 'info',
+            ]);
+        } catch (\Exception $e) {
+            $this->dispatch('swal', [
+                'title' => 'Delete Error',
+                'text' => 'Could not delete candidate: ' . $e->getMessage(),
+                'icon' => 'error',
+            ]);
+        }
+    }
+
+    // --- CSV Import ---
     public function importCandidates()
     {
         $this->validate(['csvFile' => 'required|file|max:5120|mimes:csv,txt']);
@@ -303,24 +326,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
         }
     }
 
-    public function deleteCandidate($id)
-    {
-        try {
-            Candidate::destroy($id);
-            $this->dispatch('swal', [
-                'title' => 'Deleted',
-                'text' => 'The candidate has been removed from the records.',
-                'icon' => 'info',
-            ]);
-        } catch (\Exception $e) {
-            $this->dispatch('swal', [
-                'title' => 'Delete Error',
-                'text' => 'Could not delete candidate: ' . $e->getMessage(),
-                'icon' => 'error',
-            ]);
-        }
-    }
-
+    // --- Utilities ---
     public function getAvatarColor($id)
     {
         $colors = ['#10b981', '#3b82f6', '#6366f1', '#f59e0b', '#ef4444'];
@@ -471,10 +477,13 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                                                         ->orderByDesc('votes_count')
                                                         ->get();
                                                     $winningVoteCount = $rankedCandidates->first()?->votes_count ?? 0;
-                                                    $winnerThreshold = $rankedCandidates
-                                                        ->take($maxWinners)
-                                                        ->last()?->votes_count ?? 0;
-                                                    $isWinner = $candidate->votes_count >= $winnerThreshold && $candidate->votes_count > 0 && $candidate->votes_count >= $winningVoteCount - ($winningVoteCount > 0 ? 0 : 0);
+                                                    $winnerThreshold =
+                                                        $rankedCandidates->take($maxWinners)->last()?->votes_count ?? 0;
+                                                    $isWinner =
+                                                        $candidate->votes_count >= $winnerThreshold &&
+                                                        $candidate->votes_count > 0 &&
+                                                        $candidate->votes_count >=
+                                                            $winningVoteCount - ($winningVoteCount > 0 ? 0 : 0);
                                                 @endphp
                                                 @if ($selectedCycleId !== 'active' && $isWinner)
                                                     <span
@@ -631,9 +640,9 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                     <div class="text-center py-5 text-muted fst-italic">No records found.</div>
                 @endforelse
             </div>
-            <div class="custom-pagination">
-                {{ $candidates->links('layouts.partials.custom-pagination') }}
-            </div>
+        </div>
+        <div class="custom-pagination">
+            {{ $candidates->links('layouts.partials.custom-pagination') }}
         </div>
     </main>
 

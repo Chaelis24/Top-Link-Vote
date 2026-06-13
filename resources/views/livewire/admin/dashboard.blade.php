@@ -9,11 +9,14 @@ use App\Models\{Vote, Candidate, Student, ElectionCycle, Course};
 
 new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component {
     use AuthenticatesLogout;
+
+    // --- Computed Properties ---
     public function getActiveProperty()
     {
         return ElectionCycle::getActiveCycle();
     }
 
+    // --- Data Fetching & Helpers (Private) ---
     private function getDashboardData($forceRefresh = false): array
     {
         $activeCycle = $this->active;
@@ -137,6 +140,13 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
         });
     }
 
+    // --- Livewire Lifecycle Hook ---
+    public function with(): array
+    {
+        return $this->getDashboardData();
+    }
+
+    // --- Event Listeners ---
     #[On('echo:election-results,VoteUpdated')]
     public function refreshAdminStats()
     {
@@ -158,11 +168,7 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
         ]);
     }
 
-    public function with(): array
-    {
-        return $this->getDashboardData();
-    }
-
+    // --- Actions / Download Methods ---
     public function downloadReport()
     {
         $data = $this->getDashboardData();

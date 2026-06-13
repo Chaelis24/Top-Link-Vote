@@ -42,6 +42,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
         'gender' => '',
     ];
 
+    // --- Computed & View Customization ---
     #[Computed]
     public function activeCycle()
     {
@@ -70,6 +71,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
         ];
     }
 
+    // --- Lifecycle & Query Data Hooks ---
     public function loadStudents($paginate = true)
     {
         $query = Student::query()
@@ -117,19 +119,23 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
     {
         $this->resetPage();
     }
+
     public function updatingCourse()
     {
         $this->resetPage();
     }
+
     public function updatingYear()
     {
         $this->resetPage();
     }
+
     public function updatingStatus()
     {
         $this->resetPage();
     }
 
+    // --- Action / CRUD Methods ---
     public function viewStudent($id)
     {
         try {
@@ -139,60 +145,6 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
             $this->dispatch('swal', [
                 'title' => 'Error',
                 'text' => 'Student not found.',
-                'icon' => 'error',
-            ]);
-        }
-    }
-
-    public function importCSV()
-    {
-        $this->validate(StudentRequest::importRules());
-
-        try {
-            $path = $this->csvFile->getRealPath();
-            $file = fopen($path, 'r');
-            $header = fgetcsv($file);
-
-            $rowsToImport = [];
-            while (($row = fgetcsv($file)) !== false) {
-                $rowsToImport[] = [
-                    'student_id' => trim($row[0]),
-                    'first_name' => trim($row[1]),
-                    'middle_name' => trim($row[2] ?? ''),
-                    'last_name' => trim($row[3]),
-                    'suffix' => trim($row[4] ?? ''),
-                    'course' => trim($row[5]),
-                    'year_level' => (int) $row[6],
-                    'section' => trim($row[7] ?? ''),
-                    'status' => trim($row[8] ?? ''),
-                    'phone' => trim($row[9] ?? ''),
-                    'address' => trim($row[10] ?? ''),
-                    'birthday' => trim($row[11] ?? ''),
-                    'gender' => trim($row[12] ?? ''),
-                    'user_id' => trim($row[13] ?? ''),
-                    'email' => trim($row[14] ?? ''),
-                    'role' => trim($row[15] ?? ''),
-                ];
-            }
-            fclose($file);
-
-            if (empty($rowsToImport)) {
-                throw new \Exception('No data found.');
-            }
-
-            \App\Jobs\ImportStudentsJob::dispatch($rowsToImport);
-
-            $this->reset('csvFile');
-
-            $this->dispatch('swal', [
-                'title' => 'Import In Progress',
-                'text' => count($rowsToImport) . ' students are being processed in the background. You can continue working.',
-                'icon' => 'info',
-            ]);
-        } catch (\Exception $e) {
-            $this->dispatch('swal', [
-                'title' => 'File Error',
-                'text' => $e->getMessage(),
                 'icon' => 'error',
             ]);
         }
@@ -261,6 +213,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
         }
     }
 
+    // --- Bulk / Data Exchange Operations ---
     public function bulkDeactivate()
     {
         if (empty($this->selectedStudents)) {
@@ -278,6 +231,60 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
             'text' => 'Successfully deactivated ' . $count . ' students.',
             'icon' => 'success',
         ]);
+    }
+
+    public function importCSV()
+    {
+        $this->validate(StudentRequest::importRules());
+
+        try {
+            $path = $this->csvFile->getRealPath();
+            $file = fopen($path, 'r');
+            $header = fgetcsv($file);
+
+            $rowsToImport = [];
+            while (($row = fgetcsv($file)) !== false) {
+                $rowsToImport[] = [
+                    'student_id' => trim($row[0]),
+                    'first_name' => trim($row[1]),
+                    'middle_name' => trim($row[2] ?? ''),
+                    'last_name' => trim($row[3]),
+                    'suffix' => trim($row[4] ?? ''),
+                    'course' => trim($row[5]),
+                    'year_level' => (int) $row[6],
+                    'section' => trim($row[7] ?? ''),
+                    'status' => trim($row[8] ?? ''),
+                    'phone' => trim($row[9] ?? ''),
+                    'address' => trim($row[10] ?? ''),
+                    'birthday' => trim($row[11] ?? ''),
+                    'gender' => trim($row[12] ?? ''),
+                    'user_id' => trim($row[13] ?? ''),
+                    'email' => trim($row[14] ?? ''),
+                    'role' => trim($row[15] ?? ''),
+                ];
+            }
+            fclose($file);
+
+            if (empty($rowsToImport)) {
+                throw new \Exception('No data found.');
+            }
+
+            \App\Jobs\ImportStudentsJob::dispatch($rowsToImport);
+
+            $this->reset('csvFile');
+
+            $this->dispatch('swal', [
+                'title' => 'Import In Progress',
+                'text' => count($rowsToImport) . ' students are being processed in the background. You can continue working.',
+                'icon' => 'info',
+            ]);
+        } catch (\Exception $e) {
+            $this->dispatch('swal', [
+                'title' => 'File Error',
+                'text' => $e->getMessage(),
+                'icon' => 'error',
+            ]);
+        }
     }
 
     public function exportStudents()
@@ -445,9 +452,9 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                     <select wire:model.live="status" class="form-select-modern py-2 w-100"
                         style="font-size: 0.8rem; padding-left: 4px; padding-right: 4px;">
                         <option value="All Status">📊 All Status</option>
-                        <option>📊 Voted</option>
-                        <option>📊 Not Voted</option>
-                        <option>📊 Deactivated</option>
+                        <option value="Voted">📊 Voted</option>
+                        <option value="Not Voted">📊 Not Voted</option>
+                        <option value="Deactivated">📊 Deactivated</option>
                     </select>
                 </div>
 
@@ -614,10 +621,9 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                     <div class="p-5 text-center text-muted small">No records found.</div>
                 @endforelse
             </div>
-
-            <div class="custom-pagination">
-                {{ $students->links('layouts.partials.custom-pagination') }}
-            </div>
+        </div>
+        <div class="custom-pagination">
+            {{ $students->links('layouts.partials.custom-pagination') }}
         </div>
     </main>
 

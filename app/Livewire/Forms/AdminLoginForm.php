@@ -23,6 +23,12 @@ class AdminLoginForm extends Form
 
     public function authenticate(): void
     {
+        Auth::login($this->validateCredentials(), $this->remember);
+        RateLimiter::clear($this->throttleKey());
+    }
+
+    public function validateCredentials(): User
+    {
         $this->ensureIsNotRateLimited();
 
         $user = User::where('email', $this->email)->first();
@@ -35,8 +41,7 @@ class AdminLoginForm extends Form
             ]);
         }
 
-        Auth::login($user, $this->remember);
-        RateLimiter::clear($this->throttleKey());
+        return $user;
     }
 
     protected function ensureIsNotRateLimited(): void

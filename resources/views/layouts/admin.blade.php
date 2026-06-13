@@ -41,6 +41,45 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     @livewireScripts
     @stack('scripts')
+    @auth
+        <script type="module">
+            if (typeof window.Echo !== 'undefined') {
+                window.Echo.private(`user.{{ auth()->id() }}`)
+                    .listen('.account.duplicate-login', (e) => {
+                        console.log("Duplicate login detected!", e);
+                        const isMobile = window.innerWidth < 480;
+                        Swal.fire({
+                            title: "Security Alert",
+                            html: "Someone else just logged into your account. You will be logged out in <b></b> seconds.",
+                            icon: "warning",
+                            width: isMobile ? '90%' : '400px',
+                            timer: 5000,
+                            timerProgressBar: true,
+                            confirmButtonText: "Log out now",
+                            allowOutsideClick: false,
+                            allowEscapeKey: false,
+                            customClass: {
+                                title: isMobile ? 'fs-6' : 'fs-5',
+                                htmlContainer: isMobile ? 'fs-6' : 'fs-6',
+                                confirmButton: 'btn btn-sm btn-danger px-4'
+                            },
+                            didOpen: () => {
+                                const b = Swal.getHtmlContainer().querySelector('b');
+                                const timerInterval = setInterval(() => {
+                                    const secondsLeft = Math.ceil(Swal.getTimerLeft() / 1000);
+                                    b.textContent = secondsLeft;
+                                }, 100);
+                                Swal.getPopup().addEventListener('hidden', () => {
+                                    clearInterval(timerInterval);
+                                });
+                            },
+                        }).then((result) => {
+                            window.location.href = "{{ route('force.logout') }}";
+                        });
+                    });
+            }
+        </script>
+    @endauth
 </body>
 
 </html>
