@@ -7,6 +7,13 @@ use App\Traits\{ChecksMaintenance, AuthenticatesLogout};
 use App\Services\Student\DashboardService;
 use App\Models\ElectionCycle;
 
+/**
+ * Student Dashboard component.
+ *
+ * Displays the student's voting status, quick guide, election rules,
+ * a Vote Now button, and a live ApexCharts tally bar chart updated
+ * in real time via Echo (VoteUpdated event).
+ */
 new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Component {
     use ChecksMaintenance, AuthenticatesLogout;
 
@@ -17,11 +24,19 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
 
     private DashboardService $dashboardService;
 
+    /**
+     * Inject the DashboardService dependency.
+     *
+     * @param  DashboardService  $dashboardService
+     */
     public function boot(DashboardService $dashboardService)
     {
         $this->dashboardService = $dashboardService;
     }
 
+    /**
+     * Load student data, voting status, and results visibility on mount.
+     */
     public function mount()
     {
         $user = Auth::user();
@@ -36,18 +51,33 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
         $this->isResultsVisible = $this->dashboardService->isResultsVisible();
     }
 
+    /**
+     * Get the active election cycle.
+     *
+     * @return ElectionCycle|null
+     */
     #[Computed]
     public function activeCycle()
     {
         return $this->dashboardService->getActiveCycle();
     }
 
+    /**
+     * Check whether the voting period is currently open.
+     *
+     * @return bool
+     */
     #[Computed]
     public function isVotingOpen()
     {
         return $this->dashboardService->isVotingOpen($this->activeCycle);
     }
 
+    /**
+     * Get the tally chart data for the student's course.
+     *
+     * @return array
+     */
     #[Computed]
     public function tallyData()
     {
@@ -55,6 +85,9 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
         return $this->dashboardService->getTallyData($this->activeCycle, $courseId, $this->isResultsVisible);
     }
 
+    /**
+     * Refresh the tally chart when a VoteUpdated Echo event is received.
+     */
     #[On('echo-private:election-results.{studentCourse},VoteUpdated')]
     public function refreshTally()
     {
@@ -67,6 +100,7 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
     }
 }; ?>
 
+{{-- Mobile header bar shown only on small screens --}}
 <div>
     <div
         class="d-lg-none d-flex align-items-center justify-content-start p-2 px-4 bg-white shadow-sm gap-2 border-bottom">
@@ -76,6 +110,7 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
             Top Link Global College, Inc.
         </h4>
     </div>
+    {{-- Student sidebar navigation --}}
     @include('layouts.partials.student-sidebar')
 
     @php
@@ -84,6 +119,7 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
     @endphp
 
     <main class="main-content">
+        {{-- Top bar with welcome message --}}
         <div class="topbar" wire:key="persistent-topbar-header">
             <div>
                 <h2 class="mb-0">Student <span class="text-primary">Dashboard</span></h2>
@@ -96,7 +132,9 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
             </div>
         </div>
 
+        {{-- Quick guide and Cast Your Vote section --}}
         <div class="row g-3 mb-4">
+            {{-- Quick Guide & Election Rules card --}}
             <div class="col-12 col-lg-8">
                 <div class="glass-card p-2 h-100 border-0 shadow-sm p-4">
                     <div class="d-flex align-items-center gap-2 mb-3">
@@ -107,6 +145,7 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
                     </div>
 
                     <div class="row g-3">
+                        {{-- How to Vote instructions --}}
                         <div class="col-md-6">
                             <small class="text-primary fw-bold d-block mb-2">
                                 <i class="bi bi-list-check me-1"></i> How to Vote:
@@ -127,6 +166,7 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
                             </ul>
                         </div>
 
+                        {{-- Important Rules list --}}
                         <div class="col-md-6 border-start-md">
                             <small class="text-danger fw-bold d-block mb-2">
                                 <i class="bi bi-exclamation-triangle me-1"></i> Important Rules:
@@ -150,6 +190,7 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
                 </div>
             </div>
 
+            {{-- Cast Your Vote card with live/closed/no-cycle state --}}
             <div class="col-12 col-lg-4">
                 <div class="glass-card p-3 h-100 border-0 shadow-sm d-flex flex-column justify-content-between">
                     <div>
@@ -207,6 +248,7 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
             </div>
         </div>
 
+        {{-- Live Election Standings chart section --}}
         <div class="row g-3 grid grid-cols-1">
             <div class="col-12 w-full">
                 <div class="glass-card p-2 md:p-6 mb-3 border-0 shadow-sm">
@@ -223,6 +265,7 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
                         </span>
                     </div>
 
+                    {{-- ApexCharts bar chart or hidden-results placeholder --}}
                     @if ($isResultsVisible)
                         <div class="relative h-[500px] md:h-[400px] mb-4 md:mb-0" style="position: relative;"
                             wire:ignore>
@@ -244,6 +287,7 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
         </div>
     </main>
 
+    {{-- ApexCharts script for rendering and updating the horizontal bar tally chart --}}
     @script
         <script>
             let myChart = null;

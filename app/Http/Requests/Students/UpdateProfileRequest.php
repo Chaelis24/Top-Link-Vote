@@ -5,6 +5,11 @@ namespace App\Http\Requests\Students;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 
+/**
+ * Validates profile updates submitted from the student portal.
+ * Allows the student to change their email, phone number, and
+ * upload a profile photo (JPEG/PNG, max 2 MB).
+ */
 class UpdateProfileRequest extends FormRequest
 {
     /**

@@ -7,6 +7,13 @@ use App\Traits\AuthenticatesLogout;
 use Livewire\Attributes\{Layout, On, Title};
 use App\Models\{ActivityLog, User, Course, Block};
 
+/**
+ * Audit Trail component.
+ *
+ * Displays a paginated, filterable log of student/candidate
+ * activity (voting, profile updates, etc.) with search and
+ * real-time refresh on new audit events.
+ */
 new #[Layout('layouts.admin')] #[Title('User Activity')] class extends Component {
     use WithPagination, AuthenticatesLogout;
 
@@ -16,6 +23,9 @@ new #[Layout('layouts.admin')] #[Title('User Activity')] class extends Component
     public $filterBlock = '';
 
     // --- Lifecycle / Updating Hooks ---
+    /**
+     * Reset pagination when search or filters change.
+     */
     public function updatingSearch()
     {
         $this->resetPage();
@@ -37,6 +47,11 @@ new #[Layout('layouts.admin')] #[Title('User Activity')] class extends Component
     }
 
     // --- Data Fetching ---
+    /**
+     * Supply filtered audit logs, action types, courses, and blocks to the view.
+     *
+     * @return array
+     */
     public function with()
     {
         return [
@@ -73,6 +88,9 @@ new #[Layout('layouts.admin')] #[Title('User Activity')] class extends Component
     }
 
     // --- Event Listeners ---
+    /**
+     * Listen for real-time audit log creation events and refresh the list.
+     */
     #[On('echo-private:admin.audit-trail,AuditLogCreated')]
     public function refreshLogs()
     {
@@ -80,18 +98,23 @@ new #[Layout('layouts.admin')] #[Title('User Activity')] class extends Component
     }
 }; ?>
 
+{{-- System Audit Trail — tracks and displays student/candidate activity with filtering and search. --}}
+
 <div>
+    {{-- Mobile header --}}
     <div
         class="d-lg-none d-flex align-items-center justify-content-start p-2 px-4 bg-white/opacity-50 shadow-sm gap-2 border-bottom">
         <img src="{{ asset('images/logo.png') }}" alt="Logo" style="height: 45px; width: 45px; object-fit: contain;">
-
         <h4 class="mb-0 text-primary" style="font-size: 0.95rem; font-weight: 600; color: #1e293b;">
             Top Link Global College, Inc.
         </h4>
     </div>
+
+    {{-- Sidebar --}}
     @include('layouts.partials.admin-sidebar')
 
     <main class="main-content">
+        {{-- Topbar heading --}}
         <div class="topbar">
             <div>
                 <h2 class="fw-bold text-primary">System <span class="text-accent">Audit Trail</span></h2>
@@ -99,6 +122,7 @@ new #[Layout('layouts.admin')] #[Title('User Activity')] class extends Component
             </div>
         </div>
 
+        {{-- Filters row: Course, Block, Action dropdowns + search input --}}
         <div class="flex flex-wrap justify-between gap-3 w-full mt-4">
             <div class="flex gap-3 w-full md:w-auto">
                 <select wire:model.live="filterCourse"
@@ -125,6 +149,7 @@ new #[Layout('layouts.admin')] #[Title('User Activity')] class extends Component
                     @endforeach
                 </select>
             </div>
+            {{-- Search input with magnifying glass icon --}}
             <div class="relative w-full md:w-80">
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <i class="bi bi-search text-gray-400"></i>
@@ -134,8 +159,10 @@ new #[Layout('layouts.admin')] #[Title('User Activity')] class extends Component
             </div>
         </div>
 
+        {{-- Audit log table (desktop) and cards (mobile) --}}
         <div class="glass-card p-0 border-0 shadow-sm mt-3 overflow-hidden">
             <div class="table-responsive">
+                {{-- Desktop table view --}}
                 <table class="table table-hover align-middle mb-0 hidden md:table">
                     <thead class="bg-light">
                         <tr style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px;">
@@ -147,6 +174,7 @@ new #[Layout('layouts.admin')] #[Title('User Activity')] class extends Component
                     <tbody style="font-size: 0.85rem;">
                         @forelse($logs as $log)
                             <tr>
+                                {{-- Student or admin identifier --}}
                                 <td class="ps-4">
                                     <div class="fw-bold text-dark">
                                         {{ $log->student->student_id ?? ($log->student_id ?? 'ADMIN') }}</div>
@@ -158,6 +186,7 @@ new #[Layout('layouts.admin')] #[Title('User Activity')] class extends Component
                                         @endif
                                     </div>
                                 </td>
+                                {{-- Action badge and description --}}
                                 <td>
                                     @php
                                         $badgeClass = match ($log->action) {
@@ -173,6 +202,7 @@ new #[Layout('layouts.admin')] #[Title('User Activity')] class extends Component
                                         {{ $log->description }}
                                     </div>
                                 </td>
+                                {{-- IP address and timestamp --}}
                                 <td class="text-end pe-4">
                                     <div
                                         class="fw-bold small {{ str_contains($log->ip_address, 'Campus Network') ? 'text-success' : 'text-danger' }}">
@@ -192,6 +222,7 @@ new #[Layout('layouts.admin')] #[Title('User Activity')] class extends Component
                     </tbody>
                 </table>
 
+                {{-- Mobile card layout --}}
                 <div class="md:hidden p-3 space-y-3">
                     @forelse($logs as $log)
                         @php
@@ -228,6 +259,8 @@ new #[Layout('layouts.admin')] #[Title('User Activity')] class extends Component
                 </div>
             </div>
         </div>
+
+        {{-- Custom pagination links --}}
         <div class="custom-pagination">
             {{ $logs->links('layouts.partials.custom-pagination') }}
         </div>

@@ -60,12 +60,17 @@ new #[Layout('layouts.guest')] #[Title('Login')] class extends Component {
         }
     }
 }; ?>
+{{-- Student Login Page — provides the authentication interface for student users. --}}
+
 <div class="fixed inset-0 z-[9999] overflow-y-auto bg-white flex items-center justify-center p-4 m-0 w-full h-full">
+    {{-- Background overlay --}}
     <div class="absolute inset-0 bg-white"></div>
 
+    {{-- Main card container --}}
     <div
         class="relative z-10 max-w-4xl w-full bg-white shadow-2xl rounded-2xl overflow-hidden border border-gray-100 mx-2 md:mx-0">
 
+        {{-- Maintenance mode banner — shown when the system is under maintenance --}}
         @if ($isMaintenance)
             <div class="bg-gray-50 py-16 px-6 w-full flex flex-col justify-center items-center min-h-[400px]">
                 <div class="p-8 bg-gray-50 inline-block rounded-xl">
@@ -85,7 +90,9 @@ new #[Layout('layouts.guest')] #[Title('Login')] class extends Component {
                 </p>
             </div>
         @else
+            {{-- Standard login layout with branding panel and form side-by-side --}}
             <div class="flex flex-col md:flex-row">
+                {{-- Branding panel --}}
                 <div
                     class="md:w-1/2 bg-[linear-gradient(115deg,#0dff00,#068a08,#010d05)] p-2 md:p-12 text-white flex flex-col justify-center relative overflow-hidden min-h-[180px] md:min-h-[450px]">
                     <div class="absolute -top-24 -left-24 w-64 h-64 bg-black/10 rounded-full"></div>
@@ -105,6 +112,7 @@ new #[Layout('layouts.guest')] #[Title('Login')] class extends Component {
                     </div>
                 </div>
 
+                {{-- Login form panel --}}
                 <div class="md:w-1/2 p-5 md:p-10 flex flex-col justify-center bg-white">
                     <div class="mb-3 md:mb-6">
                         <h2 class="text-lg md:text-xl font-bold text-[#252525] mb-1 md:mb-2 tracking-tighter">Sign
@@ -113,6 +121,7 @@ new #[Layout('layouts.guest')] #[Title('Login')] class extends Component {
                         <p class="text-gray-500 text-xs md:text-sm">Log in with your Student Credentials.</p>
                     </div>
 
+                    {{-- Status and warning flash messages --}}
                     @if (session('status'))
                         <div
                             class="mb-4 text-[#108500] text-[10px] md:text-[11px] font-bold uppercase p-3 bg-green-50 rounded-lg border border-green-100">
@@ -127,6 +136,7 @@ new #[Layout('layouts.guest')] #[Title('Login')] class extends Component {
                     @endif
 
                     <form wire:submit="login" class="space-y-4 md:space-y-5">
+                        {{-- Student ID input field --}}
                         <div>
                             <label class="text-[10px] md:text-[11px] font-bold uppercase text-gray-500 mb-1 block ms-1">
                                 Student ID
@@ -141,6 +151,7 @@ new #[Layout('layouts.guest')] #[Title('Login')] class extends Component {
                             @enderror
                         </div>
 
+                        {{-- Password input field with visibility toggle --}}
                         <div x-data="{ show: false }" class="relative">
                             <label class="text-[10px] md:text-[11px] font-bold uppercase text-gray-500 mb-1 block ms-1">
                                 Password
@@ -162,6 +173,7 @@ new #[Layout('layouts.guest')] #[Title('Login')] class extends Component {
                             @enderror
                         </div>
 
+                        {{-- Remember me checkbox and forgot password link --}}
                         <div class="flex items-center justify-between text-[10px] md:text-[12px] font-semibold">
                             <label class="flex items-center text-[#252525] cursor-pointer">
                                 <input type="checkbox" wire:model="form.remember"
@@ -174,6 +186,7 @@ new #[Layout('layouts.guest')] #[Title('Login')] class extends Component {
                             @endif
                         </div>
 
+                        {{-- Submit button with loading state --}}
                         <button type="submit" wire:loading.attr="disabled"
                             class="w-full bg-[#108500] hover:bg-[#0d6b00] text-white font-semibold py-3 rounded-lg shadow-lg transition-all uppercase tracking-widest text-xs btn-loader">
                             <span wire:loading.remove>Log in to Vote</span>
@@ -181,6 +194,7 @@ new #[Layout('layouts.guest')] #[Title('Login')] class extends Component {
                         </button>
                     </form>
 
+                    {{-- Link to account verification for new users --}}
                     @if (Route::has('verify-account'))
                         <p
                             class="text-center mt-4 md:mt-6 text-[10px] md:text-[12px] font-semibold text-gray-500 tracking-widest">

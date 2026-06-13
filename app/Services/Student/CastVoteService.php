@@ -8,8 +8,20 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\{Cache, DB, Mail, Log, RateLimiter};
 use Illuminate\Support\Facades\Auth;
 
+/**
+ * Service for handling the electronic voting flow.
+ *
+ * Manages ballot data retrieval, vote submission with
+ * pessimistic locking, rate limiting, and cache invalidation.
+ */
 class CastVoteService
 {
+    /**
+     * Load the authenticated student's base data.
+     *
+     * @param  \App\Models\User  $user
+     * @return array
+     */
     public function getStudentData(User $user): array
     {
         $user->load('student');
@@ -21,11 +33,24 @@ class CastVoteService
         ];
     }
 
+    /**
+     * Retrieve the currently active election cycle.
+     *
+     * @return \App\Models\ElectionCycle|null
+     */
     public function getActiveCycle(): ?ElectionCycle
     {
         return ElectionCycle::where('status', 'active')->first();
     }
 
+    /**
+     * Determine whether voting is currently open.
+     *
+     * Validates the "allowVoting" setting and the voting date window.
+     *
+     * @param  \App\Models\ElectionCycle|null  $activeCycle
+     * @return bool
+     */
     public function isVotingOpen(?ElectionCycle $activeCycle): bool
     {
         $setting = Setting::where('key', 'allowVoting')->first();
@@ -41,11 +66,28 @@ class CastVoteService
         return true;
     }
 
+    /**
+     * Check if the student has already voted.
+     *
+     * @param  mixed  $student
+     * @return bool
+     */
     public function hasStudentVoted($student): bool
     {
         return $student && $student->has_voted;
     }
 
+    /**
+     * Retrieve positions and their candidates for the voter's department.
+     *
+     * Only returns positions that have approved/active candidates
+     * and are within the voter's course department.
+     *
+     * @param  \App\Models\ElectionCycle|null  $activeCycle
+     * @param  bool  $isVotingOpen
+     * @param  int  $voterCourseId
+     * @return \Illuminate\Support\Collection
+     */
     public function getElectionData(?ElectionCycle $activeCycle, bool $isVotingOpen, int $voterCourseId): Collection
     {
         if (!$activeCycle || !$isVotingOpen) {
@@ -71,11 +113,29 @@ class CastVoteService
             ->get();
     }
 
+    /**
+     * Get the course ID for the currently authenticated voter.
+     *
+     * @return int|null
+     */
     public function getVoterCourseId(): ?int
     {
         return Auth::user()->student->course_id ?? null;
     }
 
+    /**
+     * Submit the student's vote selections.
+     *
+     * Uses a database transaction with row-level locking to prevent
+     * duplicate submissions. Generates a unique reference number,
+     * logs the activity, sends a confirmation email, and broadcasts
+     * a real-time event.
+     *
+     * @param  \App\Models\User  $user
+     * @param  array  $selections
+     * @param  \App\Models\ElectionCycle  $cycle
+     * @return array
+     */
     public function submitVote(User $user, array $selections, ElectionCycle $cycle): array
     {
         $throttleKey = 'submit-vote:' . $user->id;
@@ -176,12 +236,25 @@ class CastVoteService
         }
     }
 
+    /**
+     * Invalidate the tally cache for a cycle and course.
+     *
+     * @param  \App\Models\ElectionCycle  $cycle
+     * @param  int|null  $courseId
+     * @return void
+     */
     private function forgetTallyCache(ElectionCycle $cycle, ?int $courseId): void
     {
         $cacheKey = "tally_data_cycle_{$cycle->id}_course_{$courseId}";
         Cache::forget($cacheKey);
     }
 
+    /**
+     * Generate a deterministic avatar color based on candidate ID.
+     *
+     * @param  int  $id
+     * @return string
+     */
     public function getAvatarColor(int $id): string
     {
         $colors = ['#10b981', '#3b82f6', '#6366f1', '#f59e0b', '#ef4444'];

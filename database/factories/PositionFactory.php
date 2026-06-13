@@ -6,6 +6,9 @@ use App\Models\Position;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
+ * Generate positions linked to an election cycle with configurable
+ * candidate limits, winner count, and display priority.
+ *
  * @extends Factory<Position>
  */
 class PositionFactory extends Factory

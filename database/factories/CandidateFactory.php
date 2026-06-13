@@ -6,6 +6,9 @@ use App\Models\Candidate;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
+ * Generate candidate records with associated user, student, position,
+ * and election cycle for testing the election workflow.
+ *
  * @extends Factory<Candidate>
  */
 class CandidateFactory extends Factory

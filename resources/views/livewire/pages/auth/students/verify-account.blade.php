@@ -8,6 +8,13 @@ use App\Traits\ChecksMaintenance;
 use App\Mail\OtpVerificationMail;
 use App\Models\{Student, User, Setting};
 
+/**
+ * Student Account Verification page.
+ *
+ * Three-step verification flow: (1) submit Student ID to
+ * receive an OTP, (2) enter the 6-digit OTP, (3) set a
+ * new password and automatically log in.
+ */
 new #[Layout('layouts.guest')] #[Title('Verify Account')] class extends Component {
     use ChecksMaintenance;
     public string $student_id = '';
@@ -19,6 +26,15 @@ new #[Layout('layouts.guest')] #[Title('Verify Account')] class extends Componen
     public int $step = 1;
     public string $maskedEmail = '';
 
+    /**
+     * Send a 6-digit OTP to the student's registered email.
+     *
+     * Validates the Student ID exists and the account is
+     * not already verified.  Caches the OTP for 10 minutes.
+     *
+     * @throws \Illuminate\Validation\ValidationException
+     * @return void
+     */
     public function sendOtp()
     {
         $this->validate([
@@ -51,6 +67,13 @@ new #[Layout('layouts.guest')] #[Title('Verify Account')] class extends Componen
         session()->flash('status', 'OTP sent successfully!');
     }
 
+    /**
+     * Verify the 6-digit OTP from the student's email.
+     *
+     * Proceeds to step 3 (password setup) on success.
+     *
+     * @return void
+     */
     public function verifyOtp()
     {
         $this->validate([
@@ -67,6 +90,12 @@ new #[Layout('layouts.guest')] #[Title('Verify Account')] class extends Componen
         session()->flash('status', 'Account verified! You can now set your new password.');
     }
 
+    /**
+     * Set the new password, mark the account as verified,
+     * and automatically log the student in.
+     *
+     * @return void
+     */
     public function setPassword()
     {
         $this->validate([
@@ -90,11 +119,13 @@ new #[Layout('layouts.guest')] #[Title('Verify Account')] class extends Componen
 
 ?>
 
+{{-- Full-screen centered container for the account-verification form --}}
 <div class="fixed inset-0 z-[9999] overflow-y-auto bg-white flex items-center justify-center p-4 m-0 w-full h-full">
     <div class="absolute inset-0 bg-white"></div>
 
     <div
         class="relative z-10 max-w-4xl w-full bg-white shadow-2xl rounded-2xl overflow-hidden border border-gray-100 mx-2 md:mx-0">
+        {{-- Maintenance mode banner --}}
         @if ($isMaintenance)
             <div class="bg-gray-50 py-16 px-6 w-full flex flex-col justify-center items-center min-h-[400px]">
                 <div class="p-8 bg-gray-50 inline-block rounded-xl">
@@ -115,6 +146,7 @@ new #[Layout('layouts.guest')] #[Title('Verify Account')] class extends Componen
             </div>
         @else
             <div class="flex flex-col md:flex-row">
+                {{-- Branding panel (left) --}}
                 <div
                     class="md:w-1/2 bg-[linear-gradient(115deg,#0dff00,#068a08,#010d05)] p-2 md:p-12 text-white flex flex-col justify-center relative overflow-hidden min-h-[180px] md:min-h-[450px]">
                     <div class="absolute -top-24 -left-24 w-64 h-64 bg-black/10 rounded-full"></div>
@@ -135,6 +167,7 @@ new #[Layout('layouts.guest')] #[Title('Verify Account')] class extends Componen
                     </div>
                 </div>
 
+                {{-- Form panel (right) --}}
                 <div class="md:w-1/2 p-5 md:p-10 flex flex-col justify-center bg-white">
                     <div class="mb-3 md:mb-6">
                         <h2 class="text-lg md:text-xl font-bold text-[#252525] mb-1 md:mb-2 tracking-tighter">Verify
@@ -151,18 +184,21 @@ new #[Layout('layouts.guest')] #[Title('Verify Account')] class extends Componen
                         </p>
                     </div>
 
+                    {{-- Status / success flash message --}}
                     @if (session('status'))
                         <div
                             class="mb-4 text-[#108500] text-[10px] md:text-[11px] font-bold uppercase p-3 bg-green-50 rounded-lg border border-green-100">
                             {{ session('status') }}
                         </div>
                     @endif
+                    {{-- Warning flash message --}}
                     @if (session('warning'))
                         <div
                             class="mb-4 text-[#b8860b] text-[10px] md:text-[11px] font-bold uppercase p-3 bg-yellow-50 rounded-lg border border-yellow-200">
                             {{ session('warning') }}
                         </div>
                     @endif
+                    {{-- Error flash message --}}
                     @if (session('error'))
                         <div
                             class="mb-4 text-red-600 text-[10px] md:text-[11px] font-bold uppercase p-3 bg-red-50 rounded-lg border border-red-200">
@@ -170,6 +206,7 @@ new #[Layout('layouts.guest')] #[Title('Verify Account')] class extends Componen
                         </div>
                     @endif
 
+                    {{-- Step 1: Submit Student ID to receive OTP --}}
                     @if ($step === 1)
                         <form wire:submit="sendOtp" class="space-y-4 md:space-y-5">
                             <div>
@@ -183,6 +220,7 @@ new #[Layout('layouts.guest')] #[Title('Verify Account')] class extends Componen
                                 <x-input-error :messages="$errors->get('student_id')" class="mt-2 text-red-600 text-[10px]" />
                             </div>
 
+                            {{-- Send OTP button with loading state --}}
                             <button type="submit" wire:loading.attr="disabled"
                                 class="w-full bg-[#108500] hover:bg-[#0d6b00] text-white font-semibold py-3 rounded-lg transition-all uppercase tracking-widest text-xs">
                                 <span wire:loading.remove>Get Verification Code</span>
@@ -191,6 +229,7 @@ new #[Layout('layouts.guest')] #[Title('Verify Account')] class extends Componen
                         </form>
                     @endif
 
+                    {{-- Step 2: Enter the 6-digit OTP --}}
                     @if ($step === 2)
                         <form wire:submit.prevent="verifyOtp" class="space-y-4 md:space-y-5">
                             <div>
@@ -204,6 +243,7 @@ new #[Layout('layouts.guest')] #[Title('Verify Account')] class extends Componen
                                 <x-input-error :messages="$errors->get('code')" class="mt-2 text-red-600 text-[10px]" />
                             </div>
 
+                            {{-- Verify OTP button --}}
                             <button type="submit"
                                 class="w-full bg-[#108500] hover:bg-[#0d6b00] text-white font-black py-3 rounded-lg shadow-lg shadow-green-200 transition-all uppercase tracking-widest text-xs">
                                 <span wire:loading.remove wire:target="verifyOtp">Verify OTP</span>
@@ -217,8 +257,10 @@ new #[Layout('layouts.guest')] #[Title('Verify Account')] class extends Componen
                         </form>
                     @endif
 
+                    {{-- Step 3: Set new password and verify account --}}
                     @if ($step === 3)
                         <form wire:submit="setPassword" class="space-y-4 md:space-y-5">
+                            {{-- New password field with show/hide toggle --}}
                             <div x-data="{ show: false }" class="relative">
                                 <label
                                     class="text-[10px] md:text-[11px] font-bold uppercase text-gray-500 mb-1 block ms-1">
@@ -234,6 +276,7 @@ new #[Layout('layouts.guest')] #[Title('Verify Account')] class extends Componen
                                 <x-input-error :messages="$errors->get('password')" class="mt-2 text-red-600 text-[10px]" />
                             </div>
 
+                            {{-- Confirm password field with show/hide toggle --}}
                             <div x-data="{ show: false }" class="relative">
                                 <label
                                     class="text-[10px] md:text-[11px] font-bold uppercase text-gray-500 mb-1 block ms-1">
@@ -248,6 +291,7 @@ new #[Layout('layouts.guest')] #[Title('Verify Account')] class extends Componen
                                 </button>
                             </div>
 
+                            {{-- Submit button with loading state --}}
                             <button type="submit"
                                 class="w-full bg-[#108500] hover:bg-[#0d6b00] text-white font-semibold py-3 rounded-lg shadow-lg transition-all uppercase tracking-widest text-xs btn-loader">
                                 <span wire:loading.remove wire:target="setPassword">Verify Account</span>
@@ -256,6 +300,7 @@ new #[Layout('layouts.guest')] #[Title('Verify Account')] class extends Componen
                         </form>
                     @endif
 
+                    {{-- Back to login link --}}
                     <div class="mt-6 md:mt-8 text-center">
                         <a href="{{ route('login') }}" wire:navigate
                             class="text-[10px] md:text-[11px] font-bold text-gray-500 uppercase tracking-widest hover:text-[#108500] flex items-center justify-center">

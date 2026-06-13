@@ -8,6 +8,14 @@ use Illuminate\Support\Facades\{Auth, Storage, Log};
 use App\Services\Student\ProfilePlatformService;
 use App\Models\{ElectionCycle, Platform, Student, Candidate, Block, Course};
 
+/**
+ * Candidate Profiles & Platforms page for students.
+ *
+ * Renders a position-filtered grid of candidate introductory profiles
+ * and approved platform agendas.  Eligible candidates can edit their
+ * own profile and platform from a modal when filing or campaigning
+ * is open.
+ */
 new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
     use ChecksMaintenance, AuthenticatesLogout, WithFileUploads;
 
@@ -29,11 +37,25 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
 
     private ProfilePlatformService $profilePlatformService;
 
+    /**
+     * Inject the profile-platform service.
+     *
+     * @param  \App\Services\Student\ProfilePlatformService  $profilePlatformService
+     * @return void
+     */
     public function boot(ProfilePlatformService $profilePlatformService)
     {
         $this->profilePlatformService = $profilePlatformService;
     }
 
+    /**
+     * Seed the form with the current user's candidate data.
+     *
+     * Loads student info and, if eligible, populates the
+     * profile and platform fields from the existing record.
+     *
+     * @return void
+     */
     public function mount()
     {
         $user = Auth::user();
@@ -59,36 +81,67 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
         }
     }
 
+    /**
+     * Get the active election cycle.
+     *
+     * @return \App\Models\ElectionCycle|null
+     */
     #[Computed]
     public function activeCycle()
     {
         return $this->profilePlatformService->getActiveCycle();
     }
 
+    /**
+     * Check whether the current user is eligible to edit
+     * their candidate profile (has the 'candidate' role).
+     *
+     * @return bool
+     */
     #[Computed]
     public function isEligibleToEdit()
     {
         return $this->profilePlatformService->isEligibleToEdit();
     }
 
+    /**
+     * Check whether the filing period is currently open.
+     *
+     * @return bool
+     */
     #[Computed]
     public function isFilingOpen()
     {
         return $this->profilePlatformService->isFilingOpen($this->activeCycle);
     }
 
+    /**
+     * Check whether the campaign period is currently open.
+     *
+     * @return bool
+     */
     #[Computed]
     public function isCampaignOpen()
     {
         return $this->profilePlatformService->isCampaignOpen($this->activeCycle);
     }
 
+    /**
+     * Check whether the voting period is currently open.
+     *
+     * @return bool
+     */
     #[Computed]
     public function isVotingOpen()
     {
         return $this->profilePlatformService->isVotingOpen($this->activeCycle);
     }
 
+    /**
+     * Get the list of positions available for the student's course.
+     *
+     * @return \Illuminate\Support\Collection
+     */
     #[Computed]
     public function positionsList()
     {
@@ -96,6 +149,11 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
         return $this->profilePlatformService->getPositionsList($this->activeCycle, $courseId);
     }
 
+    /**
+     * Get candidates filtered by the selected position.
+     *
+     * @return \Illuminate\Support\Collection
+     */
     #[Computed]
     public function filteredCandidates()
     {
@@ -103,22 +161,50 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
         return $this->profilePlatformService->getFilteredCandidates($this->activeCycle, $courseId, $this->selectedPosition);
     }
 
+    /**
+     * Append an empty entry to a dynamic array field (e.g. previous positions).
+     *
+     * @param  string  $property
+     * @return void
+     */
     public function addField($property)
     {
         $this->{$property}[] = '';
     }
 
+    /**
+     * Remove an entry from a dynamic array field by index.
+     *
+     * @param  string  $property
+     * @param  int  $index
+     * @return void
+     */
     public function removeField($property, $index)
     {
         unset($this->{$property}[$index]);
         $this->{$property} = array_values($this->{$property});
     }
 
+    /**
+     * Set the active position filter for the candidate grid.
+     *
+     * @param  string  $pos
+     * @return void
+     */
     public function selectPosition($pos)
     {
         $this->selectedPosition = $pos;
     }
 
+    /**
+     * Validate and save the candidate's profile and platform.
+     *
+     * Only available to candidates when editing is unlocked
+     * and voting has not started.  Dispatches a success or
+     * error SweetAlert and logs the activity.
+     *
+     * @return void
+     */
     public function updatePlatform()
     {
         if (!Auth::user()->hasRole('candidate')) {
@@ -210,6 +296,12 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
         }
     }
 
+    /**
+     * Generate a deterministic avatar background color for a candidate.
+     *
+     * @param  int  $id
+     * @return string
+     */
     public function getAvatarColor($id)
     {
         return $this->profilePlatformService->getAvatarColor($id);
@@ -217,6 +309,7 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
 }; ?>
 
 <div>
+    {{-- Mobile header branding --}}
     <div
         class="d-lg-none d-flex align-items-center justify-content-start p-2 px-4 bg-white shadow-sm gap-2 border-bottom">
         <img src="{{ asset('images/logo.png') }}" alt="Logo" style="height: 45px; width: 45px; object-fit: contain;">
@@ -226,8 +319,10 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
         </h4>
     </div>
 
+    {{-- Student sidebar navigation --}}
     @include('layouts.partials.student-sidebar')
     <main class="main-content">
+        {{-- Topbar: page title and edit-my-platform button --}}
         <div class="topbar">
             <div>
                 <h2 class="text-dark">Candidate <span class="text-primary">Profiles & Platforms</span></h2>
@@ -272,6 +367,7 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
             @endif
         </div>
 
+        {{-- Determine phase access: voting, campaign, or filing (non-student-only) unlocks the grid --}}
         @php
             $user = Auth::user();
             $isStudentOnly = $user->hasRole('student') && !$user->hasRole('candidate');
@@ -282,7 +378,9 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
             $canAccess = $isVoting || $isCampaign || ($isFiling && !$isStudentOnly);
         @endphp
 
+        {{-- Candidate grid (visible when access is granted) --}}
         @if ($canAccess)
+            {{-- Position filter tabs --}}
             <div class="d-flex gap-1 gap-md-2 flex-wrap mb-3">
                 @foreach ($this->positionsList as $pos)
                     <button wire:click="selectPosition('{{ $pos }}')"
@@ -294,6 +392,7 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
                 @endforeach
             </div>
 
+            {{-- Candidate profile cards grid --}}
             <div class="row g-2 g-md-4 mb-12 mb-md-0">
                 @forelse($this->filteredCandidates as $candidate)
                     <div class="col-6 col-md-6 col-lg-4 col-xl-3 mb-2 mb-md-3"
@@ -386,6 +485,7 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
                         </div>
                     </div>
                 @empty
+                    {{-- Empty state: no candidates match the current filter --}}
                     <div class="col-12 py-5 text-center">
                         <div class="bg-light rounded-5 p-5">
                             <i class="bi bi-person-x fs-1 text-muted"></i>
@@ -399,6 +499,7 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
                 $latestCycle = ElectionCycle::where('status', 'active')->first();
             @endphp
 
+            {{-- Voting period finished banner --}}
             @if ($latestCycle && $latestCycle->status === 'completed')
                 <div class="p-5 text-center my-5 rounded-4">
                     <div class="mb-4">
@@ -417,6 +518,7 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
                         Candidate profiles and ballot submissions are now locked while results are being finalized.
                     </p>
                 </div>
+            {{-- Filing or campaign in progress (non-candidate view) --}}
             @elseif (($isFiling || $isCampaign) && $isStudentOnly)
                 <div class="p-5 text-center my-5 rounded-4">
                     <h3 class="text-primary fw-bold">
@@ -428,6 +530,7 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
                             : 'The candidates are currently campaigning. Voting will start soon!' }}
                     </p>
                 </div>
+            {{-- No active election cycle --}}
             @else
                 <div class="p-5 text-center">
                     <div class="mb-6 relative inline-block">
@@ -449,6 +552,7 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
         @endif
     </main>
 
+    {{-- Candidate introductory-profile + platform modal (one per candidate) --}}
     @foreach ($this->filteredCandidates as $candidate)
         @php
             $approvedPlatform = $candidate->platforms->first();
@@ -736,6 +840,7 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
         </div>
     @endforeach
 
+    {{-- Edit My Platform modal (candidate-only, shows profile + platform tabs) --}}
     @if ($this->isEligibleToEdit)
         <div class="modal fade" id="editMyPlatformModal" tabindex="-1" wire:ignore.self>
             <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable mx-3 mx-md-auto">

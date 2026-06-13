@@ -8,8 +8,20 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
 
+/**
+ * The root seeder that sets up roles, the admin account, a
+ * default student/candidate account (Michael Farinas), and
+ * delegates to CourseAndBlockSeeder for the course-block matrix.
+ */
 class DatabaseSeeder extends Seeder
 {
+    /**
+     * Seed the application's foundational data:
+     * - Spatie roles (admin, student, candidate)
+     * - Admin user (admin@gmail.com)
+     * - Default student + candidate (Michael Farinas)
+     * - Course & block structure via CourseAndBlockSeeder
+     */
     public function run(): void
     {
         $roles = ['admin', 'student', 'candidate'];

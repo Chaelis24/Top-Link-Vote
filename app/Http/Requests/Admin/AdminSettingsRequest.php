@@ -6,6 +6,12 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rules\Password;
 
+/**
+ * Validates incoming requests for updating admin profile and password
+ * settings. Both `profileRules` and `passwordRules` are exposed as
+ * static methods so the Livewire component can use them without
+ * re-instantiating the form request.
+ */
 class AdminSettingsRequest extends FormRequest
 {
     /**
@@ -16,6 +22,11 @@ class AdminSettingsRequest extends FormRequest
         return Auth::check() && Auth::user()->hasRole('admin');
     }
 
+    /**
+     * Validation rules for updating the admin's name and email.
+     *
+     * @return array<string, array<int, string|\Illuminate\Validation\Rules\Password>>
+     */
     public static function profileRules(): array
     {
         return [
@@ -24,6 +35,11 @@ class AdminSettingsRequest extends FormRequest
         ];
     }
 
+    /**
+     * Validation rules for changing the admin's password.
+     *
+     * @return array<string, array<int, string|\Illuminate\Validation\Rules\Password>>
+     */
     public static function passwordRules(): array
     {
         return [

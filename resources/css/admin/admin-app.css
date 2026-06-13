@@ -1,3 +1,9 @@
+/*
+    ========================================
+    ADMIN APP STYLESHEET  (admin-app.css)
+    Tailwind imports, design tokens, layout
+    ========================================
+*/
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap");
 
 @tailwind base;
@@ -15,6 +21,7 @@
         "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 }
 
+/* ===== DESIGN TOKENS (CSS Custom Properties) ===== */
 :root {
     --primary: #0f172a;
     --primary-light: #1e293b;
@@ -32,6 +39,7 @@
     --sidebar-width: 280px;
 }
 
+/* ===== GLOBAL RESET ===== */
 * {
     margin: 0;
     padding: 0;
@@ -74,10 +82,12 @@ body {
     }
 }
 
+/* ===== ADMIN MOBILE TOP PROFILE ===== */
 .admin-mobile-top-profile img {
     aspect-ratio: 1 / 1;
 }
 
+/* ===== ALPINE.JS CLOCK (hide until ready) ===== */
 [x-cloak] {
     display: none !important;
 }
@@ -270,12 +280,14 @@ body {
     color: var(--danger);
 }
 
-/* INPUTS */
+/* ===== INPUTS ===== */
 select {
     background: #ffffff;
     color: var(--text-primary);
     border: 1px solid #e2e8f0;
 }
+
+/* ===== SCROLLBAR HIDE UTILITY ===== */
 .scrollbar-hide::-webkit-scrollbar {
     display: none;
 }

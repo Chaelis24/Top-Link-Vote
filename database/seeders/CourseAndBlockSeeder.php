@@ -6,8 +6,16 @@ use App\Models\Course;
 use App\Models\Block;
 use Illuminate\Database\Seeder;
 
+/**
+ * Seeds the four core courses (IT, HRMT, HST, ECT) and generates
+ * year-level blocks (1st–3rd year, sections A–G) for each course.
+ */
 class CourseAndBlockSeeder extends Seeder
 {
+    /**
+     * Create or retrieve each course and its full block matrix
+     * (year levels × sections) using firstOrCreate.
+     */
     public function run(): void
     {
         $courseNames = ['IT', 'HRMT', 'HST', 'ECT'];

@@ -6,15 +6,20 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
 
+/**
+ * Notification sent to active students when an election opens
+ * (`started`) or when a reminder is triggered (`reminder`).
+ * Delivers the alert via email using the `election-alert` Blade view.
+ */
 class ElectionAlert extends Notification implements ShouldQueue
 {
     use Queueable;
 
+    /** @var string 'started' | 'reminder' */
     protected $type;
 
     /**
-     * Create a new notification instance.
-     * * @param string $type ('started' or 'reminder')
+     * @param  string  $type  'started' when voting opens, 'reminder' for follow-ups.
      */
     public function __construct($type)
     {

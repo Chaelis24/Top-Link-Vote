@@ -6,6 +6,8 @@ use Spatie\Permission\Models\Role;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
+ * Generate Spatie roles (`admin`, `student`, `candidate`) for testing.
+ *
  * @extends Factory<Role>
  */
 class RoleFactory extends Factory

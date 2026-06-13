@@ -1,3 +1,10 @@
+/**
+ * Echo / WebSocket configuration for real-time events.
+ *
+ * Initialises Laravel Echo with the Reverb driver (Pusher
+ * protocol) for broadcasting live vote tallies and audit
+ * trail updates to connected clients.
+ */
 import Echo from "laravel-echo";
 
 import Pusher from "pusher-js";

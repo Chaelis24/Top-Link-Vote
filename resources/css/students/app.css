@@ -1,3 +1,9 @@
+/*
+    ========================================
+    STUDENT APP STYLESHEET  (app.css)
+    Tailwind imports, design tokens, layout
+    ========================================
+*/
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap");
 
 @tailwind base;
@@ -16,6 +22,7 @@
         "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 }
 
+/* ===== DESIGN TOKENS (CSS Custom Properties) ===== */
 :root {
     --primary: #059669;
     --primary-light: #ecfdf5;
@@ -34,6 +41,7 @@
     --sidebar-width: 280px;
 }
 
+/* ===== GLOBAL RESET ===== */
 * {
     margin: 0;
     padding: 0;
@@ -229,10 +237,12 @@ body {
     color: var(--primary);
     border: 1px solid rgba(16, 185, 129, 0.2);
 }
+/* ===== SCROLLBAR HIDE UTILITY ===== */
 .scrollbar-hide::-webkit-scrollbar {
     display: none;
 }
 
+/* ===== GEAR SPIN ANIMATIONS (maintenance mode) ===== */
 @keyframes spin-left {
     from {
         transform: rotate(0deg);
@@ -267,6 +277,7 @@ body {
     animation: spin-left 3s linear infinite;
 }
 
+/* ===== BUTTON LOADER (loading-shine effect) ===== */
 .btn-loader {
     position: relative;
     overflow: hidden;

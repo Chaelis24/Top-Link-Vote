@@ -10,6 +10,11 @@ use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
+/**
+ * Broadcasted whenever a vote is cast or updated so that
+ * real-time election-result charts on the admin dashboard
+ * and public result pages can refresh automatically.
+ */
 class VoteUpdated implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;

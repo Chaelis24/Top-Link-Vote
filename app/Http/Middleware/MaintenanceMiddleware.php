@@ -9,8 +9,19 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Symfony\Component\HttpFoundation\Response;
 
+/**
+ * Middleware that blocks non-admin traffic when the application is
+ * in maintenance mode. Routes listed in `$except` are always allowed
+ * (e.g. login, password-reset). Authenticated students/candidates are
+ * logged out and redirected to the home page with a notification.
+ */
 class MaintenanceMiddleware
 {
+    /**
+     * URI patterns that bypass the maintenance check.
+     *
+     * @var array<int, string>
+     */
     protected array $except = [
         '/',
         'admin-login',

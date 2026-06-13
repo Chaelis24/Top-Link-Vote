@@ -7,6 +7,15 @@ use Illuminate\Support\Facades\Auth;
 use App\Services\Student\CastVoteService;
 use App\Models\Vote;
 
+/**
+ * Digital Ballot / Cast Vote page for students.
+ *
+ * Guides the voter through a multi-step ballot: select candidates
+ * per position, review choices (with a name blur toggle), and
+ * confirm submission.  Uses session-backed state to survive
+ * page refreshes.  Prevents double-voting and enforces voting
+ * window.
+ */
 new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component {
     use ChecksMaintenance, AuthenticatesLogout;
 
@@ -19,11 +28,24 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
 
     private CastVoteService $castVoteService;
 
+    /**
+     * Inject the cast-vote service.
+     *
+     * @param  \App\Services\Student\CastVoteService  $castVoteService
+     * @return void
+     */
     public function boot(CastVoteService $castVoteService)
     {
         $this->castVoteService = $castVoteService;
     }
 
+    /**
+     * Initialize the ballot with student data and restore
+     * any in-progress session state.  Also pre-fills
+     * existing votes for the current cycle.
+     *
+     * @return void
+     */
     public function mount()
     {
         $user = Auth::user();
@@ -77,24 +99,45 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
         }
     }
 
+    /**
+     * Check whether the student has already voted in this cycle.
+     *
+     * @return bool
+     */
     #[Computed]
     public function hasVoted()
     {
         return $this->castVoteService->hasStudentVoted($this->student);
     }
 
+    /**
+     * Get the active election cycle.
+     *
+     * @return \App\Models\ElectionCycle|null
+     */
     #[Computed]
     public function activeCycle()
     {
         return $this->castVoteService->getActiveCycle();
     }
 
+    /**
+     * Check whether voting is currently open.
+     *
+     * @return bool
+     */
     #[Computed]
     public function isVotingOpen()
     {
         return $this->castVoteService->isVotingOpen($this->activeCycle);
     }
 
+    /**
+     * Get the full election data (positions with candidates)
+     * for the voter's course.
+     *
+     * @return \Illuminate\Support\Collection
+     */
     #[Computed]
     public function electionData()
     {
@@ -102,18 +145,35 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
         return $this->castVoteService->getElectionData($this->activeCycle, $this->isVotingOpen, $courseId);
     }
 
+    /**
+     * Get the currently active position in the ballot flow.
+     *
+     * @return \App\Models\Position|null
+     */
     #[Computed]
     public function currentPosition()
     {
         return $this->electionData[$this->currentPositionIndex] ?? null;
     }
 
+    /**
+     * Determine whether the voter is on the last position.
+     *
+     * @return bool
+     */
     #[Computed]
     public function isLastPosition()
     {
         return $this->currentPositionIndex >= count($this->electionData) - 1;
     }
 
+    /**
+     * Record the voter's selection for a given position.
+     *
+     * @param  int  $positionId
+     * @param  int  $candidateId
+     * @return void
+     */
     public function selectCandidate($positionId, $candidateId)
     {
         if ($this->currentStep !== 1) {
@@ -124,11 +184,26 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
         session(['election_selections' => $this->selections]);
     }
 
+    /**
+     * Persist selections to the session whenever they change.
+     *
+     * @param  mixed  $value
+     * @param  string  $key
+     * @return void
+     */
     public function updatedSelections($value, $key)
     {
         session(['election_selections' => $this->selections]);
     }
 
+    /**
+     * Advance to the next position or to the review step.
+     *
+     * Validates that a candidate was selected for the current
+     * position (if candidates exist) before proceeding.
+     *
+     * @return void
+     */
     public function nextPosition()
     {
         if ($this->currentStep !== 1) {
@@ -164,12 +239,27 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
         }
     }
 
+    /**
+     * Jump to a specific step (1 = Select, 2 = Review, 3 = Confirm).
+     *
+     * @param  int  $step
+     * @return void
+     */
     public function setStep($step)
     {
         $this->currentStep = $step;
         session(['election_current_step' => $step]);
     }
 
+    /**
+     * Submit the ballot and record all votes.
+     *
+     * Delegates to CastVoteService for transactional vote
+     * submission with row-level locking.  Clears session
+     * state on success.
+     *
+     * @return void
+     */
     public function submitVote()
     {
         if (!$this->isVotingOpen || $this->hasVoted) {
@@ -219,6 +309,12 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
         ]);
     }
 
+    /**
+     * Generate a deterministic avatar background color.
+     *
+     * @param  int  $id
+     * @return string
+     */
     public function getAvatarColor($id)
     {
         return $this->castVoteService->getAvatarColor($id);
@@ -226,6 +322,7 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
 }; ?>
 
 <div>
+    {{-- Mobile header branding --}}
     <div
         class="d-lg-none d-flex align-items-center justify-content-start p-2 px-4 bg-white shadow-sm gap-2 border-bottom">
         <img src="{{ asset('images/logo.png') }}" alt="Logo" style="height: 45px; width: 45px; object-fit: contain;">
@@ -235,8 +332,10 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
         </h4>
     </div>
 
+    {{-- Student sidebar navigation --}}
     @include('layouts.partials.student-sidebar')
     <main class="main-content">
+        {{-- Topbar: page title --}}
         <div class="topbar">
             <div>
                 <h2 class="mb-0 text-dark">Digital <span style="color: #10b981">Ballot</span></h2>
@@ -249,6 +348,7 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
             $formattedSuffix = in_array($suffix, ['Jr', 'Sr']) ? $suffix . '.' : $suffix;
         @endphp
 
+        {{-- Already-voted receipt view --}}
         @if ($this->hasVoted)
             <div class="fade-in d-flex flex-column align-items-center justify-content-center" style="min-height: 65vh;">
                 <div class="glass-card p-5 text-center shadow-sm border-0 bg-white"
@@ -297,6 +397,7 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                         Dashboard</a>
                 </div>
             </div>
+        {{-- No active election / voting closed --}}
         @elseif (!$this->isVotingOpen)
             <div class="p-5 text-center">
                 <div class="mb-6 relative inline-block">
@@ -314,7 +415,9 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                     Please check back later for official announcements.
                 </p>
             </div>
+        {{-- Ballot voting flow: Select -> Review -> Confirm --}}
         @else
+            {{-- Step progress indicator --}}
             <div class="d-flex align-items-center justify-content-center mb-0 px-md-5 pt-4 p-6 p-md-0">
                 @foreach ([1 => 'Select', 2 => 'Review', 3 => 'Confirm'] as $num => $label)
                     <div
@@ -335,6 +438,7 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                 @endforeach
             </div>
 
+            {{-- Step 1: Candidate selection for the current position --}}
             @if ($currentStep == 1)
                 @php
                     $position = $this->currentPosition;
@@ -367,6 +471,7 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                             @endif
                         </div>
 
+                        {{-- Candidate selection cards --}}
                         @if ($hasCandidates)
                             <div class="grid grid-cols-2 md:flex md:flex-wrap justify-center gap-3 md:gap-6 mb-8">
                                 @foreach ($position->candidates as $candidate)
@@ -432,6 +537,7 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                                     </div>
                                 @endforeach
                             </div>
+                        {{-- No candidates available for this position --}}
                         @else
                             <div class="flex justify-center mb-8">
                                 <div
@@ -444,6 +550,7 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                             </div>
                         @endif
 
+                        {{-- Next / Review button --}}
                         <div class="mt-8 flex justify-end pb-10 mb-3 md:mb-4">
                             <button wire:click="nextPosition" wire:loading.attr="disabled" wire:target="nextPosition"
                                 class="group relative inline-flex items-center justify-center px-4 md:px-6 py-1.5 md:py-2.5 font-bold text-white transition-all duration-200 bg-[#10b981] rounded-full shadow-lg hover:bg-emerald-600 active:scale-95 disabled:opacity-75 {{ !$hasSelection && $hasCandidates ? 'opacity-50 cursor-not-allowed' : '' }}"
@@ -464,6 +571,7 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                             </button>
                         </div>
                     </div>
+                {{-- No positions available for this course --}}
                 @else
                     <div class="text-center py-20">
                         <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gray-50 mb-4">
@@ -474,6 +582,7 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                             this time.</p>
                     </div>
                 @endif
+            {{-- Step 2: Review all selections before final confirmation --}}
             @elseif ($currentStep == 2)
                 <div class="fade-in px-2 py-3">
                     <div class="mb-3 text-center">
@@ -485,6 +594,7 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                         </h5>
                     </div>
 
+                    {{-- Review grid: one card per position with selected candidate or abstain --}}
                     <div class="grid grid-cols-2 md:flex md:flex-wrap justify-center gap-3 md:gap-4 mb-12">
                         @forelse ($this->electionData as $position)
                             @php
@@ -524,6 +634,7 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                         @endforelse
                     </div>
 
+                    {{-- Show/hide names toggle + Confirm button --}}
                     <div class="mt-8 flex items-center justify-end gap-4 pb-10 mb-3 md:mb-4">
                         <button wire:click="$toggle('showNames')"
                             class="flex items-center gap-2 px-3 py-2 text-[10px] font-bold text-gray-500 hover:text-[#10b981] transition-colors uppercase tracking-widest"
@@ -550,6 +661,7 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                         </button>
                     </div>
                 </div>
+            {{-- Step 3: Final confirmation before casting the ballot --}}
             @elseif ($currentStep == 3)
                 <div class="fade-in px-2 py-4 flex justify-center">
                     <div

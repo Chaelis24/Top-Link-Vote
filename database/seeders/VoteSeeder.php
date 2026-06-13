@@ -7,8 +7,17 @@ use App\Models\{Student, Candidate, Vote, ElectionCycle, Position};
 use Illuminate\Support\Str;
 use App\Jobs\LogActivity;
 
+/**
+ * Simulates votes for approximately 50 % of all students across
+ * every position in the active election cycle. Each voter picks
+ * a random candidate per position and receives a unique reference number.
+ */
 class VoteSeeder extends Seeder
 {
+    /**
+     * Cast ballots for a random subset of students, log each vote
+     * via LogActivity, and update the student's voting status.
+     */
     public function run(): void
     {
         $activeCycle = ElectionCycle::where('status', 'active')->first();

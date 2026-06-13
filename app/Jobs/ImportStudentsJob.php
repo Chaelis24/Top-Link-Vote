@@ -12,16 +12,28 @@ use Illuminate\Support\Facades\{DB, Hash, Log};
 use Carbon\Carbon;
 use Spatie\Permission\Models\Role;
 
+/**
+ * Processes the CSV rows uploaded by an admin, creating or updating
+ * Course, Block, User, and Student records inside batched transactions.
+ * Runs with a 10-minute timeout to handle large imports.
+ */
 class ImportStudentsJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public $timeout = 600;
 
+    /**
+     * @param  array<int, array<string, mixed>>  $rows  Parsed CSV rows.
+     */
     public function __construct(protected array $rows)
     {
     }
 
+    /**
+     * Chunks rows into groups of 50 and processes each inside a
+     * database transaction. Caches are cleared when all chunks complete.
+     */
     public function handle(): void
     {
         $chunks = array_chunk($this->rows, 50);

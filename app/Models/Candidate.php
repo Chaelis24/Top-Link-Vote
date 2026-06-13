@@ -9,6 +9,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * A student who has filed their candidacy for a specific position
+ * within an election cycle. Tracks approval status, campaign
+ * materials (photo, achievements, platform), and vote count.
+ */
 class Candidate extends Model
 {
     use SoftDeletes, HasFactory;
@@ -44,16 +49,33 @@ class Candidate extends Model
 
     protected $appends = ['is_profile_complete'];
 
+    /**
+     * Accessor for is_profile_complete appended attribute.
+     *
+     * @return bool
+     */
     public function getIsProfileCompleteAttribute(): bool
     {
         return $this->isProfileComplete();
     }
 
+    /**
+     * Returns true when the candidate has submitted a photo, grade,
+     * achievements, and a fully filled-out platform record.
+     *
+     * @return bool
+     */
     public function isProfileComplete(): bool
     {
-        return empty($this->getIncompleteFields());
+        return $this->empty($this->getIncompleteFields());
     }
 
+    /**
+     * Checks all required profile fields and returns the names of
+     * any that are still missing or empty.
+     *
+     * @return array<int, string>
+     */
     public function getIncompleteFields(): array
     {
         $platform = $this->relationLoaded('platforms')
@@ -80,31 +102,61 @@ class Candidate extends Model
     }
 
 
+    /**
+     * The student record associated with this candidacy.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
     public function student(): BelongsTo
     {
         return $this->belongsTo(Student::class);
     }
 
+    /**
+     * Platform statements submitted by this candidate (one per position).
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
     public function platforms(): HasMany
     {
         return $this->hasMany(Platform::class);
     }
 
+    /**
+     * The election cycle this candidacy belongs to.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
     public function electionCycle(): BelongsTo
     {
         return $this->belongsTo(ElectionCycle::class);
     }
 
+    /**
+     * The position being run for.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
     public function position(): BelongsTo
     {
         return $this->belongsTo(Position::class);
     }
 
+    /**
+     * All votes cast for this candidate.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\HasMany
+     */
     public function votes(): HasMany
     {
         return $this->hasMany(Vote::class, 'candidate_id', 'id');
     }
 
+    /**
+     * The underlying user account for this candidate.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);

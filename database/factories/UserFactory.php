@@ -7,6 +7,9 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
 /**
+ * Generate user accounts with a hashed default password and
+ * verified email. Includes a state modifier for unverified emails.
+ *
  * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\User>
  */
 class UserFactory extends Factory
@@ -33,7 +36,10 @@ class UserFactory extends Factory
     }
 
     /**
-     * Indicate that the model's email address should be unverified.
+     * Set the email_verified_at column to null so the user's
+     * address is treated as unverified during tests.
+     *
+     * @return static
      */
     public function unverified(): static
     {

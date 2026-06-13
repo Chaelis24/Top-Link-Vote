@@ -8,6 +8,13 @@ use Livewire\Attributes\{Layout, Title, Url, Computed};
 use Illuminate\Support\Facades\{Auth, Session, DB, Storage};
 use App\Models\{Student, User, Candidate, Position, ElectionCycle, Platform, Course};
 
+/**
+ * Manage Candidates Profile component for admin.
+ *
+ * Provides search, filter by position/department/cycle, import CSV,
+ * edit candidate details (basic info, platform, photo), delete, and
+ * profile completion tracking with winner detection for past cycles.
+ */
 new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class extends Component {
     use WithFileUploads, WithPagination, AuthenticatesLogout;
 
@@ -40,18 +47,35 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
     ];
 
     // --- Computed & Magic Properties ---
+    /**
+     * Retrieve the active election cycle.
+     *
+     * @return ElectionCycle|null
+     */
     #[Computed]
     public function activeCycle()
     {
         return ElectionCycle::getActiveCycle();
     }
 
+    /**
+     * Get all election cycles ordered by creation date.
+     *
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
     public function getElectionCyclesProperty()
     {
         return ElectionCycle::orderBy('created_at', 'desc')->get();
     }
 
     // --- Lifecycle / Data Fetching ---
+    /**
+     * Provide candidate list, stat counts, and available filter options to the view.
+     *
+     * Stats are cached per cycle for 2 minutes.
+     *
+     * @return array
+     */
     public function with(): array
     {
         $activeCycleId = $this->activeCycle ? $this->activeCycle->id : 0;
@@ -78,6 +102,12 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
         ];
     }
 
+    /**
+     * Build and return a paginated candidate query with search,
+     * position/department/cycle filters, and vote counts.
+     *
+     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
+     */
     public function loadCandidates()
     {
         $cycleId = $this->selectedCycleId === 'active' ? ($this->activeCycle ? $this->activeCycle->id : 0) : $this->selectedCycleId;
@@ -109,11 +139,22 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
     }
 
     // --- Dynamic Form Fields ---
+    /**
+     * Add an empty field to a dynamic array property (e.g. previous_position).
+     *
+     * @param  string  $property
+     */
     public function addField($property)
     {
         $this->editForm[$property][] = '';
     }
 
+    /**
+     * Remove a field from a dynamic array property by index.
+     *
+     * @param  string  $property
+     * @param  int  $index
+     */
     public function removeField($property, $index)
     {
         unset($this->editForm[$property][$index]);
@@ -125,6 +166,11 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
     }
 
     // --- CRUD Operations ---
+    /**
+     * Load a candidate's full data (including platform) into the edit form.
+     *
+     * @param  int  $id
+     */
     public function editCandidate($id)
     {
         $this->resetErrorBag();
@@ -153,6 +199,11 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
         $this->dispatch('open-modal', id: 'editCandidateModal');
     }
 
+    /**
+     * Persist candidate edits including photo upload and platform data.
+     *
+     * Runs inside a database transaction.
+     */
     public function updateCandidate()
     {
         $request = new UpdateCandidateRequest();
@@ -216,6 +267,11 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
         }
     }
 
+    /**
+     * Permanently delete a candidate record.
+     *
+     * @param  int  $id
+     */
     public function deleteCandidate($id)
     {
         try {
@@ -235,6 +291,12 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
     }
 
     // --- CSV Import ---
+    /**
+     * Parse an uploaded CSV and import candidates/positions/platforms.
+     *
+     * Runs inside a database transaction. Skips empty rows.
+     * Creates positions on the fly if they do not exist.
+     */
     public function importCandidates()
     {
         $this->validate(['csvFile' => 'required|file|max:5120|mimes:csv,txt']);
@@ -327,6 +389,12 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
     }
 
     // --- Utilities ---
+    /**
+     * Generate a deterministic avatar background color based on candidate ID.
+     *
+     * @param  int  $id
+     * @return string
+     */
     public function getAvatarColor($id)
     {
         $colors = ['#10b981', '#3b82f6', '#6366f1', '#f59e0b', '#ef4444'];
@@ -334,6 +402,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
     }
 }; ?>
 
+{{-- Mobile header bar shown only on small screens --}}
 <div>
     <div
         class="d-lg-none d-flex align-items-center justify-content-start p-2 px-4 bg-white/opacity-50 shadow-sm gap-2 border-bottom">
@@ -343,14 +412,17 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
             Top Link Global College, Inc.
         </h4>
     </div>
+    {{-- Admin sidebar navigation --}}
     @include('layouts.partials.admin-sidebar')
 
     <main class="main-content">
+        {{-- Top bar with page title and import CSV button --}}
         <div class="topbar">
             <div class="topbar-info">
                 <h2 class="fw-bold text-primary">Manage <span class="text-accent">Candidates Profile</span></h2>
                 <p class="text-muted mb-0" style="font-size: 0.85rem;">Import & Update Candidate Profile</p>
             </div>
+            {{-- Import CSV button with confirmation via Alpine --}}
             <div x-data="{
                 confirmImport(event) {
                     const file = event.target.files[0];
@@ -379,6 +451,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
             </div>
         </div>
 
+        {{-- Summary stat cards: total candidates and active count --}}
         <div class="row g-2 mb-2">
             <div class="col-6 col-md-6">
                 <div class="glass-card stat-card py-2 text-center h-100">
@@ -394,6 +467,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
             </div>
         </div>
 
+        {{-- Filter bar: search, department, position, and cycle selectors --}}
         <div class="glass-card p-3 p-md-4 mb-3 border-0 shadow-sm">
             <div class="row g-2 g-md-3 align-items-center">
                 <div class="col-12 col-md-3">
@@ -435,6 +509,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
             </div>
         </div>
 
+        {{-- Desktop table view with candidate info, winner badge, profile status, and actions --}}
         <div class="glass-card p-0 overflow-hidden border-0 shadow-sm">
             <div class="table-responsive d-none d-md-block">
                 <table class="table table-hover mb-0">
@@ -525,6 +600,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                                         @endif
                                     </div>
                                 </td>
+                                {{-- Edit (locked if voting started) and delete action buttons --}}
                                 <td class="text-center pe-4 text-nowrap">
                                     <div class="d-flex align-items-center justify-content-center gap-2">
                                         @php
@@ -580,6 +656,8 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                     </tbody>
                 </table>
             </div>
+
+            {{-- Mobile card layout for candidate list --}}
             <div class="md:hidden">
                 @forelse($candidates as $candidate)
                     <div class="p-3 border-bottom position-relative">
@@ -641,11 +719,13 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                 @endforelse
             </div>
         </div>
+        {{-- Custom pagination links --}}
         <div class="custom-pagination">
             {{ $candidates->links('layouts.partials.custom-pagination') }}
         </div>
     </main>
 
+    {{-- Edit Candidate Modal with Basic Info and Platform tabs --}}
     <div class="modal fade" id="editCandidateModal" tabindex="-1" wire:ignore.self>
         <div class="modal-dialog modal-dialog-centered modal-md modal-lg modal-dialog-scrollable mx-2 mx-md-auto">
             <div class="modal-content border-0 shadow-lg rounded-3 rounded-md-4 overflow-hidden">
@@ -682,6 +762,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                 <form wire:submit.prevent="updateCandidate">
                     <div class="modal-body p-3 p-md-4 bg-white">
                         <div class="tab-content" id="editTabsContent">
+                            {{-- Basic Info tab: photo, name, party, grade, achievements, previous positions/projects --}}
                             <div class="tab-pane fade show active" id="tab-basic" role="tabpanel">
                                 <div class="modal-form-scrollable px-1"
                                     style="max-height: 380px; overflow-y: auto; overflow-x: hidden;">
@@ -717,6 +798,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
 
                                         <div class="col-12 col-md-8">
                                             <div class="row g-2">
+                                                {{-- Name fields (read-only) --}}
                                                 <div class="col-6 mb-1">
                                                     <label class="small fw-bold text-primary"
                                                         style="font-size: 0.7rem;">FIRST NAME</label>
@@ -731,6 +813,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                                                         class="form-control form-control-sm border-0 bg-light py-1"
                                                         placeholder="Dela Cruz" readonly>
                                                 </div>
+                                                {{-- Party name and average grade fields --}}
                                                 <div class="col-6 mb-1">
                                                     <label class="small fw-bold text-primary"
                                                         style="font-size: 0.7rem;">PARTY NAME</label>
@@ -759,6 +842,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                                                         </div>
                                                     @enderror
                                                 </div>
+                                                {{-- Achievements textarea --}}
                                                 <div class="col-12">
                                                     <label class="small fw-bold text-primary"
                                                         style="font-size: 0.7rem;">ACHIEVEMENTS</label>
@@ -771,6 +855,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                                                     @enderror
                                                 </div>
 
+                                                {{-- Dynamic previous positions and school projects lists --}}
                                                 <div class="col-12 mt-2">
                                                     <div class="row g-3">
                                                         <div class="col-12 col-md-6">
@@ -847,6 +932,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                                 </div>
                             </div>
 
+                            {{-- Platform tab: title, tagline, and agenda details --}}
                             <div class="tab-pane fade" id="tab-vision" role="tabpanel">
                                 <div class="mb-3">
                                     <label class="small fw-bold text-primary" style="font-size: 0.7rem;">PLATFORM

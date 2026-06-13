@@ -5,6 +5,11 @@ namespace App\Http\Requests\Students;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 
+/**
+ * Validates candidate profile updates submitted from the student
+ * portal. Includes party name, platform details, academic grade,
+ * and previous leadership experience.
+ */
 class UpdateCandidateRequest extends FormRequest
 {
     /**

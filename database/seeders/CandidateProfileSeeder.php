@@ -5,8 +5,17 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use App\Models\Candidate;
 
+/**
+ * Populates candidates with course-appropriate party names,
+ * previous positions, school projects, and achievements
+ * to create realistic profiles for development and testing.
+ */
 class CandidateProfileSeeder extends Seeder
 {
+    /**
+     * Assign each candidate a party and profile details based on
+     * their enrolled course, using a match expression for variety.
+     */
     public function run()
     {
         $candidates = Candidate::all();

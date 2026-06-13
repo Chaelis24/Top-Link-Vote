@@ -5,6 +5,11 @@ namespace App\Http\Requests\Admin;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 
+/**
+ * Validates the creation and editing of election positions.
+ * Enforces required fields for name, max winners, and priority,
+ * with an optional student-department association.
+ */
 class PositionRequest extends FormRequest
 {
     /**

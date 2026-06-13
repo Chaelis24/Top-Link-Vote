@@ -1,3 +1,4 @@
+/* ===== PROFILE AVATAR & BADGES ===== */
 .profile-avatar-lg {
     width: 100px;
     height: 100px;
@@ -11,6 +12,7 @@
     border: 2px solid white;
 }
 
+/* ===== SPIN ANIMATION ===== */
 .spin-animation {
     display: inline-block;
     animation: spin 1s linear infinite;
@@ -26,6 +28,7 @@
     }
 }
 
+/* ===== BALLOT STEP INDICATOR ===== */
 .step-circle {
     background: #f1f5f9;
     color: #94a3b8;
@@ -77,6 +80,7 @@
     background: #10b981;
 }
 
+/* ===== VOTE CANDIDATE CARDS ===== */
 .vote-candidate-option {
     border-radius: 15px;
     border: 2px solid #f1f5f9;
@@ -96,6 +100,7 @@
     box-shadow: 0 4px 12px rgba(16, 185, 129, 0.1);
 }
 
+/* ===== LOCKED STATE CARD ===== */
 .locked-state-card {
     border-radius: 25px;
     border: none;
@@ -103,16 +108,19 @@
     padding: 4rem 2rem;
 }
 
+/* ===== AVATAR CIRCLE ===== */
 .avatar-circle {
     width: 45px;
     height: 45px;
     border-radius: 50%;
 }
 
+/* ===== BORDER UTILITIES ===== */
 .border-emerald-light {
     border-color: rgba(16, 185, 129, 0.2) !important;
 }
 
+/* ===== GLASS CARD OVERRIDES ===== */
 .glass-card {
     transition: all 0.3s ease;
 }
@@ -121,11 +129,13 @@
     transform: translateY(-2px);
 }
 
+/* ===== DISABLED BUTTON STYLING ===== */
 .btn:disabled {
     box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.02);
     opacity: 0.8;
 }
 
+/* ===== CUSTOM TABS (position filter) ===== */
 .tab-custom {
     background: #f8fafc;
     border: 1px solid #e2e8f0;
@@ -144,6 +154,7 @@
     box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
 }
 
+/* ===== PLATFORM CARD ===== */
 .platform-card {
     background: white;
     border-radius: 20px;
@@ -157,6 +168,7 @@
     transform: translateY(-5px);
 }
 
+/* ===== CUSTOM LIST (bullet replacement) ===== */
 .custom-list li::before {
     content: "•";
     color: #10b981;
@@ -165,17 +177,20 @@
     width: 1em;
 }
 
+/* ===== NAV TABS (modal profile/platform tabs) ===== */
 .nav-tabs .nav-link.active {
     background-color: white !important;
     color: #10b981 !important;
     border-bottom: 3px solid #10b981 !important;
 }
 
+/* ===== FORM VALIDATION FEEDBACK ===== */
 .invalid-feedback {
     font-size: 0.75rem;
     font-weight: 600;
 }
 
+/* ===== PHOTO UPLOAD ===== */
 .profile-upload-circle {
     transition: all 0.3s ease;
 }
@@ -191,18 +206,22 @@
     transition: opacity 0.2s;
 }
 
+/* ===== BORDER-RADIUS UTILITY ===== */
 .rounded-5 {
     border-radius: 2rem !important;
 }
 
+/* ===== HOVER TRANSLATE ===== */
 .hover-translate-y:hover {
     transform: translateY(-8px);
 }
 
+/* ===== SHADOW UTILITY ===== */
 .shadow-md {
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
+/* ===== TYPOGRAPHY UTILITIES ===== */
 .fw-black {
     font-weight: 900;
 }
@@ -215,6 +234,7 @@
     letter-spacing: 0.15em;
 }
 
+/* ===== EMERALD THEME UTILITIES ===== */
 .bg-emerald-light {
     background-color: #ecfdf5 !important;
 }
@@ -223,10 +243,7 @@
     color: #10b981 !important;
 }
 
-.rounded-5 {
-    border-radius: 2rem !important;
-}
-
+/* ===== CANDIDATE GROUP CARD ===== */
 .group-card {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     border: 1px solid #f1f5f9;
@@ -238,12 +255,14 @@
     border-color: #10b981;
 }
 
+/* ===== CANDIDATE AVATAR ===== */
 .candidate-avatar-circle {
     width: 100px;
     height: 100px;
     border-radius: 50%;
 }
 
+/* ===== NAV TABS (modal tabs alternate) ===== */
 .nav-tabs .nav-link {
     color: #64748b;
     border-bottom: 3px solid transparent;
@@ -256,6 +275,7 @@
     border-bottom-color: #10b981 !important;
 }
 
+/* ===== ACHIEVEMENT CONTAINER ===== */
 .achievement-container {
     max-height: 200px;
     overflow-y: auto;
@@ -264,6 +284,7 @@
     scrollbar-color: #10b981 #f1f5f9;
 }
 
+/* ===== CUSTOM LIST (arrow style) ===== */
 .custom-list {
     list-style: none;
     padding-left: 0;
@@ -282,11 +303,13 @@
     font-weight: bold;
 }
 
+/* ===== PLATFORM HEADER BOX ===== */
 .platform-header-box {
     background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);
     border: 1px solid #dcfce7;
 }
 
+/* ===== AGENDA ITEM ===== */
 .agenda-item {
     background: #f8fafc;
     border: 1px solid #f1f5f9;
@@ -299,6 +322,7 @@
     transform: translateX(5px);
 }
 
+/* ===== MOBILE RESPONSIVE OVERRIDES ===== */
 @media (max-width: 768px) {
     .candidate-avatar-circle {
         width: 80px;

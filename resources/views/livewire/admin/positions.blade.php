@@ -7,6 +7,13 @@ use Illuminate\Support\Facades\{Auth, Session};
 use Livewire\Attributes\{Layout, Title, Computed};
 use App\Models\{Position, ElectionCycle, Candidate};
 
+/**
+ * Manage Positions component for admin.
+ *
+ * Allows administrators to create, edit, and delete election positions
+ * within the active cycle. Validates max winners against existing
+ * approved candidates and displays stat cards for total, candidates, and filled.
+ */
 new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Component {
     use App\Traits\AuthenticatesLogout;
 
@@ -17,12 +24,22 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
     public ?int $editingId = null;
 
     // --- Computed Properties ---
+    /**
+     * Retrieve the active election cycle.
+     *
+     * @return ElectionCycle|null
+     */
     #[Computed]
     public function activeCycle()
     {
         return ElectionCycle::getActiveCycle();
     }
 
+    /**
+     * Calculate position stats for the active cycle.
+     *
+     * @return array{total: int, candidates: int, filled: int, unfilled: int}
+     */
     #[Computed]
     public function stats()
     {
@@ -44,6 +61,11 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
         ];
     }
 
+    /**
+     * Get all positions for the active cycle with candidate counts, ordered by priority.
+     *
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
     #[Computed]
     public function positions()
     {
@@ -55,6 +77,11 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
     }
 
     // --- Action / CRUD Methods ---
+    /**
+     * Load a position's data into the form fields for editing.
+     *
+     * @param  int  $id
+     */
     public function editPosition(int $id)
     {
         $pos = Position::findOrFail($id);
@@ -65,6 +92,12 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
         $this->student_department = $pos->student_department;
     }
 
+    /**
+     * Create or update a position.
+     *
+     * Validates that max_winners is not lower than the current
+     * number of approved candidates for the position.
+     */
     public function savePosition()
     {
         if (!$this->activeCycle) {
@@ -108,6 +141,11 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
         ]);
     }
 
+    /**
+     * Permanently delete a position.
+     *
+     * @param  int  $id
+     */
     public function deletePosition(int $id)
     {
         Position::destroy($id);
@@ -119,6 +157,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
     }
 }; ?>
 
+{{-- Mobile header bar shown only on small screens --}}
 <div>
     <div
         class="d-lg-none d-flex align-items-center justify-content-start p-2 px-4 bg-white/opacity-50 shadow-sm gap-2 border-bottom">
@@ -128,9 +167,11 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
             Top Link Global College, Inc.
         </h4>
     </div>
+    {{-- Admin sidebar navigation --}}
     @include('layouts.partials.admin-sidebar')
 
     <main class="main-content">
+        {{-- Top bar with page title and Add Position button --}}
         <div class="topbar">
             <div class="topbar-info">
                 <h2 class="fw-bold text-primary">Manage <span class="text-accent">Positions</span></h2>
@@ -145,6 +186,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
             </div>
         </div>
 
+        {{-- Summary stat cards: total positions, candidates, filled --}}
         <div class="row g-2 mb-3">
             <div class="col-6 col-lg-4">
                 <div class="glass-card stat-card border-0 shadow-sm py-3">
@@ -186,6 +228,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
                 <h6 class="fw-bold text-primary mb-0"><i class="bi bi-list-nested me-2"></i>Position</h6>
             </div>
 
+            {{-- Position list with priority badges, edit and delete actions --}}
             @forelse($this->positions as $pos)
                 <div class="position-row glass-card mb-3 p-3 d-flex align-items-center"
                     wire:key="pos-{{ $pos->id }}">
@@ -199,6 +242,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
                         <div class="fw-bold text-accent">{{ $pos->candidates_count }}</div>
                         <div class="tiny text-muted uppercase fw-bold">Candidates</div>
                     </div>
+                    {{-- Edit and delete buttons --}}
                     <div class="d-flex gap-2">
                         <x-icon-button variant="edit" wire:click="editPosition({{ $pos->id }})"
                             data-bs-toggle="modal" data-bs-target="#addPositionModal">
@@ -234,6 +278,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
         </div>
     </main>
 
+    {{-- Add/Edit Position modal --}}
     <div class="modal fade" id="addPositionModal" tabindex="-1" wire:ignore.self>
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg">

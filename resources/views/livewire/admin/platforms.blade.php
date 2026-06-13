@@ -7,6 +7,12 @@ use Livewire\Attributes\{Layout, Title};
 use Illuminate\Support\Facades\{Auth, Session};
 use App\Models\{Platform, Candidate, ElectionCycle};
 
+/**
+ * Platform Management component for admin.
+ *
+ * Allows administrators to review, approve, or reject
+ * candidate platforms and profiles for the active election cycle.
+ */
 new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Component {
     use WithPagination, AuthenticatesLogout;
 
@@ -20,6 +26,13 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
         return ElectionCycle::getActiveCycle();
     }
 
+    /**
+     * Get paginated platforms for the active cycle.
+     *
+     * Pending platforms are sorted first, then by creation date.
+     *
+     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator
+     */
     public function getPlatformsProperty()
     {
         $activeCycleId = ElectionCycle::where('status', 'active')->value('id') ?? 0;
@@ -46,18 +59,36 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
     }
 
     // --- Lifecycle / Updating Hooks ---
+    /**
+     * Reset pagination when search changes.
+     */
     public function updatingSearch()
     {
         $this->resetPage();
     }
 
     // --- Action / CRUD Methods ---
+    /**
+     * Load a platform for the detail review modal.
+     *
+     * @param  int  $id
+     * @return void
+     */
     public function viewPlatform(int $id)
     {
         $this->selectedPlatform = Platform::with(['candidate.student', 'candidate.position'])->findOrFail($id);
         $this->dispatch('open-modal', id: 'viewPlatformModal');
     }
 
+    /**
+     * Approve and publish a candidate platform.
+     *
+     * Requires both title and agenda to be filled. Also marks
+     * the associated candidate as approved.
+     *
+     * @param  int  $id
+     * @return void
+     */
     public function publishPlatform(int $id)
     {
         $platform = Platform::with('candidate')->findOrFail($id);
@@ -89,6 +120,12 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
         ]);
     }
 
+    /**
+     * Reject a candidate platform.
+     *
+     * @param  int  $id
+     * @return void
+     */
     public function rejectPlatform(int $id)
     {
         $platform = Platform::findOrFail($id);
@@ -105,6 +142,12 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
     }
 
     // --- Utilities ---
+    /**
+     * Generate a deterministic avatar background color.
+     *
+     * @param  int  $candidateId
+     * @return string
+     */
     public function getAvatarColor($candidateId)
     {
         $colors = ['#10b981', '#3b82f6', '#6366f1', '#f59e0b', '#ef4444'];
@@ -113,6 +156,7 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
 }; ?>
 
 <div>
+    {{-- Mobile header branding --}}
     <div
         class="d-lg-none d-flex align-items-center justify-content-start p-2 px-4 bg-white/opacity-50 shadow-sm gap-2 border-bottom">
         <img src="{{ asset('images/logo.png') }}" alt="Logo" style="height: 45px; width: 45px; object-fit: contain;">
@@ -121,15 +165,18 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
             Top Link Global College, Inc.
         </h4>
     </div>
+    {{-- Admin sidebar navigation --}}
     @include('layouts.partials.admin-sidebar')
 
     <main class="main-content">
+        {{-- Topbar: page title --}}
         <div class="topbar">
             <div class="topbar-info">
                 <h2 class="fw-bold text-primary">Platform <span class="text-accent">Management</span></h2>
                 <p class="text-muted mb-0" style="font-size: 0.85rem;">View & Approve Candidate Platform</p>
             </div>
         </div>
+        {{-- Search filter --}}
         <div class="flex items-center w-full md:w-auto mb-3">
             <div class="search-wrap-modern relative w-full md:w-[300px]">
                 <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 text-muted"></i>
@@ -139,6 +186,7 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
             </div>
         </div>
 
+        {{-- Desktop table --}}
         <div class="glass-card p-0 overflow-hidden border-0 shadow-sm">
             <div class="table-responsive hidden md:block">
                 <table class="table table-hover mb-0">
@@ -265,6 +313,7 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                 </table>
             </div>
 
+            {{-- Mobile card layout --}}
             <div class="block md:hidden">
                 @forelse($this->platforms as $platform)
                     @php
@@ -369,11 +418,13 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                 @endforelse
             </div>
         </div>
+        {{-- Custom pagination --}}
         <div class="custom-pagination">
             {{ $this->platforms->links('layouts.partials.custom-pagination') }}
         </div>
     </main>
 
+    {{-- Review / detail modal for a single platform --}}
     <div class="modal fade" id="viewPlatformModal" tabindex="-1" wire:ignore.self>
         <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable px-2">
             <div class="modal-content border-0 shadow-lg">

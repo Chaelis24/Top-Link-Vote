@@ -4,9 +4,21 @@ use Illuminate\Support\Facades\Password;
 use Livewire\Attributes\Layout;
 use Livewire\Volt\Component;
 
+/**
+ * Admin Forgot Password page.
+ *
+ * Allows administrators to request a password-reset link
+ * sent to their registered email address via Laravel's
+ * Password broker.
+ */
 new #[Layout('layouts.guest')] class extends Component {
     public string $email = '';
 
+    /**
+     * Validate the email and send a password-reset link.
+     *
+     * @return void
+     */
     public function sendPasswordResetLink(): void
     {
         $this->validate(['email' => ['required', 'email']]);
@@ -21,12 +33,14 @@ new #[Layout('layouts.guest')] class extends Component {
     }
 }; ?>
 
+{{-- Full-screen centered container for the forgot-password form --}}
 <div class="fixed inset-0 z-[9999] overflow-y-auto bg-white flex items-center justify-center p-4 m-0 w-full h-full">
     <div class="absolute inset-0 bg-white"></div>
 
     <div
         class="relative z-10 max-w-4xl w-full bg-white shadow-2xl rounded-2xl overflow-hidden border border-gray-100 mx-2 md:mx-0">
         <div class="flex flex-col md:flex-row">
+            {{-- Branding panel (left) --}}
             <div
                 class="md:w-1/2 bg-gradient-to-br from-[#1e3a8a] to-[#3b82f6] p-2 md:p-12 text-white flex flex-col justify-center relative overflow-hidden min-h-[180px] md:min-h-[450px]">
                 <div class="absolute -top-24 -left-24 w-64 h-64 bg-white/10 rounded-full"></div>
@@ -48,6 +62,7 @@ new #[Layout('layouts.guest')] class extends Component {
                 </div>
             </div>
 
+            {{-- Form panel (right) --}}
             <div class="md:w-1/2 p-6 md:p-8 flex flex-col justify-center bg-white">
                 <div class="mb-3 md:mb-6">
                     <div
@@ -59,6 +74,7 @@ new #[Layout('layouts.guest')] class extends Component {
                     <p class="text-gray-500 text-xs md:text-sm">Enter your email to receive instructions.</p>
                 </div>
 
+                {{-- Status / success flash message --}}
                 @if (session('status'))
                     <div
                         class="mb-2 text-green-600 text-[10px] font-bold uppercase p-3 bg-green-50 rounded-lg border border-green-100">
@@ -74,6 +90,7 @@ new #[Layout('layouts.guest')] class extends Component {
                         <x-input-error :messages="$errors->get('email')" class="mt-2 text-red-600 text-[10px]" />
                     </div>
 
+                    {{-- Submit button with loading state --}}
                     <button type="submit"
                         class="w-full bg-[#1e3a8a] hover:bg-[#1e293b] text-white font-semibold py-3 rounded-lg transition-all uppercase tracking-widest text-xs md:text-sm">
                         <span wire:loading.remove>Send Reset Email</span>
@@ -81,6 +98,7 @@ new #[Layout('layouts.guest')] class extends Component {
                     </button>
                 </form>
 
+                {{-- Back to login link --}}
                 <div class="mt-0 md:mt-3 pt-4 md:pt-6 border-t border-gray-50 text-center">
                     <a href="{{ route('admin.login') }}" wire:navigate
                         class="text-[10px] font-bold text-gray-400 uppercase tracking-widest hover:text-[#1e3a8a] inline-flex items-center transition-colors">

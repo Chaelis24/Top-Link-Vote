@@ -11,6 +11,13 @@ use App\Traits\{ChecksMaintenance, AuthenticatesLogout};
 use Illuminate\Support\Facades\Auth;
 use App\Services\Student\ProfileService;
 
+/**
+ * Student Profile component.
+ *
+ * Displays personal and academic information, voting status,
+ * activity timeline, and provides an edit modal for updating
+ * profile photo, phone number, and account password.
+ */
 new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
     use ChecksMaintenance, AuthenticatesLogout, WithFileUploads;
 
@@ -42,11 +49,19 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
 
     private ProfileService $profileService;
 
+    /**
+     * Inject the ProfileService dependency.
+     *
+     * @param  ProfileService  $profileService
+     */
     public function boot(ProfileService $profileService)
     {
         $this->profileService = $profileService;
     }
 
+    /**
+     * Load student profile data from the service into component properties.
+     */
     public function mount()
     {
         $user = Auth::user();
@@ -62,6 +77,9 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
         }
     }
 
+    /**
+     * Update the student's profile (phone, photo) with validation.
+     */
     public function saveProfile()
     {
         $request = app(UpdateProfileRequest::class);
@@ -95,6 +113,9 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
         $this->dispatch('close-modal');
     }
 
+    /**
+     * Change the student's password with current password confirmation.
+     */
     public function updatePassword()
     {
         $request = app(UpdatePasswordRequest::class);
@@ -113,6 +134,7 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
     }
 }; ?>
 
+{{-- Mobile header bar shown only on small screens --}}
 <div>
     <div
         class="d-lg-none d-flex align-items-center justify-content-start p-2 px-4 bg-white shadow-sm gap-2 border-bottom">
@@ -123,9 +145,11 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
         </h4>
     </div>
 
+    {{-- Student sidebar navigation --}}
     @include('layouts.partials.student-sidebar')
 
     <main class="main-content">
+        {{-- Top bar with page title --}}
         <div class="topbar" wire:key="persistent-topbar-header">
             <div>
                 <h2 class="text-dark">My <span class="text-primary">Profile</span></h2>
@@ -133,6 +157,7 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
             </div>
         </div>
 
+        {{-- Profile header card with photo, name, student ID, and voting/year badges --}}
         <div class="glass-card profile-header m-2 m-md-4 fade-in-up delay-1 border-0 shadow-sm overflow-hidden">
             <div class="row align-items-center g-0">
                 <div class="col-md-auto text-center text-md-start p-2 p-md-4">
@@ -180,6 +205,7 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                         <span class="text-muted">Student ID: {{ $student_id ?? 'N/A' }}</span>
                     </p>
 
+                    {{-- Voting status and year level badges --}}
                     <div class="d-flex flex-wrap justify-content-center justify-content-md-start gap-1 gap-md-2">
                         <span
                             class="badge rounded-pill {{ $has_voted ? 'bg-success-subtle text-success border-success-subtle' : 'bg-primary-light text-primary border-success-subtle' }} border px-2 py-1"
@@ -212,7 +238,9 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
             </div>
         </div>
 
+        {{-- Personal and Academic information columns --}}
         <div class="row g-4">
+            {{-- Personal Information card --}}
             <div class="col-lg-6">
                 <div class="glass-card info-card h-100 p-4 border-0 shadow-sm">
                     <h5 class="fw-bold mb-4 text-dark">
@@ -278,6 +306,7 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                 </div>
             </div>
 
+            {{-- Academic Information card --}}
             <div class="col-lg-6">
                 <div class="glass-card info-card h-100 p-4 border-0 shadow-sm">
                     <h5 class="fw-bold mb-4 text-dark">
@@ -344,6 +373,7 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                 </div>
             </div>
 
+            {{-- Voting Status card --}}
             <div class="col-lg-4">
                 <div class="glass-card vote-status-card h-100 p-4 text-center border-0 shadow-sm">
                     <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-3 bg-emerald-light text-primary"
@@ -376,6 +406,7 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                 </div>
             </div>
 
+            {{-- Activity Timeline card --}}
             <div class="col-lg-8">
                 <div class="glass-card p-4 h-100 border-0 shadow-sm">
                     <h5 class="fw-bold mb-4 text-dark d-flex align-items-center justify-content-between">
@@ -388,6 +419,7 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                         </div>
 
                         @if ($has_voted)
+                            {{-- Vote submission timeline entry --}}
                             <div class="position-relative d-flex align-items-start mb-4">
                                 <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle bg-success shadow-sm text-white"
                                     style="width: 32px; height: 32px; z-index: 2;">
@@ -405,6 +437,7 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                             </div>
                         @endif
 
+                        {{-- Login timeline entry --}}
                         <div class="position-relative d-flex align-items-start mb-4">
                             <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle bg-primary shadow-sm text-white"
                                 style="width: 32px; height: 32px; z-index: 2;">
@@ -422,6 +455,7 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                             </div>
                         </div>
 
+                        {{-- Account verification timeline entry --}}
                         <div class="position-relative d-flex align-items-start mb-12 mb-md-0">
                             <div class="flex-shrink-0 d-flex align-items-center justify-content-center rounded-circle bg-secondary shadow-sm text-white"
                                 style="width: 32px; height: 32px; z-index: 2;">
@@ -439,6 +473,7 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
         </div>
     </main>
 
+    {{-- Edit Profile modal with photo upload, phone update, and password change --}}
     <div class="modal fade" id="editProfileModal" tabindex="-1" wire:ignore.self aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg">
@@ -448,6 +483,7 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                 </div>
 
                 <div class="modal-body p-4">
+                    {{-- Profile photo and phone update form --}}
                     <form wire:submit.prevent="saveProfile" class="mb-4">
                         <div class="row align-items-center">
                             <div class="col-auto">
@@ -506,6 +542,7 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
 
                     <hr class="text-secondary opacity-25">
 
+                    {{-- Password change form --}}
                     <form wire:submit.prevent="updatePassword">
                         <label class="form-label small fw-bold text-secondary mb-2" style="font-size: 0.8rem;">CHANGE
                             PASSWORD</label>

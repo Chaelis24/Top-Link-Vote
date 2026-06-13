@@ -7,6 +7,11 @@ use App\Models\Platform;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 
+/**
+ * Creates approved platform statements for every existing candidate.
+ * Each candidate receives a random title, tagline, and a three-item
+ * agenda drawn from predefined pools.
+ */
 class PlatformSeeder extends Seeder
 {
     /**

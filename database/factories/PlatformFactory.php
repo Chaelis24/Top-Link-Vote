@@ -6,6 +6,9 @@ use App\Models\Platform;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
+ * Generate platform statements with a title, tagline, and a JSON
+ * agenda array for testing candidate profile workflows.
+ *
  * @extends Factory<Platform>
  */
 class PlatformFactory extends Factory

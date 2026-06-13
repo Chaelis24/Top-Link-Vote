@@ -5,6 +5,11 @@ namespace App\Http\Requests\Admin;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 
+/**
+ * Validates the creation and update of election cycles. Ensures
+ * date ranges are sequential (filing → campaign → voting → results)
+ * and that the academic-year format matches `YYYY-YYYY`.
+ */
 class ElectionCycleRequest extends FormRequest
 {
     /**

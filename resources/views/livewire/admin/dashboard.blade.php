@@ -7,6 +7,13 @@ use Livewire\Attributes\{Layout, Title, On};
 use Illuminate\Support\Facades\{Auth, Session};
 use App\Models\{Vote, Candidate, Student, ElectionCycle, Course};
 
+/**
+ * Admin Dashboard component.
+ *
+ * Displays real-time election analytics including vote tallies,
+ * voter turnout, trends, year-level and course-level breakdowns,
+ * and party performance charts. Supports live broadcasting updates.
+ */
 new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component {
     use AuthenticatesLogout;
 
@@ -17,6 +24,16 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
     }
 
     // --- Data Fetching & Helpers (Private) ---
+    /**
+     * Collect all dashboard metrics with caching support.
+     *
+     * Aggregates vote counts, turnout, per-department tallies,
+     * hourly trends, year-level data, and party performance.
+     * Results are cached for 10 minutes to reduce DB load.
+     *
+     * @param  bool  $forceRefresh
+     * @return array
+     */
     private function getDashboardData($forceRefresh = false): array
     {
         $activeCycle = $this->active;
@@ -141,12 +158,22 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
     }
 
     // --- Livewire Lifecycle Hook ---
+    /**
+     * Supply dashboard data to the view via Livewire's with() method.
+     *
+     * @return array
+     */
     public function with(): array
     {
         return $this->getDashboardData();
     }
 
-    // --- Event Listeners ---
+    /**
+     * Listen for real-time VoteUpdated events and refresh charts.
+     *
+     * Busts the cache, re-fetches data, and dispatches a browser
+     * event to update ApexCharts without a full page reload.
+     */
     #[On('echo:election-results,VoteUpdated')]
     public function refreshAdminStats()
     {
@@ -169,6 +196,13 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
     }
 
     // --- Actions / Download Methods ---
+    /**
+     * Generate and download a PDF election report.
+     *
+     * Includes a SHA-256 fingerprint for integrity verification.
+     *
+     * @return \Symfony\Component\HttpFoundation\StreamedResponse
+     */
     public function downloadReport()
     {
         $data = $this->getDashboardData();
@@ -187,7 +221,10 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
     }
 }; ?>
 
+{{-- Admin Dashboard — displays real-time election analytics, vote tallies, and charts. --}}
+
 <div>
+    {{-- Mobile header with logo and school name --}}
     <div
         class="d-lg-none d-flex align-items-center justify-content-start p-2 px-4 bg-white/opacity-50 shadow-sm gap-2 border-bottom">
         <img src="{{ asset('images/logo.png') }}" alt="Logo" style="height: 45px; width: 45px; object-fit: contain;">
@@ -197,8 +234,10 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
         </h4>
     </div>
 
+    {{-- Sidebar navigation --}}
     @include('layouts.partials.admin-sidebar')
 
+    {{-- Main content area with countdown timer for voting end --}}
     <main class="main-content" x-data="{
         expiry: '{{ $endTime }}',
         remaining: { d: 0 },
@@ -210,11 +249,13 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
     }" x-init="updateCountdown();
     setInterval(() => updateCountdown(), 60000)">
 
+        {{-- Topbar with title and download/status button --}}
         <div class="topbar">
             <div class="topbar-info">
                 <h2 class="fw-bold text-primary">Admin <span class="text-accent">Dashboard</span></h2>
                 <p class="text-muted mb-0" style="font-size: 0.85rem;">Live Election Analytics & Overview</p>
             </div>
+            {{-- Conditional action button: download report (finished), ongoing badge, or disabled --}}
             <div>
                 @php
                     $active = $this->active;
@@ -251,7 +292,9 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
             </div>
         </div>
 
+        {{-- Stat cards row: Total Voters, Total Candidates, Voter Turnout, Countdown Timer --}}
         <div class="row g-2 g-lg-3 mb-4">
+            {{-- Total Voters card with animated counter --}}
             <div class="col-6 col-lg-3">
                 <div class="stat-card p-3 p-md-3 shadow-sm h-100" x-data="{
                     current: 0,
@@ -275,6 +318,7 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
                 </div>
             </div>
 
+            {{-- Total Candidates card with animated counter --}}
             <div class="col-6 col-lg-3">
                 <div class="stat-card p-3 p-md-3 shadow-sm h-100" x-data="{ current: 0, target: {{ $candidatesCount }} }" x-init="let start = null;
                 const step = (ts) => {
@@ -290,6 +334,7 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
                 </div>
             </div>
 
+            {{-- Voter Turnout percentage card --}}
             <div class="col-6 col-lg-3">
                 <div class="stat-card p-3 p-md-3 shadow-sm h-100" x-data="{
                     current: 0,
@@ -312,6 +357,7 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
                 </div>
             </div>
 
+            {{-- Countdown timer card showing remaining time until key election dates --}}
             <div class="col-6 col-lg-3">
                 <div class="stat-card p-3 p-md-3 shadow-sm h-100" x-data="{
                     remainingSeconds: {{ $targetDate ? now()->diffInSeconds($targetDate, false) : -1 }},
@@ -352,7 +398,9 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
             </div>
         </div>
 
+        {{-- Charts row: Trends, Party Performance, Year Level / Course toggles --}}
         <div class="row g-3 mb-3">
+            {{-- Voter Turnout Trends line chart (last 6 hours) --}}
             <div class="col-lg-4">
                 <div class="glass-card p-4 border-0 shadow-sm h-100">
                     <h5 class="fw-bold text-primary mb-1">Voter Turnout Trends</h5>
@@ -361,12 +409,15 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
                 </div>
             </div>
 
+            {{-- Party / Campaign Effectiveness pie chart --}}
             <div class="col-lg-4">
                 <div class="glass-card p-4 border-0 shadow-sm h-100">
                     <h5 class="fw-bold text-primary">Campaign Effectiveness</h5>
                     <div id="chart-party" wire:ignore style="height: 300px;"></div>
                 </div>
             </div>
+
+            {{-- Year Level / Course toggle with respective charts --}}
             <div class="col-lg-4">
                 <div class="glass-card p-4 border-0 shadow-sm h-100" x-data="{ activeTab: 'year' }">
                     <div class="d-flex justify-content-between mb-3">
@@ -396,6 +447,7 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
             </div>
         </div>
 
+        {{-- Per-department vote tally charts --}}
         <div class="row g-4">
             @foreach ($departments as $dept)
                 <div class="col-lg-6">
@@ -416,6 +468,7 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
         </div>
     </main>
 
+    {{-- JavaScript: ApexCharts rendering with real-time updates via Livewire events --}}
     @script
         <script>
             let charts = {};

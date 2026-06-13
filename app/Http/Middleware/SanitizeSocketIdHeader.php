@@ -6,6 +6,11 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
+/**
+ * Middleware that strips the X-Socket-ID header when its value is
+ * the string `'undefined'`. This prevents broadcasting libraries
+ * from sending malformed socket identifiers to Reverb / Echo.
+ */
 class SanitizeSocketIdHeader
 {
     /**

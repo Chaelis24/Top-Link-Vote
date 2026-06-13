@@ -9,6 +9,13 @@ use Illuminate\Validation\Rules\Password;
 use App\Http\Requests\Admin\AdminSettingsRequest;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
+/**
+ * Admin Account Settings component.
+ *
+ * Allows the authenticated admin to update their profile
+ * information (name, email) and change their password
+ * with confirmation and validation.
+ */
 new #[Layout('layouts.admin')] #[Title('Settings')] class extends Component {
     use AuthenticatesLogout;
 
@@ -22,6 +29,9 @@ new #[Layout('layouts.admin')] #[Title('Settings')] class extends Component {
     public string $password_confirmation = '';
 
     // --- Component Lifecycle ---
+    /**
+     * Initialize the form with the authenticated admin's data.
+     */
     public function mount()
     {
         $this->user = auth()->user();
@@ -35,6 +45,11 @@ new #[Layout('layouts.admin')] #[Title('Settings')] class extends Component {
     }
 
     // --- Action Methods ---
+    /**
+     * Update the admin's name and email.
+     *
+     * @return void
+     */
     public function updateProfile()
     {
         if (!auth()->user()->hasRole('admin')) {
@@ -52,6 +67,11 @@ new #[Layout('layouts.admin')] #[Title('Settings')] class extends Component {
         ]);
     }
 
+    /**
+     * Update the admin's password with hashing and confirmation.
+     *
+     * @return void
+     */
     public function updatePassword()
     {
         if (!auth()->user()->hasRole('admin')) {
@@ -89,6 +109,7 @@ new #[Layout('layouts.admin')] #[Title('Settings')] class extends Component {
     }
 }">
 
+    {{-- Mobile header branding --}}
     <div
         class="d-lg-none d-flex align-items-center justify-content-start p-2 px-4 bg-white/opacity-50 shadow-sm gap-2 border-bottom">
         <img src="{{ asset('images/logo.png') }}" alt="Logo" style="height: 45px; width: 45px; object-fit: contain;">
@@ -98,9 +119,11 @@ new #[Layout('layouts.admin')] #[Title('Settings')] class extends Component {
         </h4>
     </div>
 
+    {{-- Admin sidebar navigation --}}
     @include('layouts.partials.admin-sidebar')
 
     <div class="main-content">
+        {{-- Topbar: page title and admin name --}}
         <div class="topbar">
             <div class="topbar-info">
                 <h2 class="fw-bold text-primary">Account <span class="text-accent">Settings</span></h2>
@@ -113,7 +136,9 @@ new #[Layout('layouts.admin')] #[Title('Settings')] class extends Component {
             </div>
         </div>
 
+        {{-- Two-column layout: Profile Information + Security Preferences --}}
         <div class="row g-3 g-md-4">
+            {{-- Profile Information card --}}
             <div class="col-lg-6">
                 <div class="glass-card p-0 border-0 shadow-sm bg-white h-100 overflow-hidden">
                     <div class="p-3 p-md-4 border-bottom bg-light">
@@ -173,6 +198,7 @@ new #[Layout('layouts.admin')] #[Title('Settings')] class extends Component {
                 </div>
             </div>
 
+            {{-- Security Preferences card --}}
             <div class="col-lg-6">
                 <div class="glass-card p-0 border-0 shadow-sm bg-white h-100 overflow-hidden">
                     <div class="p-3 p-md-4 border-bottom bg-light">

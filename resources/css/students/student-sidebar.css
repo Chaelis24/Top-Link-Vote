@@ -1,3 +1,4 @@
+/* ===== SIDEBAR WRAPPER (Green Gradient) ===== */
 .sidebar-modern {
     width: 245px;
     height: 100vh;
@@ -21,6 +22,7 @@
     scrollbar-width: none;
 }
 
+/* ===== BRAND / LOGO ===== */
 .sidebar-brand {
     padding: 0px 8px;
     margin-bottom: 12px;
@@ -68,6 +70,7 @@
     color: #ffffff !important;
 }
 
+/* ===== NAVIGATION LINKS ===== */
 .sidebar-content {
     flex-grow: 1;
 }
@@ -104,6 +107,7 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
+/* ===== FOOTER / USER CARD ===== */
 .sidebar-footer {
     margin-top: auto;
     padding: 5px 8px;
@@ -147,6 +151,7 @@
     font-size: 1.2rem;
 }
 
+/* ===== MOBILE CONTROLS ===== */
 .mobile-toggle {
     display: none;
     position: fixed;
@@ -212,6 +217,7 @@
     transform: rotate(180deg);
 }
 
+/* ===== DROPDOWN MENU ===== */
 .dropdown-menu-custom {
     position: absolute;
     bottom: 100%;

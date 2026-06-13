@@ -6,6 +6,9 @@ use App\Models\Vote;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
+ * Generate vote records with associated student, candidate,
+ * position, and election cycle for testing ballot workflows.
+ *
  * @extends Factory<Vote>
  */
 class VoteFactory extends Factory

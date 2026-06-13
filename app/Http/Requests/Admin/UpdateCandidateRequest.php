@@ -5,6 +5,11 @@ namespace App\Http\Requests\Admin;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 
+/**
+ * Validates admin updates to candidate profiles. Covers
+ * position assignment, party name, platform content, academic
+ * details, and an optional photo upload with dimension constraints.
+ */
 class UpdateCandidateRequest extends FormRequest
 {
     /**
@@ -36,6 +41,11 @@ class UpdateCandidateRequest extends FormRequest
         ];
     }
 
+    /**
+     * Human-readable attribute names for error messages.
+     *
+     * @return array<string, string>
+     */
     public function attributes(): array
     {
         return [

@@ -9,6 +9,9 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
+ * Generate student records linked to a user, course, and block
+ * with a unique student ID and active status by default.
+ *
  * @extends Factory<Student>
  */
 class StudentFactory extends Factory

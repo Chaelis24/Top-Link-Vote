@@ -9,6 +9,13 @@ use Livewire\Volt\Component;
 use Illuminate\Support\Str;
 use App\Models\Setting;
 
+/**
+ * Student Reset Password page.
+ *
+ * Resets the student's password after they click the
+ * link from the reset email.  Validates the token
+ * and password, then redirects to the login page.
+ */
 new #[Layout('layouts.guest')] #[Title('Reset Password')] class extends Component {
     use ChecksMaintenance;
     #[Locked]
@@ -17,12 +24,23 @@ new #[Layout('layouts.guest')] #[Title('Reset Password')] class extends Componen
     public string $password = '';
     public string $password_confirmation = '';
 
+    /**
+     * Seed the form with the reset token and email from the URL.
+     *
+     * @param  string  $token
+     * @return void
+     */
     public function mount(string $token): void
     {
         $this->token = $token;
         $this->email = request()->string('email');
     }
 
+    /**
+     * Validate the token and password, then persist the new password.
+     *
+     * @return void
+     */
     public function resetPassword(): void
     {
         $this->validate([
@@ -52,12 +70,14 @@ new #[Layout('layouts.guest')] #[Title('Reset Password')] class extends Componen
     }
 }; ?>
 
+{{-- Full-screen centered container for the student reset-password form --}}
 <div class="fixed inset-0 z-[9999] overflow-y-auto bg-white flex items-center justify-center p-4 m-0 w-full h-full">
     <div class="absolute inset-0 bg-white"></div>
 
     <div
         class="relative z-10 max-w-4xl w-full bg-white shadow-2xl rounded-2xl overflow-hidden border border-gray-100 mx-2 md:mx-0">
 
+        {{-- Maintenance mode banner --}}
         @if ($isMaintenance)
             <div class="bg-gray-50 py-16 px-6 w-full flex flex-col justify-center items-center min-h-[400px]">
                 <div class="p-8 bg-gray-50 inline-block rounded-xl">
@@ -78,6 +98,7 @@ new #[Layout('layouts.guest')] #[Title('Reset Password')] class extends Componen
             </div>
         @else
             <div class="flex flex-col md:flex-row">
+                {{-- Branding panel (left) --}}
                 <div
                     class="md:w-1/2 bg-[linear-gradient(115deg,#0dff00,#068a08,#010d05)] p-2 md:p-12 text-white flex flex-col justify-center relative overflow-hidden min-h-[180px] md:min-h-[450px]">
                     <div class="absolute -top-24 -left-24 w-64 h-64 bg-black/10 rounded-full"></div>
@@ -99,6 +120,7 @@ new #[Layout('layouts.guest')] #[Title('Reset Password')] class extends Componen
                     </div>
                 </div>
 
+                {{-- Form panel (right) --}}
                 <div class="md:w-1/2 p-5 md:p-10 flex flex-col justify-center bg-white">
                     <div class="mb-6 md:mb-8">
                         <h2 class="text-lg md:text-2xl font-bold text-[#252525] mb-1 md:mb-2 tracking-tighter">New
@@ -107,6 +129,7 @@ new #[Layout('layouts.guest')] #[Title('Reset Password')] class extends Componen
                         <p class="text-gray-500 text-xs md:text-sm">Final step of account recovery</p>
                     </div>
 
+                    {{-- Error flash message --}}
                     @if (session('error'))
                         <div
                             class="mb-4 text-red-600 text-[10px] md:text-[11px] font-bold uppercase p-3 bg-red-50 rounded-lg border border-red-200">
@@ -114,6 +137,7 @@ new #[Layout('layouts.guest')] #[Title('Reset Password')] class extends Componen
                         </div>
                     @endif
 
+                    {{-- Step progress indicator (all steps completed except Reset) --}}
                     <div class="flex items-center justify-between mb-4 mb-md-8 px-1">
                         <div class="flex flex-col items-center">
                             <div
@@ -147,6 +171,7 @@ new #[Layout('layouts.guest')] #[Title('Reset Password')] class extends Componen
                     </div>
 
                     <form wire:submit="resetPassword" class="space-y-4 md:space-y-5">
+                        {{-- Read-only email field --}}
                         <div>
                             <label class="text-[10px] md:text-[11px] font-bold uppercase text-gray-500 mb-1 block ms-1">
                                 Registered Email
@@ -156,6 +181,7 @@ new #[Layout('layouts.guest')] #[Title('Reset Password')] class extends Componen
                             <x-input-error :messages="$errors->get('email')" class="mt-2 text-red-600 text-[10px]" />
                         </div>
 
+                        {{-- New password field with show/hide toggle --}}
                         <div x-data="{ show: false }" class="relative">
                             <label class="text-[10px] md:text-[11px] font-bold uppercase text-gray-500 mb-1 block ms-1">
                                 New Password
@@ -170,6 +196,7 @@ new #[Layout('layouts.guest')] #[Title('Reset Password')] class extends Componen
                             <x-input-error :messages="$errors->get('password')" class="mt-2 text-red-600 text-[10px]" />
                         </div>
 
+                        {{-- Confirm password field with show/hide toggle --}}
                         <div x-data="{ show: false }" class="relative">
                             <label class="text-[10px] md:text-[11px] font-bold uppercase text-gray-500 mb-1 block ms-1">
                                 Confirm New Password
@@ -183,6 +210,7 @@ new #[Layout('layouts.guest')] #[Title('Reset Password')] class extends Componen
                             </button>
                         </div>
 
+                        {{-- Submit button with loading state --}}
                         <button type="submit"
                             class="w-full bg-[#108500] hover:bg-[#0d6b00] text-white font-black py-3 rounded-lg transition-all uppercase tracking-widest text-xs btn-loader">
                             <span wire:loading.remove>Update Password</span>
@@ -190,6 +218,7 @@ new #[Layout('layouts.guest')] #[Title('Reset Password')] class extends Componen
                         </button>
                     </form>
 
+                    {{-- Back to login link --}}
                     <div class="mt-0 md:mt-3 pt-4 md:pt-6 border-t border-gray-50 text-center">
                         <a href="{{ route('login') }}" wire:navigate
                             class="text-[10px] md:text-xs font-semibold text-gray-500 uppercase tracking-widest hover:text-[#108500] flex items-center justify-center transition-colors">

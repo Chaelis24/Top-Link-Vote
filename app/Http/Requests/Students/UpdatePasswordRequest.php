@@ -6,6 +6,11 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rules\Password;
 
+/**
+ * Validates password-change requests from students and candidates.
+ * Requires the current password and a new, confirmed password that
+ * meets the application's default password strength rules.
+ */
 class UpdatePasswordRequest extends FormRequest
 {
     /**

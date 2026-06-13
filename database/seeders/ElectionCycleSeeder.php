@@ -8,6 +8,11 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * Creates a new active election cycle and resets all students'
+ * voting flags so they can vote fresh. The cycle dates are set
+ * relative to `now` to keep them valid during development.
+ */
 class ElectionCycleSeeder extends Seeder
 {
     /**

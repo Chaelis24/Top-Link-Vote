@@ -8,8 +8,17 @@ use App\Models\Position;
 use App\Models\ElectionCycle;
 use Illuminate\Database\Seeder;
 
+/**
+ * Creates candidate records for every student who has been
+ * assigned the `candidate` role. Each candidate is linked to
+ * the currently active election cycle and the first available position.
+ */
 class CandidateSeeder extends Seeder
 {
+    /**
+     * Find students with the `candidate` role and create or update
+     * their candidacy under the active election cycle.
+     */
     public function run(): void
     {
         $election = ElectionCycle::where('status', 'active')->first();

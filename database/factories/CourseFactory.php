@@ -6,6 +6,8 @@ use App\Models\Course;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
+ * Generate unique course names for testing.
+ *
  * @extends Factory<Course>
  */
 class CourseFactory extends Factory

@@ -9,6 +9,13 @@ use Livewire\{WithFileUploads, WithPagination};
 use Illuminate\Support\Facades\{Auth, Session, DB, Hash};
 use App\Models\{User, Student, Role, Vote, ElectionCycle, Block, Course};
 
+/**
+ * Manage Students component for admin.
+ *
+ * Provides search, filter, paginate, import CSV, export CSV,
+ * bulk deactivate, view, edit, and deactivate functionality
+ * for student records.
+ */
 new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Component {
     use WithFileUploads, WithPagination, AuthenticatesLogout;
 
@@ -43,12 +50,24 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
     ];
 
     // --- Computed & View Customization ---
+    /**
+     * Retrieve the active election cycle.
+     *
+     * @return ElectionCycle|null
+     */
     #[Computed]
     public function activeCycle()
     {
         return ElectionCycle::getActiveCycle();
     }
 
+    /**
+     * Provide data to the view: student list, stat counts.
+     *
+     * Stats are cached for 2 minutes for performance.
+     *
+     * @return array
+     */
     public function with(): array
     {
         $stats = cache()->remember('students_stats', 120, function () {
@@ -72,6 +91,13 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
     }
 
     // --- Lifecycle & Query Data Hooks ---
+    /**
+     * Build and return a paginated (or full) student query
+     * filtered by search term, course, block, year, and status.
+     *
+     * @param  bool  $paginate  Whether to paginate the results.
+     * @return \Illuminate\Contracts\Pagination\LengthAwarePaginator|\Illuminate\Database\Eloquent\Collection
+     */
     public function loadStudents($paginate = true)
     {
         $query = Student::query()
@@ -106,6 +132,11 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
         return $paginate ? $query->paginate(10) : $query->get();
     }
 
+    /**
+     * Sync select-all checkbox with individual selections.
+     *
+     * @param  bool  $value
+     */
     public function updatedSelectAll($value)
     {
         if ($value) {
@@ -115,27 +146,44 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
         }
     }
 
+    /**
+     * Reset pagination when the search term changes.
+     */
     public function updatingSearch()
     {
         $this->resetPage();
     }
 
+    /**
+     * Reset pagination when the course filter changes.
+     */
     public function updatingCourse()
     {
         $this->resetPage();
     }
 
+    /**
+     * Reset pagination when the year filter changes.
+     */
     public function updatingYear()
     {
         $this->resetPage();
     }
 
+    /**
+     * Reset pagination when the status filter changes.
+     */
     public function updatingStatus()
     {
         $this->resetPage();
     }
 
     // --- Action / CRUD Methods ---
+    /**
+     * Load a single student with user and latest vote for the detail modal.
+     *
+     * @param  int  $id
+     */
     public function viewStudent($id)
     {
         try {
@@ -150,6 +198,11 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
         }
     }
 
+    /**
+     * Load a student's current data into the edit form and open the modal.
+     *
+     * @param  int  $id
+     */
     public function editStudent($id)
     {
         $student = Student::with('block')->findOrFail($id);
@@ -170,6 +223,9 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
         $this->dispatch('open-modal', id: 'editStudentModal');
     }
 
+    /**
+     * Persist the edited student record.
+     */
     public function updateStudent()
     {
         $this->validate(StudentRequest::updateRules());
@@ -193,6 +249,11 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
         }
     }
 
+    /**
+     * Soft-deactivate a student by setting status to inactive.
+     *
+     * @param  int  $id
+     */
     public function deleteStudent($id)
     {
         try {
@@ -214,6 +275,9 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
     }
 
     // --- Bulk / Data Exchange Operations ---
+    /**
+     * Mass-deactivate all currently selected students.
+     */
     public function bulkDeactivate()
     {
         if (empty($this->selectedStudents)) {
@@ -233,6 +297,9 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
         ]);
     }
 
+    /**
+     * Parse an uploaded CSV and dispatch a background job to import students.
+     */
     public function importCSV()
     {
         $this->validate(StudentRequest::importRules());
@@ -287,6 +354,11 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
         }
     }
 
+    /**
+     * Generate and download a CSV export of all student records.
+     *
+     * @return \Symfony\Component\HttpFoundation\BinaryFileResponse
+     */
     public function exportStudents()
     {
         $students = Student::with('block.course')->get();
@@ -305,6 +377,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
     }
 }; ?>
 
+{{-- Mobile header bar shown only on small screens --}}
 <div>
     <div
         class="d-lg-none d-flex align-items-center justify-content-start p-2 px-4 bg-white/opacity-50 shadow-sm gap-2 border-bottom">
@@ -314,14 +387,17 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
             Top Link Global College, Inc.
         </h4>
     </div>
+    {{-- Admin sidebar navigation --}}
     @include('layouts.partials.admin-sidebar')
 
     <main class="main-content">
+        {{-- Top bar with page title and import CSV button --}}
         <div class="topbar">
             <div class="topbar-info">
                 <h2 class="fw-bold text-primary">Manage <span class="text-accent">Students</span></h2>
                 <p class="text-muted mb-0 small">Import & Update Student Profile</p>
             </div>
+            {{-- Import CSV button with confirmation dialog via Alpine --}}
             <div x-data="{
                 confirmImport(event) {
                     const file = event.target.files[0];
@@ -350,6 +426,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
             </div>
         </div>
 
+        {{-- Summary stat cards: total, voted, not voted, deactivated --}}
         <div class="row g-2 g-md-3 mb-3 text-center">
             <div class="col-6 col-lg-3">
                 <div class="glass-card p-2 p-md-3 border-0 shadow-sm">
@@ -377,9 +454,11 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
             </div>
         </div>
 
+        {{-- Filter bar: search, export, course, block, year, status dropdowns --}}
         <div class="glass-card p-3 mb-3 border-0 shadow-sm bg-white">
             <div class="row g-2 align-items-center">
 
+                {{-- Search input with live debounce --}}
                 <div class="col-4 col-md-2">
                     <div class="search-wrap-modern">
                         <i class="bi bi-search"></i>
@@ -388,6 +467,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                     </div>
                 </div>
 
+                {{-- Export button with confirmation --}}
                 <div class="col-4 col-md-2 order-md-last ms-md-auto">
                     <button type="button" class="btn btn-outline-primary btn-sm w-100 py-2 flex-shrink-0"
                         x-on:click="
@@ -421,6 +501,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                     </button>
                 </div>
 
+                {{-- Course filter --}}
                 <div class="col-4 col-md-2">
                     <select wire:model.live="course" class="form-select-modern py-2 w-100">
                         <option value="All Courses">🏢 All Courses</option>
@@ -430,6 +511,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                     </select>
                 </div>
 
+                {{-- Block filter --}}
                 <div class="col-4 col-md-2">
                     <select wire:model.live="block_id" class="form-select-modern py-2 w-100">
                         <option value="All Blocks">🏫 All Blocks</option>
@@ -439,6 +521,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                     </select>
                 </div>
 
+                {{-- Year level filter --}}
                 <div class="col-4 col-md-2">
                     <select wire:model.live="year" class="form-select-modern py-2 w-100">
                         <option value="All Years">🎓 All Years</option>
@@ -448,6 +531,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                     </select>
                 </div>
 
+                {{-- Status filter --}}
                 <div class="col-4 col-md-2">
                     <select wire:model.live="status" class="form-select-modern py-2 w-100"
                         style="font-size: 0.8rem; padding-left: 4px; padding-right: 4px;">
@@ -461,6 +545,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
             </div>
         </div>
 
+        {{-- Desktop table view with select-all, student columns, and action buttons --}}
         <div class="glass-card p-0 overflow-hidden border-0 shadow-sm">
             <div class="table-responsive hidden md:block">
                 <table class="table table-hover mb-0">
@@ -513,6 +598,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                                                 class="bi bi-x-circle-fill me-1"></i> Not Voted</span>
                                     @endif
                                 </td>
+                                {{-- View, edit, deactivate action buttons --}}
                                 <td class="text-center pe-4">
                                     <div class="d-flex gap-2 justify-content-center">
                                         <x-icon-button variant="custom" wire:click="viewStudent({{ $student->id }})"
@@ -554,6 +640,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                 </table>
             </div>
 
+            {{-- Mobile card layout for small screens --}}
             <div class="md:hidden mb-3">
                 @forelse($students as $student)
                     <div wire:key="student-mobile-{{ $student->id }}"
@@ -622,11 +709,13 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                 @endforelse
             </div>
         </div>
+        {{-- Custom pagination links --}}
         <div class="custom-pagination">
             {{ $students->links('layouts.partials.custom-pagination') }}
         </div>
     </main>
 
+    {{-- View Student Profile modal --}}
     <div class="modal fade" id="viewStudentModal" tabindex="-1" wire:ignore.self>
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg" style="border-radius: 15px;">
@@ -636,6 +725,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                 </div>
                 <div class="modal-body p-0">
                     @if ($selectedStudent)
+                        {{-- Avatar initials and main info --}}
                         <div class="p-4 text-center border-bottom bg-light">
                             <div class="d-inline-flex align-items-center justify-content-center bg-primary text-white fw-bold shadow-sm mb-3"
                                 style="width: 60px; height: 60px; border-radius: 50%; font-size: 1.5rem;">
@@ -648,6 +738,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                             </p>
                         </div>
 
+                        {{-- Voting status panel with reference number and timestamp --}}
                         <div class="p-3">
                             <div class="p-3 rounded-3 border-0 shadow-sm"
                                 style="background: #f8f9ff; border-left: 4px solid #0d6efd !important;">
@@ -692,6 +783,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
         </div>
     </div>
 
+    {{-- Edit Student Profile modal --}}
     <div class="modal fade" id="editStudentModal" tabindex="-1" wire:ignore.self>
         <div class="modal-dialog modal-lg modal-dialog-centered px-2">
             <div class="modal-content border-0 shadow-lg" style="border-radius: 15px;">
@@ -703,6 +795,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                 <form wire:submit="updateStudent">
                     <div class="modal-body p-3">
                         <div class="row g-2">
+                            {{-- Name fields (read-only) --}}
                             <div class="col-md-4 col-4">
                                 <label class="form-label mb-0 text-primary fw-bold" style="font-size: 0.65rem;">FIRST
                                     NAME</label>
@@ -732,6 +825,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                                     style="font-size: 0.8rem;" placeholder="N/A">
                             </div>
 
+                            {{-- Course & block selector (read-only) --}}
                             <div class="col-md-3 col-4">
                                 <label class="form-label mb-0 text-primary fw-bold" style="font-size: 0.65rem;">COURSE
                                     & BLOCK</label>
@@ -746,6 +840,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                                     @endforeach
                                 </select>
                             </div>
+                            {{-- Status selector --}}
                             <div class="col-md-3 col-4">
                                 <label class="form-label mb-0 text-primary fw-bold"
                                     style="font-size: 0.65rem;">STATUS</label>
@@ -757,6 +852,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                                 </select>
                             </div>
 
+                            {{-- Gender (read-only) --}}
                             <div class="col-md-3 col-4">
                                 <label class="form-label mb-0 text-primary fw-bold"
                                     style="font-size: 0.65rem;">GENDER</label>
@@ -766,6 +862,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                                     <option value="Female">Female</option>
                                 </select>
                             </div>
+                            {{-- Birthday (read-only) --}}
                             <div class="col-md-3 col-4">
                                 <label class="form-label mb-0 text-primary fw-bold"
                                     style="font-size: 0.65rem;">BIRTHDAY</label>
@@ -773,6 +870,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                                     class="form-control-modern py-1 bg-light text-sm" style="font-size: 0.8rem;"
                                     disabled>
                             </div>
+                            {{-- Phone number (editable) --}}
                             <div class="col-md-5 col-4">
                                 <label class="form-label mb-0 text-primary fw-bold" style="font-size: 0.65rem;">PHONE
                                     NUMBER</label>
@@ -780,6 +878,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                                     class="form-control-modern py-1 @error('editForm.phone') is-invalid @enderror"
                                     placeholder="09xxxxxxxxx" style="font-size: 0.8rem;">
                             </div>
+                            {{-- Address (editable) --}}
                             <div class="col-md-7 col-12">
                                 <label class="form-label mb-0 text-primary fw-bold"
                                     style="font-size: 0.65rem;">ADDRESS</label>
@@ -791,6 +890,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                         </div>
                     </div>
 
+                    {{-- Submit button with loading state --}}
                     <div class="modal-footer bg-light p-2">
                         <x-button type="submit" variant="glow" style="font-size: 0.7rem; border-radius: 5px;"
                             wire:loading.attr="disabled">

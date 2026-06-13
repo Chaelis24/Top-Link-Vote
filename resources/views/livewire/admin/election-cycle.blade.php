@@ -8,6 +8,13 @@ use App\Http\Requests\Admin\ElectionCycleRequest;
 use Livewire\Attributes\{Layout, Title, Computed};
 use Illuminate\Support\Facades\{Auth, Session, DB, Cache};
 
+/**
+ * Election Cycle Management component for admin.
+ *
+ * Allows administrators to create, manage, and monitor election cycles,
+ * control voting/phases, toggle live settings, and auto-finalize
+ * cycles based on configured dates.
+ */
 new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Component {
     use AuthenticatesLogout;
 
@@ -44,6 +51,11 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
         $rDateIso = '';
 
     // --- Computed Properties ---
+    /**
+     * Retrieve the active election cycle.
+     *
+     * @return ElectionCycle|null
+     */
     #[Computed]
     public function active()
     {
@@ -51,6 +63,10 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
     }
 
     // --- Component Lifecycle ---
+    /**
+     * Initialize form fields, toggle states, and ISO date strings
+     * from the active election cycle and system settings.
+     */
     public function mount()
     {
         $active = $this->active;
@@ -104,6 +120,11 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
     }
 
     // --- Data Fetching ---
+    /**
+     * Provide the active cycle and voting end ISO string to the view.
+     *
+     * @return array
+     */
     public function with(): array
     {
         $active = ElectionCycle::getActiveCycle();
@@ -114,6 +135,9 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
     }
 
     // --- State Management & Progress ---
+    /**
+     * Recalculate percentage progress for filing, campaign, and voting phases.
+     */
     public function updateProgress()
     {
         $active = $this->active;
@@ -154,6 +178,10 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
         }
     }
 
+    /**
+     * Auto-poll settings and toggle allowVoting on/off based on scheduled dates.
+     * Also auto-completes the cycle when results_date is passed.
+     */
     public function checkAutoOff()
     {
         $this->updateProgress();
@@ -211,6 +239,12 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
         }
     }
 
+    /**
+     * Toggle a boolean system setting (allowVoting, showResults, etc.)
+     * with validation for allowVoting based on schedule dates.
+     *
+     * @param  string  $setting  The setting key.
+     */
     public function toggleSetting(string $setting)
     {
         if (property_exists($this, $setting)) {
@@ -268,6 +302,12 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
     }
 
     // --- Action / CRUD Methods ---
+    /**
+     * Create a new election cycle inside a database transaction.
+     *
+     * Completes the previous active cycle, resets student vote flags,
+     * and clears relevant caches.
+     */
     public function createNewCycle()
     {
         $studentCount = Student::where('status', 'active')->count();
@@ -338,6 +378,9 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
         }
     }
 
+    /**
+     * Update the active cycle's filing, campaign, voting, and results dates.
+     */
     public function updateDates()
     {
         $request = new ElectionCycleRequest();
@@ -381,6 +424,11 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
         }
     }
 
+    /**
+     * Immediately end the filing or campaign phase and advance the timeline.
+     *
+     * @param  string  $phase  'filing' or 'campaign'.
+     */
     public function endPhase($phase)
     {
         try {
@@ -464,6 +512,8 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
         }
     }
 }; ?>
+
+{{-- Mobile header bar shown only on small screens --}}
 <div>
     <div
         class="d-lg-none d-flex align-items-center justify-content-start p-2 px-4 bg-white/opacity-50 shadow-sm gap-2 border-bottom">
@@ -473,9 +523,11 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
             Top Link Global College, Inc.
         </h4>
     </div>
+    {{-- Admin sidebar navigation --}}
     @include('layouts.partials.admin-sidebar')
 
     <main class="main-content">
+        {{-- Top bar with cycle status badge and New Cycle button --}}
         <div class="topbar" wire:key="cycle-topbar">
             <div class="topbar-info">
                 <h2 class="fw-bold text-primary">Election <span class="text-accent">Cycle</span></h2>
@@ -496,6 +548,7 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
             @endif
         </div>
 
+        {{-- Timeline and Live Controls row --}}
         <div class="row g-4" x-data="{
             now: new Date().getTime(),
             dates: {
@@ -522,6 +575,7 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
             pad(n) { return String(n).padStart(2, '0') },
             init() { setInterval(() => { this.now = new Date().getTime() }, 1000) }
         }">
+            {{-- Election timeline column: cycle name, status, phase progress --}}
             <div class="col-lg-8">
                 <div
                     class="glass-card p-3 p-md-4 border-0 shadow-sm bg-white overflow-hidden position-relative mb-3 mb-md-4">
@@ -683,6 +737,7 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                 </div>
             </div>
 
+            {{-- Live Controls column: voting, results, maintenance toggles --}}
             <div class="col-lg-4">
                 <div class="glass-card p-3 p-md-4 border-0 shadow-sm bg-white">
                     <h6 class="fw-bold text-primary mb-3 mb-md-4 uppercase small">
@@ -784,6 +839,7 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
         </div>
     </main>
 
+    {{-- New Election Cycle modal --}}
     <div class="modal fade" id="newCycleModal" tabindex="-1" wire:ignore.self>
         <div class="modal-dialog modal-dialog-centered modal-lg px-2">
             <div class="modal-content border-0 shadow-lg">
@@ -896,6 +952,7 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
         </div>
     </div>
 
+    {{-- Update Cycle Dates modal --}}
     <div wire:ignore.self class="modal fade" id="updateDatesModal" tabindex="-1"
         aria-labelledby="updateDatesModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg px-2">

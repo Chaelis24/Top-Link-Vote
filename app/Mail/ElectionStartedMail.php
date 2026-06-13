@@ -9,6 +9,10 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
+/**
+ * Mailable that delivers an election-started alert to students.
+ * Renders the `emails.students.election-alert` view with a `started` type flag.
+ */
 class ElectionStartedMail extends Mailable
 {
     use Queueable, SerializesModels;

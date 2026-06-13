@@ -6,6 +6,9 @@ use App\Models\ElectionCycle;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
+ * Generate election cycles with default dates relative to `now`
+ * so that the cycle is in a predictable state for testing.
+ *
  * @extends Factory<ElectionCycle>
  */
 class ElectionCycleFactory extends Factory

@@ -1,4 +1,13 @@
+/**
+ * Admin-wide Livewire event handlers.
+ *
+ * Listens for custom events dispatched from Volt components:
+ * - swal: generic SweetAlert2 notifications
+ * - open-modal / close-modal: Bootstrap modal controls
+ * - confirm-csv-import: CSV import confirmation flow
+ */
 document.addEventListener("livewire:init", () => {
+    // Generic SweetAlert2 notification handler
     Livewire.on("swal", (data) => {
         const options = data[0];
         const isMobile = window.innerWidth < 480;
@@ -24,6 +33,7 @@ document.addEventListener("livewire:init", () => {
         });
     });
 
+    // Open a Bootstrap modal by ID
     window.addEventListener("open-modal", (e) => {
         const modalElement = document.getElementById(e.detail.id);
         if (modalElement) {
@@ -32,6 +42,7 @@ document.addEventListener("livewire:init", () => {
         }
     });
 
+    // Close a Bootstrap modal by ID and clean up backdrops
     window.addEventListener("close-modal", (event) => {
         let modal = document.getElementById(event.detail.id);
         let modalInstance = bootstrap.Modal.getInstance(modal);
@@ -47,6 +58,7 @@ document.addEventListener("livewire:init", () => {
         document.body.style.paddingRight = "";
     });
 
+    // CSV import confirmation dialog
     window.addEventListener("confirm-csv-import", (e) => {
         const rowCount =
             e.detail.count || (e.detail[0] ? e.detail[0].count : 0);

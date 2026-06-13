@@ -12,6 +12,12 @@ use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Validate;
 use Livewire\Form;
 
+/**
+ * Handles student authentication form validation and login logic.
+ *
+ * Extends Livewire's Form object to encapsulate student-specific
+ * login fields, credential lookups, and rate limiting.
+ */
 class LoginForm extends Form
 {
     #[Validate('required|string')]
@@ -24,7 +30,9 @@ class LoginForm extends Form
     public bool $remember = false;
 
     /**
-     * Attempt to authenticate the request's credentials.
+     * Authenticate the student using validated credentials.
+     *
+     * Logs the student in and clears the rate limiter on success.
      */
     public function authenticate(): void
     {
@@ -32,6 +40,15 @@ class LoginForm extends Form
         RateLimiter::clear($this->throttleKey());
     }
 
+    /**
+     * Validate the provided credentials against the database.
+     *
+     * Looks up the user by associated student ID or email address.
+     *
+     * @return \App\Models\User
+     *
+     * @throws \Illuminate\Validation\ValidationException
+     */
     public function validateCredentials(): User
     {
         $this->ensureIsNotRateLimited();
@@ -53,6 +70,11 @@ class LoginForm extends Form
 
     /**
      * Ensure the authentication request is not rate limited.
+     *
+     * Throws a ValidationException with a throttle message
+     * if the maximum number of attempts has been exceeded.
+     *
+     * @throws \Illuminate\Validation\ValidationException
      */
     protected function ensureIsNotRateLimited(): void
     {
@@ -73,7 +95,11 @@ class LoginForm extends Form
     }
 
     /**
-     * Get the authentication rate limiting throttle key.
+     * Get the rate limiting throttle key for the current request.
+     *
+     * Combines the student identifier with the request IP address.
+     *
+     * @return string
      */
     protected function throttleKey(): string
     {

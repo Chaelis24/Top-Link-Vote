@@ -6,6 +6,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
+/**
+ * A candidate's platform statement for a specific election cycle.
+ * Contains a title, tagline, and a JSON agenda array of plan items.
+ */
 class Platform extends Model
 {
     use HasFactory;
@@ -26,6 +30,11 @@ class Platform extends Model
         'agenda' => 'array',
     ];
 
+    /**
+     * The candidate who owns this platform.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
     public function candidate(): BelongsTo
     {
         return $this->belongsTo(Candidate::class);

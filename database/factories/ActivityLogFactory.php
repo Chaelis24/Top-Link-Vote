@@ -6,6 +6,8 @@ use App\Models\ActivityLog;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
+ * Generate realistic activity-log entries for testing and development.
+ *
  * @extends Factory<ActivityLog>
  */
 class ActivityLogFactory extends Factory

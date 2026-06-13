@@ -323,6 +323,7 @@
     padding: 5px;
 }
 
+/* 7. TIMELINE (election-cycle phase indicators) */
 .timeline-box {
     border-left: 4px solid #dee2e8;
     transition: all 0.3s ease;
@@ -411,6 +412,7 @@
     border-color: #007bff !important;
 }
 
+/* 10. UTILITY CLASSES */
 .bg-success-soft {
     background-color: #d1e7dd;
     color: #0f5132;
@@ -457,6 +459,8 @@ pre {
     border-radius: 15px;
     background: white;
 }
+
+/* 11. CUSTOM PAGINATION */
 
 /*Custom Pagination*/
 

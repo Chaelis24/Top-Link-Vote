@@ -6,6 +6,9 @@ use App\Models\Setting;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
+ * Generate key-value settings with random boolean-like values
+ * for testing application configuration.
+ *
  * @extends Factory<Setting>
  */
 class SettingFactory extends Factory

@@ -1,3 +1,4 @@
+/* ===== SIDEBAR WRAPPER ===== */
 .admin-side-wrapper {
     width: 245px;
     height: 100vh;
@@ -19,6 +20,7 @@
     display: none;
 }
 
+/* ===== BRAND / LOGO ===== */
 .admin-brand {
     padding: 0px 8px;
     margin-bottom: 12px;
@@ -71,6 +73,7 @@
     color: #8392ab;
 }
 
+/* ===== NAVIGATION LINKS ===== */
 .admin-nav-list {
     list-style: none;
     padding: 0;
@@ -116,6 +119,7 @@
     color: #1e3a8a;
 }
 
+/* ===== FOOTER & DROPDOWN ===== */
 .admin-footer-sec {
     margin-top: auto;
     border-top: 1px solid #f1f5f9;
@@ -148,6 +152,7 @@
     display: block;
 }
 
+/* ===== MOBILE CONTROLS ===== */
 .admin-mobile-btn {
     display: none;
     position: fixed;
