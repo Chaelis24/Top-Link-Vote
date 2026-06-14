@@ -118,7 +118,7 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
         $formattedSuffix = in_array($suffix, ['Jr', 'Sr']) ? $suffix . '.' : $suffix;
     @endphp
 
-    <main class="main-content">
+    <main class="main-content" style="font-size: clamp(13px, 2vw + 8px, 16px);">
         {{-- Top bar with welcome message --}}
         <div class="topbar" wire:key="persistent-topbar-header">
             <div>

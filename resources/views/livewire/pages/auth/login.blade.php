@@ -34,9 +34,7 @@ new #[Layout('layouts.guest')] #[Title('Login')] class extends Component {
             DB::transaction(function () use ($user) {
                 DB::table('users')->where('id', $user->id)->lockForUpdate()->first();
 
-                $oldSessionIds = DB::table('sessions')
-                    ->where('user_id', $user->id)
-                    ->pluck('id');
+                $oldSessionIds = DB::table('sessions')->where('user_id', $user->id)->pluck('id');
 
                 DB::table('sessions')->where('user_id', $user->id)->delete();
 
@@ -62,7 +60,8 @@ new #[Layout('layouts.guest')] #[Title('Login')] class extends Component {
 }; ?>
 {{-- Student Login Page — provides the authentication interface for student users. --}}
 
-<div class="fixed inset-0 z-[9999] overflow-y-auto bg-white flex items-center justify-center p-4 m-0 w-full h-full">
+<div class="fixed inset-0 z-[9999] overflow-y-auto bg-white flex items-center justify-center p-4 m-0 w-full h-full"
+    style="font-size: clamp(13px, 2vw + 8px, 16px);">
     {{-- Background overlay --}}
     <div class="absolute inset-0 bg-white"></div>
 

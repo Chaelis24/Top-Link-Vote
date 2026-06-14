@@ -321,7 +321,7 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
 
     {{-- Student sidebar navigation --}}
     @include('layouts.partials.student-sidebar')
-    <main class="main-content">
+    <main class="main-content" style="font-size: clamp(13px, 2vw + 8px, 16px);">
         {{-- Topbar: page title and edit-my-platform button --}}
         <div class="topbar">
             <div>
@@ -518,7 +518,7 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
                         Candidate profiles and ballot submissions are now locked while results are being finalized.
                     </p>
                 </div>
-            {{-- Filing or campaign in progress (non-candidate view) --}}
+                {{-- Filing or campaign in progress (non-candidate view) --}}
             @elseif (($isFiling || $isCampaign) && $isStudentOnly)
                 <div class="p-5 text-center my-5 rounded-4">
                     <h3 class="text-primary fw-bold">
@@ -530,7 +530,7 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
                             : 'The candidates are currently campaigning. Voting will start soon!' }}
                     </p>
                 </div>
-            {{-- No active election cycle --}}
+                {{-- No active election cycle --}}
             @else
                 <div class="p-5 text-center">
                     <div class="mb-6 relative inline-block">
@@ -600,7 +600,7 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
                         <div class="tab-content">
                             <div class="tab-pane fade show active" id="profile-panel-{{ $candidate->id }}"
                                 role="tabpanel">
-                                <div class="row g-4 align-items-center p-3">
+                                <div class="row g-4 align-items-center">
                                     <div class="col-12 col-md-4 text-center border-md-end pe-md-4">
                                         <div class="position-relative d-inline-block mb-3">
                                             <div class="rounded-circle mx-auto shadow border border-3 border-white"

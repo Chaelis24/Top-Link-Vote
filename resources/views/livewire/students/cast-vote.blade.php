@@ -334,11 +334,11 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
 
     {{-- Student sidebar navigation --}}
     @include('layouts.partials.student-sidebar')
-    <main class="main-content">
+    <main class="main-content" style="font-size: clamp(13px, 2vw + 8px, 16px);">
         {{-- Topbar: page title --}}
         <div class="topbar">
             <div>
-                <h2 class="mb-0 text-dark">Digital <span style="color: #10b981">Ballot</span></h2>
+                <h2 class="mb-0 text-dark">Digital <span class="text-primary">Ballot</span></h2>
                 <p class="text-secondary mb-0 small">Secure Electronic Voting System</p>
             </div>
         </div>
@@ -397,7 +397,7 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                         Dashboard</a>
                 </div>
             </div>
-        {{-- No active election / voting closed --}}
+            {{-- No active election / voting closed --}}
         @elseif (!$this->isVotingOpen)
             <div class="p-5 text-center">
                 <div class="mb-6 relative inline-block">
@@ -415,7 +415,7 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                     Please check back later for official announcements.
                 </p>
             </div>
-        {{-- Ballot voting flow: Select -> Review -> Confirm --}}
+            {{-- Ballot voting flow: Select -> Review -> Confirm --}}
         @else
             {{-- Step progress indicator --}}
             <div class="d-flex align-items-center justify-content-center mb-0 px-md-5 pt-4 p-6 p-md-0">
@@ -537,7 +537,7 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                                     </div>
                                 @endforeach
                             </div>
-                        {{-- No candidates available for this position --}}
+                            {{-- No candidates available for this position --}}
                         @else
                             <div class="flex justify-center mb-8">
                                 <div
@@ -571,7 +571,7 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                             </button>
                         </div>
                     </div>
-                {{-- No positions available for this course --}}
+                    {{-- No positions available for this course --}}
                 @else
                     <div class="text-center py-20">
                         <div class="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gray-50 mb-4">
@@ -582,7 +582,7 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                             this time.</p>
                     </div>
                 @endif
-            {{-- Step 2: Review all selections before final confirmation --}}
+                {{-- Step 2: Review all selections before final confirmation --}}
             @elseif ($currentStep == 2)
                 <div class="fade-in px-2 py-3">
                     <div class="mb-3 text-center">
@@ -661,7 +661,7 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                         </button>
                     </div>
                 </div>
-            {{-- Step 3: Final confirmation before casting the ballot --}}
+                {{-- Step 3: Final confirmation before casting the ballot --}}
             @elseif ($currentStep == 3)
                 <div class="fade-in px-2 py-4 flex justify-center">
                     <div

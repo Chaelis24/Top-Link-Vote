@@ -4,7 +4,7 @@
 <head>
     <style>
         body {
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
             background-color: #f4f7f6;
             margin: 0;
             padding: 0;
@@ -20,7 +20,6 @@
         }
 
         .header {
-            background: #0d6efd;
             color: #ffffff;
             padding: 40px 20px;
             text-align: center;
@@ -68,8 +67,8 @@
             <p>Hello <strong>
                     {{ $student->first_name ?? 'Top Link' }}
                     {{ $student->middle_name ? substr($student->middle_name, 0, 1) . '.' : '' }}
-                    {{ $student->last_name ?? 'Student' }}{{ $student->suffix ? ' ' . $student->suffix : '' }}
-                </strong>,</p>
+                    {{ $student->last_name ?? 'Student' }}{{ $student->suffix ? ' ' . $student->suffix : '' }}</strong>,
+            </p>
             <p>This email confirms that your official ballot has been cast and successfully encrypted in our system.
                 Your participation helps shape the future of our student body.</p>
 
@@ -87,7 +86,8 @@
                 </div>
                 <div class="d-flex justify-content-between mb-2">
                     <strong>Timestamp:</strong>
-                    <span> {{ $student->voted_at?->timezone('Asia/Manila')->format('M d, Y - h:i A') ?? now()->format('M d, Y - h:i A') }}</span>
+                    <span>
+                        {{ $student->voted_at?->timezone('Asia/Manila')->format('M d, Y - h:i A') ?? now()->format('M d, Y - h:i A') }}</span>
                 </div>
             </div>
 
@@ -102,8 +102,7 @@
                     <path
                         d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0" />
                 </svg>
-            </span> {{ date('Y') }} Top Link-Vote System. This is an automated message, please
-            do not reply.
+            </span> {{ date('Y') }} This is an automated message, please do not reply.
         </div>
     </div>
 </body>

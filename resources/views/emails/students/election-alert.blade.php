@@ -4,7 +4,7 @@
 <head>
     <style>
         body {
-            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
             background-color: #f4f7f6;
             margin: 0;
             padding: 0;
@@ -31,9 +31,9 @@
             line-height: 1.6;
         }
 
-        .info-box {
+        .receipt {
             background: #f8f9fa;
-            border-left: 4px solid #068a08;
+            border: 1px dashed #ccc;
             padding: 20px;
             border-radius: 4px;
             margin-top: 20px;
@@ -46,15 +46,13 @@
             color: #777;
         }
 
-        .button {
-            display: inline-block;
+        .badge {
             background: #198754;
             color: white;
-            padding: 12px 25px;
-            text-decoration: none;
-            border-radius: 5px;
-            font-weight: bold;
-            margin-top: 20px;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            text-transform: uppercase;
         }
     </style>
 </head>
@@ -65,12 +63,13 @@
             <h1 style="margin:0;">{{ $type === 'started' ? 'Voting is Open!' : 'Election Reminder' }}</h1>
             <p style="opacity: 0.8;">{{ $cycle->name ?? 'Student Election' }}</p>
         </div>
-
         <div class="content">
-            <p>Hello <strong>
-                    {{ $student->first_name ?? 'Student' }}
-                    {{ $student->last_name ?? '' }}
-                </strong>,</p>
+            <p>
+                Hello <strong>
+                    {{ $student->first_name }}
+                    {{ $student->middle_name ? substr($student->middle_name, 0, 1) . '.' : '' }}
+                    {{ $student->last_name }}{{ $student->suffix ? ' ' . $student->suffix : '' }}</strong>,
+            </p>
 
             @if ($type === 'started')
                 <p>The official voting period has officially commenced. We invite you to exercise your right to vote and
@@ -80,19 +79,28 @@
                     election cycle.</p>
             @endif
 
-            <div class="info-box">
+            <div class="receipt">
                 <div style="margin-bottom: 8px;"><strong>Student ID:</strong> {{ $student->student_id ?? 'N/A' }}</div>
                 <div style="margin-bottom: 8px;"><strong>Ends on:</strong>
                     {{ \Carbon\Carbon::parse($cycle->voting_end)->format('M d, Y - h:i A') }}</div>
             </div>
 
             <div style="text-align: center;">
-                <a href="{{ url('/') }}" class="button" style="color: #ffffff;">CAST YOUR VOTE NOW</a>
+                <a href="{{ url('/') }}" class="button"
+                    style="background-color: #10b981; color: white; padding: 14px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px; display: inline-block;">
+                    Cast Your Vote Now
+                </a>
             </div>
         </div>
-
         <div class="footer">
-            {{ date('Y') }} Top Link-Vote System. This is an automated message.
+            <span style="vertical-align: middle; margin-right: 5px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#0d6efd" viewBox="0 0 16 16"
+                    style="display: inline-block;">
+                    <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16" />
+                    <path
+                        d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0" />
+                </svg>
+            </span> {{ date('Y') }} This is an automated message, please do not reply.
         </div>
     </div>
 </body>

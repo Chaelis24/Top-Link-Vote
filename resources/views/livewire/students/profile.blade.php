@@ -148,7 +148,7 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
     {{-- Student sidebar navigation --}}
     @include('layouts.partials.student-sidebar')
 
-    <main class="main-content">
+    <main class="main-content" style="font-size: clamp(13px, 2vw + 8px, 16px);">
         {{-- Top bar with page title --}}
         <div class="topbar" wire:key="persistent-topbar-header">
             <div>

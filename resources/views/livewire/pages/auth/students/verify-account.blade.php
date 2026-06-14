@@ -115,12 +115,11 @@ new #[Layout('layouts.guest')] #[Title('Verify Account')] class extends Componen
 
         $this->redirectIntended(route('student.dashboard'));
     }
-};
-
-?>
+}; ?>
 
 {{-- Full-screen centered container for the account-verification form --}}
-<div class="fixed inset-0 z-[9999] overflow-y-auto bg-white flex items-center justify-center p-4 m-0 w-full h-full">
+<div class="fixed inset-0 z-[9999] overflow-y-auto bg-white flex items-center justify-center p-4 m-0 w-full h-full"
+    style="font-size: clamp(13px, 2vw + 8px, 16px);">
     <div class="absolute inset-0 bg-white"></div>
 
     <div

@@ -71,7 +71,8 @@ new #[Layout('layouts.guest')] #[Title('Reset Password')] class extends Componen
 }; ?>
 
 {{-- Full-screen centered container for the student reset-password form --}}
-<div class="fixed inset-0 z-[9999] overflow-y-auto bg-white flex items-center justify-center p-4 m-0 w-full h-full">
+<div class="fixed inset-0 z-[9999] overflow-y-auto bg-white flex items-center justify-center p-4 m-0 w-full h-full"
+    style="font-size: clamp(13px, 2vw + 8px, 16px);">
     <div class="absolute inset-0 bg-white"></div>
 
     <div
@@ -105,15 +106,13 @@ new #[Layout('layouts.guest')] #[Title('Reset Password')] class extends Componen
                     <div class="absolute -bottom-24 -right-24 w-48 h-48 bg-white/20 rounded-full"></div>
 
                     <div class="relative z-10 flex flex-col items-center text-center">
-                        <div class="mb-4 md:mb-8">
+                        <div class="mb-2 md:mb-4">
                             <img src="{{ asset('images/logo.png') }}" alt="Top Link Logo" class="w-24 md:w-40 h-auto">
                         </div>
-
                         <h2
-                            class="text-lg md:text-2xl font-extrabold uppercase mb-2 md:mb-4 tracking-tight text-white drop-shadow-md">
+                            class="text-lg md:text-2xl font-extrabold uppercase mb-2 md:mb-3 tracking-tight text-white drop-shadow-md">
                             Security
                         </h2>
-
                         <p class="block text-white/90 leading-relaxed text-xs md:text-sm font-medium">
                             Create a strong password to protect your account. Your security is our priority.
                         </p>
@@ -122,8 +121,8 @@ new #[Layout('layouts.guest')] #[Title('Reset Password')] class extends Componen
 
                 {{-- Form panel (right) --}}
                 <div class="md:w-1/2 p-5 md:p-10 flex flex-col justify-center bg-white">
-                    <div class="mb-6 md:mb-8">
-                        <h2 class="text-lg md:text-2xl font-bold text-[#252525] mb-1 md:mb-2 tracking-tighter">New
+                    <div class="mb-3 md:mb-6">
+                        <h2 class="text-lg md:text-xl font-bold text-[#252525] mb-1 md:mb-2 tracking-tighter">New
                             Password
                         </h2>
                         <p class="text-gray-500 text-xs md:text-sm">Final step of account recovery</p>
@@ -138,7 +137,7 @@ new #[Layout('layouts.guest')] #[Title('Reset Password')] class extends Componen
                     @endif
 
                     {{-- Step progress indicator (all steps completed except Reset) --}}
-                    <div class="flex items-center justify-between mb-4 mb-md-8 px-1">
+                    <div class="flex items-center justify-between mb-3 mb-md-8 px-1">
                         <div class="flex flex-col items-center">
                             <div
                                 class="w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center text-[10px] bg-green-100 text-[#108500]">

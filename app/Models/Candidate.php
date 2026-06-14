@@ -67,7 +67,7 @@ class Candidate extends Model
      */
     public function isProfileComplete(): bool
     {
-        return $this->empty($this->getIncompleteFields());
+        return empty($this->getIncompleteFields());
     }
 
     /**
