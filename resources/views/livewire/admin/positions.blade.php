@@ -51,7 +51,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
         $cycleId = $cycle->id;
         $total = Position::where('election_cycle_id', $cycleId)->count();
         $candidatesCount = Candidate::where('election_cycle_id', $cycleId)->count();
-        $filled = Position::where('election_cycle_id', $cycleId)->whereHas('candidates', fn($q) => $q->where('status', 'approved'))->count();
+        $filled = Position::where('election_cycle_id', $cycleId)->whereHas('candidates')->count();
 
         return [
             'total' => $total,
@@ -109,7 +109,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
         $this->validate($request->rules());
 
         if ($this->editingId) {
-            $existingCount = Candidate::where('position_id', $this->editingId)->where('status', 'approved')->count();
+            $existingCount = Candidate::where('position_id', $this->editingId)->count();
 
             if ($this->max_winners < $existingCount) {
                 $this->dispatch('swal', [

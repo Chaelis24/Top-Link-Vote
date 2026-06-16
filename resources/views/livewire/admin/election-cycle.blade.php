@@ -475,19 +475,28 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
 
             switch ($phase) {
                 case 'filing':
+                    $filingDuration = $active->filing_start->diffInDays($active->filing_end);
                     $active->update([
-                        'filing_start' => $now->copy()->subMinute(),
                         'filing_end' => $now,
-                        'campaign_start' => $now->copy()->subMinute(),
+                        'campaign_start' => $now,
+                        'campaign_end' => $now->copy()->addDays($filingDuration),
                     ]);
                     break;
 
                 case 'campaign':
+                    $campaignDuration = $active->campaign_start->diffInDays($active->campaign_end);
                     $active->update([
-                        'campaign_start' => $now->copy()->subMinute(),
                         'campaign_end' => $now,
                         'voting_start' => $now,
-                        'voting_end' => $active->voting_end,
+                        'voting_end' => $now->copy()->addDays($campaignDuration),
+                    ]);
+                    break;
+
+                case 'voting':
+                    $active->update([
+                        'voting_start' => $now->copy()->subMinute(),
+                        'voting_end' => $now,
+                        'results_date' => $now->copy()->addDay(),
                     ]);
                     break;
             }
@@ -671,13 +680,19 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                                                         <i class="bi bi-check-circle-fill me-1 text-success"></i>Closed
                                                     </div>
                                                 </template>
-                                                @if ($phase['id'] === 'f' || $phase['id'] === 'c')
+                                                @if (in_array($phase['id'], ['f', 'c', 'v', 'r']))
                                                     <template x-if="now < dates.{{ $phase['end'] }}">
                                                         <div class="mt-2">
                                                             <button type="button"
                                                                 @click.prevent="
                                                                     Swal.fire({
-                                                                        title: 'End {{ $phase['id'] === 'f' ? 'Filing' : 'Campaign' }} Phase?',
+                                                                        title: 'End {{ match ($phase['id']) {
+                                                                            'f' => 'Filing',
+                                                                            'c' => 'Campaign',
+                                                                            'v' => 'Voting',
+                                                                            'r' => 'Result',
+                                                                            default => 'Phase',
+                                                                        } }} Phase?',
                                                                         text: 'Do you want to end this phase now?',
                                                                         icon: 'warning',
                                                                         showCancelButton: true,
@@ -685,13 +700,26 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                                                                         confirmButtonText: 'Yes, End it!'
                                                                     }).then((result) => {
                                                                         if (result.isConfirmed) {
-                                                                            $wire.endPhase('{{ $phase['id'] === 'f' ? 'filing' : 'campaign' }}')
+                                                                            $wire.endPhase('{{ match ($phase['id']) {
+                                                                                'f' => 'filing',
+                                                                                'c' => 'campaign',
+                                                                                'v' => 'voting',
+                                                                                'r' => 'result',
+                                                                                default => $phase['id'],
+                                                                            } }}')
                                                                         }
                                                                     })
                                                                 "
                                                                 class="btn btn-danger btn-xs py-1 px-1 fw-bold shadow-sm"
                                                                 style="font-size: 10px; border-radius: 5px;">
-                                                                END {{ $phase['id'] === 'f' ? 'FILING' : 'CAMPAIGN' }}
+                                                                END
+                                                                {{ match ($phase['id']) {
+                                                                    'f' => 'FILING',
+                                                                    'c' => 'CAMPAIGN',
+                                                                    'v' => 'VOTING',
+                                                                    'r' => 'RESULT',
+                                                                    default => strtoupper($phase['id']),
+                                                                } }}
                                                             </button>
                                                         </div>
                                                     </template>
@@ -699,7 +727,7 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                                             @else
                                                 <template x-if="now < dates.rD">
                                                     <div class="fw-bold text-primary mt-1 text-[11px] md:text-sm">
-                                                        Scheduled:
+                                                        Ends:
                                                         <span
                                                             x-text="pad(getRemaining(dates.rD).d) + 'd ' + pad(getRemaining(dates.rD).h) + 'h ' + pad(getRemaining(dates.rD).m) + 'm'"></span>
                                                     </div>

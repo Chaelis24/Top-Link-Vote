@@ -80,19 +80,23 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
 
             session(['election_selections' => $this->selections]);
 
-            $positionIds = $this->electionData->pluck('id')->toArray();
-            $votedIds = $existingVotes->pluck('position_id')->toArray();
-            $remaining = array_values(array_diff($positionIds, $votedIds));
+            if ($this->electionData->isNotEmpty()) {
+                $positionIds = $this->electionData->pluck('id')->toArray();
+                $votedIds = $existingVotes->pluck('position_id')->toArray();
+                $remaining = array_values(array_diff($positionIds, $votedIds));
 
-            if (empty($remaining) && session()->missing('election_current_step')) {
-                $this->currentStep = 2;
-            } elseif (!empty($remaining) && session()->missing('election_position_index')) {
-                foreach ($this->electionData as $index => $position) {
-                    if ($position->id === $remaining[0]) {
-                        $this->currentPositionIndex = $index;
-                        break;
+                if (empty($remaining) && session()->missing('election_current_step')) {
+                    $this->currentStep = 2;
+                } elseif (!empty($remaining) && session()->missing('election_position_index')) {
+                    foreach ($this->electionData as $index => $position) {
+                        if ($position->id === $remaining[0]) {
+                            $this->currentPositionIndex = $index;
+                            break;
+                        }
                     }
                 }
+            } else {
+                $this->currentStep = 1;
             }
 
             $this->currentPosition = $this->electionData[$this->currentPositionIndex] ?? null;
@@ -119,6 +123,28 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
     public function activeCycle()
     {
         return $this->castVoteService->getActiveCycle();
+    }
+
+    /**
+     * Check whether the filing period is currently open.
+     *
+     * @return bool
+     */
+    #[Computed]
+    public function isFilingOpen()
+    {
+        return $this->castVoteService->isFilingOpen($this->activeCycle);
+    }
+
+    /**
+     * Check whether the campaign period is currently open.
+     *
+     * @return bool
+     */
+    #[Computed]
+    public function isCampaignOpen()
+    {
+        return $this->castVoteService->isCampaignOpen($this->activeCycle);
     }
 
     /**
@@ -301,12 +327,7 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
         $this->student = $result['student'];
         auth()->user()->setRelation('student', $this->student);
 
-        $this->dispatch('swal', [
-            'title' => 'Success!',
-            'text' => 'Your vote has been cast.',
-            'icon' => 'success',
-            'timer' => 4000,
-        ]);
+        $this->dispatch('vote-submitted-successfully');
     }
 
     /**
@@ -397,6 +418,26 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                         Dashboard</a>
                 </div>
             </div>
+        @elseif($this->isFilingOpen)
+            <div class="p-5 text-center my-5 rounded-4">
+                <div class="mb-4">
+                    <i class="bi bi-file-earmark-person text-primary opacity-75" style="font-size: 5rem;"></i>
+                </div>
+                <h3 class="text-primary fw-bold">Filing of Candidacy Ongoing</h3>
+                <p class="text-secondary mx-auto" style="max-width: 500px;">
+                    The candidates are currently finalizing their platforms. Campaigning will start soon!
+                </p>
+            </div>
+        @elseif($this->isCampaignOpen)
+            <div class="p-5 text-center my-5 rounded-4">
+                <div class="mb-4">
+                    <i class="bi bi-megaphone text-primary opacity-75" style="font-size: 5rem;"></i>
+                </div>
+                <h3 class="text-primary fw-bold">Campaign of Candidacy Ongoing</h3>
+                <p class="text-secondary mx-auto" style="max-width: 500px;">
+                    The candidates are currently campaigning. Voting will start soon!
+                </p>
+            </div>
             {{-- No active election / voting closed --}}
         @elseif (!$this->isVotingOpen)
             <div class="p-5 text-center">
@@ -410,9 +451,7 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                 </div>
                 <h2 class="text-2xl font-bold text-gray-800 mb-3">No Active Election</h2>
                 <p class="text-secondary mx-auto mb-4" style="max-width: 500px;">
-                    There is currently no ongoing election cycle or the voting period has not been opened yet by the
-                    administrator.
-                    Please check back later for official announcements.
+                    Please stand by until the Student Council Election Committee initiates the next voting cycle.
                 </p>
             </div>
             {{-- Ballot voting flow: Select -> Review -> Confirm --}}
@@ -473,24 +512,24 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
 
                         {{-- Candidate selection cards --}}
                         @if ($hasCandidates)
-                            <div class="grid grid-cols-2 md:flex md:flex-wrap justify-center gap-3 md:gap-6 mb-8">
+                            <div x-data="{ selectedId: @entangle('selections.' . $position->id) }"
+                                class="grid grid-cols-2 md:flex md:flex-wrap justify-center gap-3 md:gap-6 mb-8">
                                 @foreach ($position->candidates as $candidate)
-                                    @php
-                                        $isSelected = ($selections[$position->id] ?? null) == $candidate->id;
-                                    @endphp
-
-                                    <div wire:click="selectCandidate({{ $position->id }}, {{ $candidate->id }})"
-                                        class="relative bg-white rounded-[1.2rem] md:rounded-[2rem] shadow-sm border transition-all duration-300 cursor-pointer overflow-hidden group
-                                        {{ $isSelected ? 'border-[#10b981] ring-2 md:ring-4 ring-emerald-50 shadow-xl scale-[1.02] md:scale-[1.05]' : 'hover:shadow-lg hover:border-gray-300' }} w-full md:max-w-[240px]">
+                                    <div @click="selectedId = {{ $candidate->id }}; $wire.selectCandidate({{ $position->id }}, {{ $candidate->id }})"
+                                        class="relative bg-white rounded-[1.2rem] md:rounded-[2rem] shadow-sm border transition-all duration-300 cursor-pointer overflow-hidden group w-full md:max-w-[240px]"
+                                        :class="selectedId == {{ $candidate->id }} ?
+                                            'border-[#10b981] ring-2 md:ring-4 ring-emerald-50 shadow-xl scale-[1.02] md:scale-[1.05]' :
+                                            'hover:shadow-lg hover:border-gray-300'">
 
                                         <div class="flex justify-end p-3 md:p-4 pb-0">
-                                            @if ($isSelected)
+                                            <template x-if="selectedId == {{ $candidate->id }}">
                                                 <i
                                                     class="bi bi-check-circle-fill text-[#10b981] text-lg md:text-xl"></i>
-                                            @else
+                                            </template>
+                                            <template x-if="selectedId != {{ $candidate->id }}">
                                                 <i
                                                     class="bi bi-circle text-gray-200 text-lg md:text-xl group-hover:text-emerald-200 transition-colors"></i>
-                                            @endif
+                                            </template>
                                         </div>
 
                                         <div class="px-5 pb-6 text-center">
@@ -507,17 +546,18 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                                                         </div>
                                                     @endif
                                                 </div>
-                                                @if ($isSelected)
+                                                <template x-if="selectedId == {{ $candidate->id }}">
                                                     <div
                                                         class="absolute bottom-0 right-1 bg-[#10b981] text-white w-6 h-6 flex items-center justify-center rounded-full border-2 border-white shadow-sm">
                                                         <i class="bi bi-check-lg text-[10px]"></i>
                                                     </div>
-                                                @endif
+                                                </template>
                                             </div>
 
                                             <div class="mb-3">
-                                                <h6
-                                                    class="text-[12px] md:text-[13px] font-black leading-tight mb-1 {{ $isSelected ? 'text-emerald-700' : 'text-gray-900' }}">
+                                                <h6 class="text-[12px] md:text-[13px] font-black leading-tight mb-1"
+                                                    :class="selectedId == {{ $candidate->id }} ? 'text-emerald-700' :
+                                                        'text-gray-900'">
                                                     {{ $candidate->student->first_name }}<br class="md:hidden">
                                                     {{ $candidate->student->last_name }}
                                                 </h6>
@@ -528,23 +568,22 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                                             </div>
 
                                             <div class="mt-auto px-1 md:px-2">
-                                                <div
-                                                    class="w-full py-1.5 md:py-2 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all {{ $isSelected ? 'bg-[#10b981] text-white' : 'bg-gray-100 text-gray-400' }}">
-                                                    {{ $isSelected ? 'Selected' : 'Vote' }}
+                                                <div class="w-full py-1.5 md:py-2 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all"
+                                                    :class="selectedId == {{ $candidate->id }} ? 'bg-[#10b981] text-white' :
+                                                        'bg-gray-100 text-gray-400'"
+                                                    x-text="selectedId == {{ $candidate->id }} ? 'Selected' : 'Vote'">
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                 @endforeach
                             </div>
-                            {{-- No candidates available for this position --}}
                         @else
                             <div class="flex justify-center mb-8">
                                 <div
                                     class="w-full max-w-md py-12 flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-[2rem] bg-gray-50/50">
                                     <i class="bi bi-people text-gray-300 text-4xl mb-2"></i>
-                                    <p class="text-gray-400 font-bold text-xs uppercase tracking-widest">No
-                                        candidates
+                                    <p class="text-gray-400 font-bold text-xs uppercase tracking-widest">No candidates
                                         available</p>
                                 </div>
                             </div>
@@ -553,8 +592,10 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                         {{-- Next / Review button --}}
                         <div class="mt-8 flex justify-end pb-10 mb-3 md:mb-4">
                             <button wire:click="nextPosition" wire:loading.attr="disabled" wire:target="nextPosition"
-                                class="group relative inline-flex items-center justify-center px-4 md:px-6 py-1.5 md:py-2.5 font-bold text-white transition-all duration-200 bg-[#10b981] rounded-full shadow-lg hover:bg-emerald-600 active:scale-95 disabled:opacity-75 {{ !$hasSelection && $hasCandidates ? 'opacity-50 cursor-not-allowed' : '' }}"
-                                {{ !$hasSelection && $hasCandidates ? 'disabled' : '' }}>
+                                class="group relative inline-flex items-center justify-center px-4 md:px-6 py-1.5 md:py-2.5 font-bold text-white transition-all duration-200 bg-[#10b981] rounded-full shadow-lg hover:bg-emerald-600 active:scale-95 disabled:opacity-75"
+                                :class="(!selectedId && {{ $hasCandidates ? 'true' : 'false' }}) ?
+                                'opacity-50 cursor-not-allowed' : ''"
+                                :disabled="!selectedId && {{ $hasCandidates ? 'true' : 'false' }}">
 
                                 <span wire:loading.remove wire:target="nextPosition"
                                     class="flex items-center gap-1.5 md:gap-2 uppercase tracking-wider text-[9px] md:text-[11px]">

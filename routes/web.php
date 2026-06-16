@@ -28,5 +28,13 @@ Route::middleware('auth')->get('/force-logout', function () {
     return redirect()->route($isAdmin ? 'admin.login' : 'login');
 })->name('force.logout');
 
+Route::get('/secure-logout', function () {
+    Auth::logout();
+    request()->session()->invalidate();
+    request()->session()->regenerateToken();
+
+    return redirect('/')->with('success', 'Your session has been closed securely.');
+})->name('secure.logout');
+
 require __DIR__ . '/auth.php';
 require __DIR__ . '/admin.php';

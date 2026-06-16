@@ -63,6 +63,28 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
     }
 
     /**
+     * Check whether the filing period is currently open.
+     *
+     * @return bool
+     */
+    #[Computed]
+    public function isFilingOpen()
+    {
+        return $this->dashboardService->isFilingOpen($this->activeCycle);
+    }
+
+    /**
+     * Check whether the campaign period is currently open.
+     *
+     * @return bool
+     */
+    #[Computed]
+    public function isCampaignOpen()
+    {
+        return $this->dashboardService->isCampaignOpen($this->activeCycle);
+    }
+
+    /**
      * Check whether the voting period is currently open.
      *
      * @return bool
@@ -203,7 +225,26 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
                             </h6>
                         </div>
 
-                        @if ($this->isVotingOpen)
+                        @php
+                            $latestCycle = ElectionCycle::where('status', 'active')->first();
+                        @endphp
+
+                        @if ($this->isFilingOpen)
+                            <div class="flex flex-col items-start justify-start text-start">
+                                <h3 class="text-primary fw-bold mb-2">Filing of Candidacy Ongoing</h3>
+                                <p class="text-secondary mx-auto" style="max-width: 500px;">
+                                    The candidates are currently finalizing their platforms. Campaigning will start
+                                    soon!
+                                </p>
+                            </div>
+                        @elseif ($this->isCampaignOpen)
+                            <div class="flex flex-col items-start justify-start text-start">
+                                <h3 class="text-primary fw-bold mb-2">Campaign of Candidacy Ongoing</h3>
+                                <p class="text-secondary mx-auto" style="max-width: 500px;">
+                                    The candidates are currently campaigning. Voting will start soon!
+                                </p>
+                            </div>
+                        @elseif ($this->isVotingOpen)
                             <p class="text-success text-sx text-md-base pb-2">
                                 <i class="bi bi-check-circle-fill me-1"></i> The election is live.
                             </p>
@@ -211,37 +252,26 @@ new #[Layout('layouts.app')] #[Title('Student Dashboard')] class extends Compone
                                 class="btn btn-glow w-100 py-1">
                                 Vote Now
                             </a>
-                        @else
-                            @php
-                                $latestCycle = ElectionCycle::where('status', 'active')->first();
-                            @endphp
+                        @elseif ($latestCycle && ($latestCycle->status === 'finished' || $latestCycle->status === 'completed'))
+                            <p class="text-danger small" style="font-size: 0.80rem">
+                                <i class="bi bi-lock-fill me-1"></i> Voting is no longer active.
+                            </p>
 
-                            @if ($latestCycle && ($latestCycle->status === 'finished' || $latestCycle->status === 'completed'))
-                                <p class="text-danger small" style="font-size: 0.80rem">
-                                    <i class="bi bi-lock-fill me-1"></i> Voting is no longer active.
-                                </p>
-                                <button class="btn btn-secondary btn-sm w-100 fw-bold" disabled>
-                                    <i class="bi bi-slash-circle me-2"></i> Voting Closed
-                                </button>
-
-                                @if ($latestCycle->voting_end)
-                                    <div class="mt-2 text-muted text-center text-md-start" style="font-size: 0.80rem">
-                                        The voting period concluded on
-                                        <strong>{{ $latestCycle->voting_end->format('M d, Y h:i A') }}</strong>.
-                                    </div>
-                                @endif
-                            @else
-                                <p class="text-warning text-center text-md-start mb-1 mb-md-0 small"
-                                    style="font-size: 0.80rem">
-                                    <i class="bi bi-exclamation-triangle-fill me-1"></i> No ongoing election.
-                                </p>
-                                <button class="btn btn-light btn-sm w-100 fw-bold text-muted border" disabled>
-                                    <i class="bi bi-hourglass-top me-2"></i> Not Yet Available
-                                </button>
+                            @if ($latestCycle->voting_end)
                                 <div class="mt-2 text-muted text-center text-md-start" style="font-size: 0.80rem">
-                                    Please stand by until an administrator initiates the next voting cycle.
+                                    The voting period concluded on
+                                    <strong>{{ $latestCycle->voting_end->format('M d, Y h:i A') }}</strong>.
                                 </div>
                             @endif
+                        @else
+                            <p class="text-warning text-center text-md-start mb-1 mb-md-0 small"
+                                style="font-size: 0.80rem">
+                                <i class="bi bi-exclamation-triangle-fill me-1"></i> No active election.
+                            </p>
+                            <div class="mt-2 text-muted text-center text-md-start" style="font-size: 0.80rem">
+                                Please stand by until the Student Council Election Committee initiates the next voting
+                                cycle.
+                            </div>
                         @endif
                     </div>
                 </div>

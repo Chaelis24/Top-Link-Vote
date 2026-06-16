@@ -27,19 +27,33 @@ class ElectionCycleSeeder extends Seeder
                 'voted_at'       => null
             ]);
 
+            $now = Carbon::now();
+
+            $duration = 3;
+
+            $f_start = $now->copy()->startOfDay();
+            $f_end   = $f_start->copy()->addDays($duration)->endOfDay();
+
+            $c_start = $f_end->copy()->addSecond();
+            $c_end   = $c_start->copy()->addDays($duration)->endOfDay();
+
+            $v_start = $c_end->copy()->addSecond();
+            $v_end   = $v_start->copy()->addDays($duration)->endOfDay();
+
+            $res_date = $v_end->copy()->addDay()->startOfDay();
+
             ElectionCycle::create([
                 'name'           => 'CSC Official Election 2026',
                 'academic_year'  => '2026-2027',
                 'status'         => 'active',
 
-                'filing_start'   => Carbon::now()->startOfDay(),
-                'filing_end'     => Carbon::now()->addDays(2)->endOfDay(),
-                'campaign_start' => Carbon::now()->addDays(4)->startOfDay(),
-                'campaign_end'   => Carbon::now()->addDays(6)->endOfDay(),
-
-                'voting_start'   => Carbon::now()->addDays(8)->startOfDay(),
-                'voting_end'     => Carbon::now()->addDays(10)->endOfDay(),
-                'results_date'   => Carbon::now()->addDays(12)->startOfDay(),
+                'filing_start'   => $f_start,
+                'filing_end'     => $f_end,
+                'campaign_start' => $c_start,
+                'campaign_end'   => $c_end,
+                'voting_start'   => $v_start,
+                'voting_end'     => $v_end,
+                'results_date'   => $res_date,
             ]);
         });
     }

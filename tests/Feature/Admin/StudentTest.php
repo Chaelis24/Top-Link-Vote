@@ -1,10 +1,9 @@
 <?php
 
-use App\Models\{User, Student};
+use App\Models\{Role, User, Student};
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Volt\Volt;
-use Spatie\Permission\Models\Role;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);

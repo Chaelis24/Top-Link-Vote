@@ -66,19 +66,6 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
         $studentData = $this->profilePlatformService->getStudentData($user);
         $this->student = $studentData['student'];
         $this->profile_photo_path = $studentData['profile_photo_path'];
-
-        if ($this->isEligibleToEdit) {
-            $candidateData = $this->profilePlatformService->loadCandidateData($user);
-            $this->achievements = $candidateData['achievements'];
-            $this->party_name = $candidateData['party_name'];
-            $this->previous_position = $candidateData['previous_position'];
-            $this->previous_school_project = $candidateData['previous_school_project'];
-            $this->average_grade = $candidateData['average_grade'];
-            $this->existing_candidate_photo = $candidateData['existing_candidate_photo'];
-            $this->platform_title = $candidateData['platform_title'];
-            $this->tagline = $candidateData['tagline'];
-            $this->agenda = $candidateData['agenda'];
-        }
     }
 
     /**
@@ -90,18 +77,6 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
     public function activeCycle()
     {
         return $this->profilePlatformService->getActiveCycle();
-    }
-
-    /**
-     * Check whether the current user is eligible to edit
-     * their candidate profile (has the 'candidate' role).
-     *
-     * @return bool
-     */
-    #[Computed]
-    public function isEligibleToEdit()
-    {
-        return $this->profilePlatformService->isEligibleToEdit();
     }
 
     /**
@@ -214,15 +189,6 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
         $active = $this->activeCycle;
         $isVotingStarted = $active && now()->gt($active->voting_start);
 
-        if (!$this->isEligibleToEdit || $this->lockChanges || $isVotingStarted) {
-            $this->dispatch('swal', [
-                'title' => 'Changes Locked',
-                'text' => $isVotingStarted ? 'Voting is ongoing. Profiles are now frozen.' : 'Changes are currently locked.',
-                'icon' => 'warning',
-            ]);
-            return;
-        }
-
         $request = new \App\Http\Requests\Students\UpdateCandidateRequest();
         $validated = $this->validate(
             array_merge($request->rules(), [
@@ -260,8 +226,8 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
                     'title' => $validated['platform_title'],
                     'tagline' => $validated['tagline'],
                     'agenda' => explode("\n", $validated['agenda']),
-                    'status' => 'pending',
-                    'submitted_at' => now(),
+                    'status' => 'approved',
+                    'approved_at' => now(),
                 ],
             );
 
@@ -280,7 +246,7 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
 
             $this->dispatch('swal', [
                 'title' => 'Submission Successful!',
-                'text' => 'Your profile and platform have been submitted for review.',
+                'text' => 'Your profile and platform have been saved and are now live.',
                 'icon' => 'success',
                 'timer' => 3000,
                 'showConfirmButton' => false,
@@ -328,108 +294,65 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
                 <h2 class="text-dark">Candidate <span class="text-primary">Profiles & Platforms</span></h2>
                 <p class="text-secondary mb-0 small">Learn about candidate advocacy before casting your vote</p>
             </div>
-
-            @if ($this->isEligibleToEdit)
-                @php
-                    $active = $this->activeCycle;
-                    $now = now();
-
-                    $isVotingStarted = $active && $now->gt($active->voting_start);
-                    $isVotingFinished = $active && $now->gt($active->voting_end);
-
-                    $isLocked = $isVotingStarted || $isVotingFinished;
-                @endphp
-                @if ($isLocked)
-                    <button class="btn btn-glow btn-sm shadow-sm" style="cursor: not-allowed; opacity: 0.8;" disabled>
-                        <div class="d-flex align-items-center justify-content-center text-danger">
-                            <i class="bi {{ $isVotingFinished ? 'bi-archive-fill' : 'bi-lock-fill' }}"></i>
-
-                            <span class="ms-2 d-none d-sm-inline">
-                                @if ($isVotingFinished)
-                                    Voting Closed: Edits Disabled
-                                @elseif ($isVotingStarted)
-                                    Voting Active: Changes Locked
-                                @else
-                                    Campaign Ended: Edits Locked
-                                @endif
-                            </span>
-                        </div>
-                    </button>
-                @else
-                    <button class="btn btn-glow btn-sm shadow-sm" data-bs-toggle="modal"
-                        data-bs-target="#editMyPlatformModal">
-                        <div class="d-flex align-items-center justify-content-center">
-                            <i class="bi bi-pencil-square"></i>
-                            <span class="ms-2 d-none d-sm-inline">Edit My Platform</span>
-                        </div>
-                    </button>
-                @endif
-            @endif
         </div>
 
         {{-- Determine phase access: voting, campaign, or filing (non-student-only) unlocks the grid --}}
         @php
-            $user = Auth::user();
-            $isStudentOnly = $user->hasRole('student') && !$user->hasRole('candidate');
+            $isVoting = $this->isVotingOpen;
             $isFiling = $this->isFilingOpen;
             $isCampaign = $this->isCampaignOpen;
-            $isVoting = $this->isVotingOpen;
 
-            $canAccess = $isVoting || $isCampaign || ($isFiling && !$isStudentOnly);
+            $canSeeGrid = $isVoting;
         @endphp
 
         {{-- Candidate grid (visible when access is granted) --}}
-        @if ($canAccess)
+        @if ($canSeeGrid)
             {{-- Position filter tabs --}}
             <div class="d-flex gap-1 gap-md-2 flex-wrap mb-3">
-                @foreach ($this->positionsList as $pos)
-                    <button wire:click="selectPosition('{{ $pos }}')"
-                        @click="selectedPosition = '{{ $pos }}'"
-                        class="tab-custom {{ $selectedPosition === $pos ? 'active' : '' }} text-xs md:text-base px-2 py-2 md:px-3 md:py-3"
-                        style="font-size: 0.8rem;">
-                        {{ $pos }}
-                    </button>
-                @endforeach
+                @if (!empty($this->positionsList) && count($this->positionsList) > 0)
+                    @foreach ($this->positionsList as $pos)
+                        <button wire:click="selectPosition('{{ $pos }}')"
+                            @click="selectedPosition = '{{ $pos }}'"
+                            class="tab-custom {{ $selectedPosition === $pos ? 'active' : '' }} text-xs md:text-base px-2 py-2 md:px-3 md:py-3"
+                            style="font-size: 0.8rem;">
+                            {{ $pos }}
+                        </button>
+                    @endforeach
+                @endif
             </div>
 
             {{-- Candidate profile cards grid --}}
             <div class="row g-2 g-md-4 mb-12 mb-md-0">
                 @forelse($this->filteredCandidates as $candidate)
-                    <div class="col-6 col-md-6 col-lg-4 col-xl-3 mb-2 mb-md-3"
+                    <div class="col-6 col-md-6 col-lg-4 col-xl-3 mb-2"
                         wire:key="candidate-box-{{ $selectedPosition }}-{{ $candidate->id }}">
                         @php
                             $latestPlatform = $candidate->platforms->first();
-                            $isApproved = $latestPlatform && $latestPlatform->status === 'approved';
 
                             $suffix = $candidate->student->suffix;
                             $formattedSuffix = in_array($suffix, ['Jr', 'Sr']) ? $suffix . '.' : $suffix;
                         @endphp
 
                         <div
-                            class="position-relative bg-white rounded-5 shadow-sm border transition-all hover-translate-y hover-shadow-lg p-2 h-100 d-flex flex-column align-items-center text-center group-card {{ !$isApproved ? 'opacity-75' : '' }}">
+                            class="position-relative bg-white rounded-5 shadow-sm border transition-all hover-translate-y hover-shadow-lg p-4 h-100 d-flex flex-column align-items-center text-center group-card">
 
                             <div
                                 class="position-absolute top-0 start-0 w-100 p-2 d-flex justify-content-between align-items-center">
-                                <span
-                                    class="badge rounded-pill {{ $isApproved ? 'bg-emerald-light text-primary' : 'bg-light text-muted' }} fw-bold px-2 py-0.5"
-                                    style="font-size: 0.5rem; max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                <span class="badge rounded-pill bg-emerald-light text-primary fw-bold px-2 py-0.5"
+                                    style="font-size: 12px; max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                                     {{ Str::limit($candidate->party_name ?? 'No Party Name', 12) }}
                                 </span>
 
-                                @if ($isApproved)
-                                    <button type="button" class="btn p-0 border-0" data-bs-toggle="modal"
-                                        data-bs-target="#unifiedModal{{ $candidate->id }}">
-                                        <i class="bi bi-info-circle-fill text-primary opacity-50"
-                                            style="font-size: 0.7rem;"></i>
-                                    </button>
-                                @else
-                                    <i class="bi bi-hourglass-split text-muted" style="font-size: 0.7rem;"></i>
-                                @endif
+                                <button type="button" class="btn p-0 border-0" data-bs-toggle="modal"
+                                    data-bs-target="#unifiedModal{{ $candidate->id }}">
+                                    <i class="bi bi-info-circle-fill text-primary opacity-50"
+                                        style="font-size: 0.7rem;"></i>
+                                </button>
                             </div>
 
                             <div class="mt-4 mt-md-3 mb-1 position-relative">
                                 <div class="candidate-avatar-circle shadow-sm border border-3 border-white overflow-hidden mx-auto"
-                                    style="width: clamp(50px, 12vw, 90px); height: clamp(50px, 12vw, 90px); background: {{ $this->getAvatarColor($candidate->id) }}; filter: {{ !$isApproved ? 'grayscale(100%)' : 'none' }};">
+                                    style="width: clamp(50px, 12vw, 90px); height: clamp(50px, 12vw, 90px); background: {{ $this->getAvatarColor($candidate->id) }};">
                                     @if ($candidate->photo)
                                         <img src="{{ asset('storage/' . $candidate->photo) }}"
                                             class="w-100 h-100 object-fit-cover">
@@ -458,36 +381,24 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
                             <div class="bg-light rounded-4 p-1 p-md-2 mb-1 w-100">
                                 <p class="text-primary mb-0 fst-italic"
                                     style="font-size: 0.65rem; line-height: 1.2; min-height: 3px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
-                                    @if ($isApproved)
-                                        "{{ $latestPlatform?->tagline ?? 'No Tagline' }}"
-                                    @else
-                                        <span class="text-muted"><i class="bi bi-lock-fill me-1"></i> Hidden</span>
-                                    @endif
+                                    "{{ $latestPlatform?->tagline ?? 'No Tagline' }}"
                                 </p>
                             </div>
 
                             <div class="mt-auto w-100">
-                                @if ($isApproved)
-                                    <button class="btn btn-outline-glow rounded-pill py-0 py-md-1 fw-bold w-100"
-                                        style="font-size: 0.6rem;" data-bs-toggle="modal"
-                                        data-bs-target="#unifiedModal{{ $candidate->id }}"
-                                        onclick="const tab = bootstrap.Tab.getOrCreateInstance(document.querySelector('#profile-tab-{{ $candidate->id }}')); tab.show();">
-                                        Profile
-                                    </button>
-                                @else
-                                    <button
-                                        class="btn btn-light rounded-pill py-0 py-md-1 fw-bold w-100 text-muted border border-dashed"
-                                        style="font-size: 0.6rem;" disabled>
-                                        Review
-                                    </button>
-                                @endif
+                                <button class="btn btn-outline-glow rounded-pill py-1 py-md-2 fw-bold w-100"
+                                    style="font-size: 0.6rem;" data-bs-toggle="modal"
+                                    data-bs-target="#unifiedModal{{ $candidate->id }}"
+                                    onclick="const tab = bootstrap.Tab.getOrCreateInstance(document.querySelector('#profile-tab-{{ $candidate->id }}')); tab.show();">
+                                    Profile
+                                </button>
                             </div>
                         </div>
                     </div>
                 @empty
                     {{-- Empty state: no candidates match the current filter --}}
                     <div class="col-12 py-5 text-center">
-                        <div class="bg-light rounded-5 p-5">
+                        <div class="p-5">
                             <i class="bi bi-person-x fs-1 text-muted"></i>
                             <p class="text-muted mt-3">No candidates found.</p>
                         </div>
@@ -498,9 +409,29 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
             @php
                 $latestCycle = ElectionCycle::where('status', 'active')->first();
             @endphp
-
-            {{-- Voting period finished banner --}}
-            @if ($latestCycle && $latestCycle->status === 'completed')
+            {{-- Filing or campaign in progress (non-candidate view) --}}
+            @if ($isFiling)
+                <div class="p-5 text-center my-5 rounded-4">
+                    <div class="mb-4">
+                        <i class="bi bi-file-earmark-person text-primary opacity-75" style="font-size: 5rem;"></i>
+                    </div>
+                    <h3 class="text-primary fw-bold">Filing of Candidacy Ongoing</h3>
+                    <p class="text-secondary mx-auto" style="max-width: 500px;">
+                        The candidates are currently finalizing their platforms. Campaigning will start soon!
+                    </p>
+                </div>
+            @elseif ($isCampaign)
+                <div class="p-5 text-center my-5 rounded-4">
+                    <div class="mb-4">
+                        <i class="bi bi-megaphone text-primary opacity-75" style="font-size: 5rem;"></i>
+                    </div>
+                    <h3 class="text-primary fw-bold">Campaign of Candidacy Ongoing</h3>
+                    <p class="text-secondary mx-auto" style="max-width: 500px;">
+                        The candidates are currently campaigning. Voting will start soon!
+                    </p>
+                </div>
+                {{-- Voting period finished banner --}}
+            @elseif ($latestCycle && $latestCycle->status === 'completed')
                 <div class="p-5 text-center my-5 rounded-4">
                     <div class="mb-4">
                         <div class="position-relative d-inline-block">
@@ -518,20 +449,8 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
                         Candidate profiles and ballot submissions are now locked while results are being finalized.
                     </p>
                 </div>
-                {{-- Filing or campaign in progress (non-candidate view) --}}
-            @elseif (($isFiling || $isCampaign) && $isStudentOnly)
-                <div class="p-5 text-center my-5 rounded-4">
-                    <h3 class="text-primary fw-bold">
-                        {{ $isFiling ? 'Filing of Candidacy Ongoing' : 'Campaign of Candidacy Ongoing' }}
-                    </h3>
-                    <p class="text-secondary">
-                        {{ $isFiling
-                            ? 'The candidates are currently finalizing their platforms. Campaigning will start soon!'
-                            : 'The candidates are currently campaigning. Voting will start soon!' }}
-                    </p>
-                </div>
-                {{-- No active election cycle --}}
             @else
+                {{-- No active election cycle --}}
                 <div class="p-5 text-center">
                     <div class="mb-6 relative inline-block">
                         <div class="bg-emerald-50 p-6 rounded-full">
@@ -543,9 +462,7 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
                     </div>
                     <h2 class="text-2xl font-bold text-gray-800 mb-3">No Active Election</h2>
                     <p class="text-secondary mx-auto mb-4" style="max-width: 500px;">
-                        There is currently no ongoing election cycle or the voting period has not been opened yet by the
-                        administrator.
-                        Please check back later for official announcements.
+                        Please stand by until the Student Council Election Committee initiates the next voting cycle.
                     </p>
                 </div>
             @endif
@@ -839,209 +756,4 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
             </div>
         </div>
     @endforeach
-
-    {{-- Edit My Platform modal (candidate-only, shows profile + platform tabs) --}}
-    @if ($this->isEligibleToEdit)
-        <div class="modal fade" id="editMyPlatformModal" tabindex="-1" wire:ignore.self>
-            <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable mx-3 mx-md-auto">
-                <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
-                    <div class="modal-header bg-emerald-light border-0 pb-0 pt-3 px-3 px-md-4">
-                        <div class="w-100">
-                            <div class="d-flex justify-content-between align-items-center mb-2 mb-md-3">
-                                <h6 class="modal-title fw-bold text-primary mb-0">Edit Campaign Information</h6>
-                                <button type="button" class="btn-close" style="font-size: 0.8rem;"
-                                    data-bs-dismiss="modal"></button>
-                            </div>
-                            <ul class="nav nav-tabs border-0 nav-justified w-100" id="editTabs" role="tablist">
-                                <li class="nav-item" role="presentation">
-                                    <button
-                                        class="nav-link active border-0 rounded-3 py-2 fw-bold text-secondary w-100 small"
-                                        id="profile-tab" data-bs-toggle="tab" data-bs-target="#profile-pane"
-                                        type="button" role="tab" style="background: transparent;">
-                                        <i class="bi bi-person-circle me-1"></i>Profile
-                                    </button>
-                                </li>
-                                <li class="nav-item" role="presentation">
-                                    <button class="nav-link border-0 rounded-3 py-2 fw-bold text-secondary w-100 small"
-                                        id="platform-tab" data-bs-toggle="tab" data-bs-target="#platform-pane"
-                                        type="button" role="tab" style="background: transparent;">
-                                        <i class="bi bi-megaphone me-1"></i>Platform
-                                    </button>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-
-                    <form wire:submit.prevent="updatePlatform">
-                        <div class="modal-body p-3 p-md-4 bg-white">
-                            @if ($lockChanges)
-                                <div class="alert alert-warning border-0 rounded-3 small mb-3 py-2 px-3"
-                                    style="font-size: 0.75rem;">
-                                    <i class="bi bi-info-circle-fill me-2"></i>
-                                    <strong>Notice:</strong> Editing is disabled. Profile updates are currently frozen.
-                                </div>
-                            @endif
-
-                            <div class="tab-content" id="editTabsContent">
-                                <div class="tab-pane fade show active" id="profile-pane" role="tabpanel">
-                                    <div class="row g-3">
-                                        <div class="col-12 col-md-4 mb-2 text-center border-md-end">
-                                            <label class="small fw-bold text-muted d-block mb-2">Candidate
-                                                Photo</label>
-                                            <div class="text-center">
-                                                <input type="file" id="candidatePhotoInput"
-                                                    wire:model="candidate_photo" class="d-none" accept="image/*">
-                                                <label for="candidatePhotoInput"
-                                                    class="mx-auto shadow-sm d-flex align-items-center justify-content-center position-relative profile-upload-circle"
-                                                    style="width: 100px; height: 100px; border-radius: 50%; overflow: hidden; cursor: pointer; border: 4px solid white; background: #f8fafc;">
-
-                                                    @if ($candidate_photo)
-                                                        <img src="{{ $candidate_photo->temporaryUrl() }}"
-                                                            class="w-100 h-100 object-fit-cover">
-                                                    @elseif ($existing_candidate_photo)
-                                                        <img src="{{ asset('storage/' . $existing_candidate_photo) }}"
-                                                            class="w-100 h-100 object-fit-cover">
-                                                    @else
-                                                        <i class="bi bi-camera-fill fs-2 text-muted"></i>
-                                                    @endif
-
-                                                    <div class="upload-overlay">
-                                                        <i class="bi bi-plus-lg text-white fs-5"></i>
-                                                    </div>
-                                                </label>
-                                                <small class="text-muted d-block mt-2 fw-bold text-uppercase"
-                                                    style="font-size: 9px;">Tap to change</small>
-                                                @error('candidate_photo')
-                                                    <span class="text-danger d-block mt-1"
-                                                        style="font-size: 0.65rem;">{{ $message }}</span>
-                                                @enderror
-                                            </div>
-                                        </div>
-                                        <div class="col-12 col-md-8">
-                                            <div class="row g-2">
-                                                <div class="col-6 mb-2">
-                                                    <label class="small fw-bold text-primary"
-                                                        style="font-size: 0.7rem;">Party Name</label>
-                                                    <input type="text" wire:model="party_name"
-                                                        class="form-control form-control-sm border-0 bg-light py-2"
-                                                        placeholder="e.g. Independent">
-                                                </div>
-                                                <div class="col-6 mb-2">
-                                                    <label class="small fw-bold text-primary"
-                                                        style="font-size: 0.7rem;">GWA (Optional)</label>
-                                                    <input type="text" wire:model="average_grade"
-                                                        class="form-control form-control-sm border-0 bg-light py-2"
-                                                        placeholder="e.g. 1.25">
-                                                </div>
-                                                <div class="col-12">
-                                                    <label class="small fw-bold text-primary"
-                                                        style="font-size: 0.7rem;">Achievements (Press Enter for new
-                                                        line)</label>
-                                                    <textarea wire:model="achievements" rows="2" class="form-control form-control-sm border-0 bg-light"
-                                                        placeholder="• With Honors (Grade 11)&#10;• Best in Public Speaking&#10;• Quiz Bee Champion 2024"></textarea>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <hr class="my-3 opacity-25">
-                                        <div class="col-12 col-md-6">
-                                            <label class="small fw-bold text-primary mb-1 d-block"
-                                                style="font-size: 0.7rem;">Previous Positions</label>
-                                            @foreach ($previous_position as $index => $pos)
-                                                <div class="d-flex gap-1 mb-2" wire:key="pos-{{ $index }}">
-                                                    <input type="text"
-                                                        wire:model="previous_position.{{ $index }}"
-                                                        class="form-control form-control-sm border-0 bg-light py-1"
-                                                        placeholder="e.g. SSG Treasurer">
-                                                    <button type="button"
-                                                        wire:click="removeField('previous_position', {{ $index }})"
-                                                        class="btn btn-sm text-danger p-0">
-                                                        <i class="bi bi-x-circle"></i>
-                                                    </button>
-                                                </div>
-                                            @endforeach
-                                            <button type="button" wire:click="addField('previous_position')"
-                                                class="btn btn-sm btn-link text-primary p-0 text-decoration-none"
-                                                style="font-size: 0.7rem;">
-                                                + Add Position
-                                            </button>
-                                        </div>
-                                        <div class="col-12 col-md-6">
-                                            <label class="small fw-bold text-primary mb-1 d-block"
-                                                style="font-size: 0.7rem;">Previous School Projects</label>
-                                            @foreach ($previous_school_project as $index => $proj)
-                                                <div class="d-flex gap-1 mb-2" wire:key="proj-{{ $index }}">
-                                                    <input type="text"
-                                                        wire:model="previous_school_project.{{ $index }}"
-                                                        class="form-control form-control-sm border-0 bg-light py-1"
-                                                        placeholder="e.g. Water Dispenser">
-                                                    <button type="button"
-                                                        wire:click="removeField('previous_school_project', {{ $index }})"
-                                                        class="btn btn-sm text-danger p-0">
-                                                        <i class="bi bi-x-circle"></i>
-                                                    </button>
-                                                </div>
-                                            @endforeach
-                                            <button type="button" wire:click="addField('previous_school_project')"
-                                                class="btn btn-sm btn-link text-primary p-0 text-decoration-none"
-                                                style="font-size: 0.7rem;">
-                                                + Add Project
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="tab-pane fade" id="platform-pane" role="tabpanel">
-                                    <div class="mb-3">
-                                        <label class="small fw-bold text-primary" style="font-size: 0.7rem;">Campaign
-                                            Tagline</label>
-                                        <input type="text" wire:model="tagline"
-                                            class="form-control form-control-sm border-0 bg-light py-2"
-                                            placeholder="e.g. Leadership with Action, Service with Integrity">
-                                        @error('tagline')
-                                            <span class="text-danger small">{{ $message }}</span>
-                                        @enderror
-                                    </div>
-                                    <div class="mb-3">
-                                        <label class="small fw-bold text-primary" style="font-size: 0.7rem;">Platform
-                                            Title</label>
-                                        <input type="text" wire:model="platform_title"
-                                            class="form-control form-control-sm border-0 bg-light py-2"
-                                            placeholder="e.g. THE 4-PILLAR INITIATIVE: Progress, Unity, and Excellence">
-                                        @error('platform_title')
-                                            <span class="text-danger small">{{ $message }}</span>
-                                        @enderror
-                                    </div>
-                                    <div class="mb-2">
-                                        <label class="small fw-bold text-primary" style="font-size: 0.7rem;">Agenda
-                                            Details (List your plans)</label>
-                                        <textarea wire:model="agenda" rows="5" class="form-control form-control-sm border-0 bg-light"
-                                            placeholder="1. Enhanced Student Services&#10;2. Sustainable Campus Projects&#10;3. Inclusive Community Engagement"></textarea>
-                                        @error('agenda')
-                                            <span class="text-danger small">{{ $message }}</span>
-                                        @enderror
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="modal-footer border-0 bg-light p-2 p-md-3">
-                            @if ($lockChanges)
-                                <button type="button" class="btn btn-secondary btn-sm px-4 rounded-3" disabled
-                                    style="font-size: 0.75rem;">
-                                    <i class="bi bi-lock-fill me-1"></i> Changes Locked
-                                </button>
-                            @else
-                                <button type="submit" class="btn btn-glow px-4 rounded-pill fw-bold"
-                                    wire:loading.attr="disabled">
-                                    <span wire:loading.remove>Submit for Review</span>
-                                    <span wire:loading>
-                                        <span class="spinner-border spinner-border-sm me-1" role="status"></span>
-                                        Saving...
-                                    </span>
-                                </button>
-                            @endif
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    @endif
 </div>

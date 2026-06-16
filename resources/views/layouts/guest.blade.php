@@ -30,6 +30,54 @@
         });
     </script>
     @stack('scripts')
+    <script src="https://openfpcdn.io/fingerprintjs/v4" defer></script>
+    <script>
+        function getFallbackDeviceToken() {
+            let token = localStorage.getItem('_device_token');
+            if (!token) {
+                token = 'fp-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+                localStorage.setItem('_device_token', token);
+            }
+            return token;
+        }
+
+        function setDeviceToken(token) {
+            const input = document.getElementById('device_token');
+            if (input) {
+                input.value = token;
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        }
+
+        function secureSyncDeviceToken(retries) {
+            retries = retries || 0;
+            if (window.FingerprintJS) {
+                FingerprintJS.load()
+                    .then(fp => fp.get())
+                    .then(result => setDeviceToken(result.visitorId))
+                    .catch(function() {
+                        setDeviceToken(getFallbackDeviceToken());
+                    });
+            } else if (retries < 15) {
+                setTimeout(function() { secureSyncDeviceToken(retries + 1); }, 300);
+            } else {
+                setDeviceToken(getFallbackDeviceToken());
+            }
+        }
+
+        document.addEventListener('livewire:navigated', function() {
+            setTimeout(function() { secureSyncDeviceToken(); }, 300);
+        });
+
+        window.addEventListener('DOMContentLoaded', function() {
+            secureSyncDeviceToken();
+            setTimeout(function() { secureSyncDeviceToken(); }, 500);
+        });
+
+        document.addEventListener('livewire:update', function() {
+            secureSyncDeviceToken();
+        });
+    </script>
 </body>
 
 </html>

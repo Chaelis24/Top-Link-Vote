@@ -3,7 +3,6 @@
 namespace App\Services\Student;
 
 use App\Models\{ElectionCycle, Candidate, Position, Platform, User};
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Collection;
 
 /**
@@ -75,19 +74,6 @@ class ProfilePlatformService
     }
 
     /**
-     * Determine whether the authenticated user can edit their platform.
-     *
-     * The user must have the 'candidate' role and an associated candidate record.
-     *
-     * @return bool
-     */
-    public function isEligibleToEdit(): bool
-    {
-        $user = Auth::user();
-        return $user && $user->hasRole('candidate') && $user->candidate;
-    }
-
-    /**
      * Check whether the filing period is currently open.
      *
      * @param  \App\Models\ElectionCycle|null  $cycle
@@ -150,7 +136,7 @@ class ProfilePlatformService
                     ->orWhere('student_department', '')
                     ->orWhere('student_department', $voterCourseId);
             })
-            ->whereHas('candidates', fn($q) => $q->whereIn('status', ['approved', 'active']))
+            ->whereHas('candidates')
             ->pluck('name')
             ->unique();
 
@@ -176,7 +162,6 @@ class ProfilePlatformService
 
         return Candidate::with(['student.user', 'position', 'platforms' => fn($q) => $q->latest()])
             ->where('election_cycle_id', $activeCycle->id)
-            ->whereIn('status', ['approved', 'active'])
             ->whereHas('position', function ($q) use ($voterCourseId) {
                 $q->where(fn($sub) => $sub->whereNull('student_department')->orWhere('student_department', '')->orWhere('student_department', $voterCourseId));
             })

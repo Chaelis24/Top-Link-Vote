@@ -16,6 +16,8 @@ new #[Layout('layouts.guest')] #[Title('Login')] class extends Component {
 
     public LoginForm $form;
 
+    public string $device_token = '';
+
     public function login(): void
     {
         $throttleKey = Str::transliterate(Str::lower($this->form->student_id) . '|' . request()->ip());
@@ -28,22 +30,37 @@ new #[Layout('layouts.guest')] #[Title('Login')] class extends Component {
         }
 
         try {
-            $this->validate();
+            $this->validate([
+                'device_token' => 'nullable|string',
+            ]);
+
+            if (empty($this->device_token)) {
+                $this->addError('form.student_id', 'Device verification failed. Please refresh the page.');
+                RateLimiter::hit($throttleKey, 60);
+                return;
+            }
+
             $user = $this->form->validateCredentials();
 
-            DB::transaction(function () use ($user) {
-                DB::table('users')->where('id', $user->id)->lockForUpdate()->first();
+            DB::transaction(function () use ($user, &$deviceError) {
+                $dbUser = DB::table('users')->where('id', $user->id)->lockForUpdate()->first();
 
+                if ($dbUser->registered_device_token !== $this->device_token) {
+                    $deviceError = 'This device is not registered to your account. Account sharing is strictly prohibited.';
+                    return;
+                }
                 $oldSessionIds = DB::table('sessions')->where('user_id', $user->id)->pluck('id');
-
                 DB::table('sessions')->where('user_id', $user->id)->delete();
-
                 Auth::login($user, $this->form->remember);
-
                 if ($oldSessionIds->isNotEmpty()) {
                     broadcast(new UserLoggedInElsewhere($user->id));
                 }
             });
+
+            if ($deviceError) {
+                $this->addError('form.student_id', $deviceError);
+                return;
+            }
 
             RateLimiter::clear($throttleKey);
 
@@ -61,7 +78,13 @@ new #[Layout('layouts.guest')] #[Title('Login')] class extends Component {
 {{-- Student Login Page — provides the authentication interface for student users. --}}
 
 <div class="fixed inset-0 z-[9999] overflow-y-auto bg-white flex items-center justify-center p-4 m-0 w-full h-full"
-    style="font-size: clamp(13px, 2vw + 8px, 16px);">
+    x-init="let w = $wire;
+    let i = 0;
+    (function fn() {
+        if (typeof FingerprintJS !== 'undefined') {
+            FingerprintJS.load().then(fp => fp.get()).then(r => w.set('device_token', r.visitorId)).catch(e => console.error(e));
+        } else if (i++ < 15) { setTimeout(fn, 300); }
+    })();" style="font-size: clamp(13px, 2vw + 8px, 16px);">
     {{-- Background overlay --}}
     <div class="absolute inset-0 bg-white"></div>
 
@@ -171,6 +194,8 @@ new #[Layout('layouts.guest')] #[Title('Login')] class extends Component {
                                 </p>
                             @enderror
                         </div>
+
+                        <input type="hidden" id="device_token" wire:model="device_token">
 
                         {{-- Remember me checkbox and forgot password link --}}
                         <div class="flex items-center justify-between text-[10px] md:text-[12px] font-semibold">

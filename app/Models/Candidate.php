@@ -18,10 +18,6 @@ class Candidate extends Model
 {
     use SoftDeletes, HasFactory;
 
-    public const STATUS_PENDING = 'pending';
-    public const STATUS_APPROVED = 'approved';
-    public const STATUS_REJECTED = 'rejected';
-
     protected $fillable = [
         'user_id',
         'student_id',

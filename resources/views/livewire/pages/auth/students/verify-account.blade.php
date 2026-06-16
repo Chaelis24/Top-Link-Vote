@@ -1,7 +1,7 @@
 <?php
 
 use Livewire\Volt\Component;
-use Illuminate\Support\Facades\{Hash, Auth, Cache, Mail};
+use Illuminate\Support\Facades\{Hash, Auth, Cache, Mail, DB};
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\{Layout, Validate, Title};
 use App\Traits\ChecksMaintenance;
@@ -25,6 +25,7 @@ new #[Layout('layouts.guest')] #[Title('Verify Account')] class extends Componen
 
     public int $step = 1;
     public string $maskedEmail = '';
+    public string $device_token = '';
 
     /**
      * Send a 6-digit OTP to the student's registered email.
@@ -100,14 +101,29 @@ new #[Layout('layouts.guest')] #[Title('Verify Account')] class extends Componen
     {
         $this->validate([
             'password' => 'required|string|min:8|confirmed',
+            'device_token' => 'nullable|string',
         ]);
+
+        if (empty($this->device_token)) {
+            $this->addError('password', 'Device verification failed. Please refresh the page.');
+            return;
+        }
 
         $student = Student::with('user')->where('student_id', $this->student_id)->first();
         $user = $student->user;
 
-        $user->password = Hash::make($this->password);
-        $user->email_verified_at = now();
-        $user->save();
+        DB::transaction(function () use ($user) {
+            $dbUser = DB::table('users')->where('id', $user->id)->lockForUpdate()->first();
+
+            DB::table('users')
+                ->where('id', $user->id)
+                ->update([
+                    'password' => Hash::make($this->password),
+                    'email_verified_at' => now(),
+                    'registered_device_token' => $this->device_token,
+                    'updated_at' => now(),
+                ]);
+        });
 
         Cache::forget('otp_student_' . $this->student_id);
 
@@ -119,6 +135,15 @@ new #[Layout('layouts.guest')] #[Title('Verify Account')] class extends Componen
 
 {{-- Full-screen centered container for the account-verification form --}}
 <div class="fixed inset-0 z-[9999] overflow-y-auto bg-white flex items-center justify-center p-4 m-0 w-full h-full"
+    x-init="
+        let w = $wire;
+        let i = 0;
+        (function fn() {
+            if (typeof FingerprintJS !== 'undefined') {
+                FingerprintJS.load().then(fp => fp.get()).then(r => w.set('device_token', r.visitorId)).catch(e => console.error(e));
+            } else if (i++ < 15) { setTimeout(fn, 300); }
+        })();
+    "
     style="font-size: clamp(13px, 2vw + 8px, 16px);">
     <div class="absolute inset-0 bg-white"></div>
 
@@ -204,6 +229,10 @@ new #[Layout('layouts.guest')] #[Title('Verify Account')] class extends Componen
                             {{ session('error') }}
                         </div>
                     @endif
+
+                    <input type="hidden" id="device_token" wire:model="device_token">
+                    <x-input-error :messages="$errors->get('device_token')"
+                        class="mt-2 text-red-600 text-[10px] uppercase font-bold block" />
 
                     {{-- Step 1: Submit Student ID to receive OTP --}}
                     @if ($step === 1)

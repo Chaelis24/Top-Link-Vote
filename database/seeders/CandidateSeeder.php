@@ -29,7 +29,9 @@ class CandidateSeeder extends Seeder
         }
 
         $students = Student::whereHas('user', function ($query) {
-            $query->role('candidate');
+            $query->whereHas('roles', function ($q) {
+                $q->where('name', 'candidate');
+            });
         })->get();
 
         if ($students->isEmpty()) {
@@ -48,7 +50,7 @@ class CandidateSeeder extends Seeder
                 [
                     'user_id'     => $student->user_id,
                     'position_id' => $position->id ?? null,
-                    'status'      => 'pending',
+                    'status'      => 'approved',
                 ]
             );
         }

@@ -2,10 +2,10 @@
 
 use App\Models\Course;
 use App\Models\ElectionCycle;
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Volt\Volt;
-use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
 

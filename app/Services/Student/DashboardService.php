@@ -42,6 +42,34 @@ class DashboardService
     }
 
     /**
+     * Check whether the filing period is currently open.
+     *
+     * @param  \App\Models\ElectionCycle|null  $cycle
+     * @return bool
+     */
+    public function isFilingOpen(?ElectionCycle $cycle): bool
+    {
+        if (!$cycle || $cycle->status !== 'active') {
+            return false;
+        }
+        return now()->between($cycle->filing_start, $cycle->filing_end);
+    }
+
+    /**
+     * Check whether the campaign period is currently open.
+     *
+     * @param  \App\Models\ElectionCycle|null  $cycle
+     * @return bool
+     */
+    public function isCampaignOpen(?ElectionCycle $cycle): bool
+    {
+        if (!$cycle || $cycle->status !== 'active') {
+            return false;
+        }
+        return now()->between($cycle->campaign_start, $cycle->campaign_end);
+    }
+
+    /**
      * Determine whether voting is currently open.
      *
      * Checks both the admin-controlled "allowVoting" setting

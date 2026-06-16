@@ -1,10 +1,10 @@
 <?php
 
+use App\Models\Role;
 use App\Models\User;
 use App\Models\Student;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Volt\Volt;
-use Spatie\Permission\Models\Role;
 
 uses(RefreshDatabase::class);
 

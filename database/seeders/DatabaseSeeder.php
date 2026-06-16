@@ -3,10 +3,10 @@
 namespace Database\Seeders;
 
 use App\Models\Block;
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
-use Spatie\Permission\Models\Role;
 
 /**
  * The root seeder that sets up roles, the admin account, a
@@ -15,13 +15,6 @@ use Spatie\Permission\Models\Role;
  */
 class DatabaseSeeder extends Seeder
 {
-    /**
-     * Seed the application's foundational data:
-     * - Spatie roles (admin, student, candidate)
-     * - Admin user (admin@gmail.com)
-     * - Default student + candidate (Michael Farinas)
-     * - Course & block structure via CourseAndBlockSeeder
-     */
     public function run(): void
     {
         $roles = ['admin', 'student', 'candidate'];
@@ -59,7 +52,8 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        $michael->assignRole(['student', 'candidate']);
+        $michael->assignRole('student');
+        $michael->assignRole('candidate');
 
         $michael->student()->updateOrCreate(
             ['student_id' => '23-0029'],

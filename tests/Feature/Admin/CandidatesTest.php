@@ -12,10 +12,10 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    $role = Spatie\Permission\Models\Role::firstOrCreate(['name' => 'admin']);
+    \App\Models\Role::firstOrCreate(['name' => 'admin']);
     $this->cycle = ElectionCycle::factory()->create(['status' => 'active']);
     $user = User::factory()->create();
-    $user->assignRole($role);
+    $user->assignRole('admin');
     $this->actingAs($user);
 });
 
@@ -65,7 +65,7 @@ test('admin can import candidates via csv', function () {
 
     $student = Student::factory()->create(['student_id' => '1234567890']);
 
-    $csvContent = "student_id,position_name\n1234567890,President";
+    $csvContent = "student_id,position,party_name,achievements,previous_position,previous_school_projects,average_grade,title,tagline,agenda\n1234567890,President,Unity Party,\"Dean's Lister\",Class President,Library Project,1.25,\"Leadership for Change\",\"Your Voice Matters\",\"Transparency and student welfare\"";
     $file = UploadedFile::fake()->createWithContent('candidates.csv', $csvContent);
 
     Volt::test('admin.candidates')

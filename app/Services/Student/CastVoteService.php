@@ -67,6 +67,34 @@ class CastVoteService
     }
 
     /**
+     * Check whether the filing period is currently open.
+     *
+     * @param  \App\Models\ElectionCycle|null  $cycle
+     * @return bool
+     */
+    public function isFilingOpen(?ElectionCycle $cycle): bool
+    {
+        if (!$cycle || $cycle->status !== 'active') {
+            return false;
+        }
+        return now()->between($cycle->filing_start, $cycle->filing_end);
+    }
+
+    /**
+     * Check whether the campaign period is currently open.
+     *
+     * @param  \App\Models\ElectionCycle|null  $cycle
+     * @return bool
+     */
+    public function isCampaignOpen(?ElectionCycle $cycle): bool
+    {
+        if (!$cycle || $cycle->status !== 'active') {
+            return false;
+        }
+        return now()->between($cycle->campaign_start, $cycle->campaign_end);
+    }
+
+    /**
      * Check if the student has already voted.
      *
      * @param  mixed  $student
@@ -101,12 +129,11 @@ class CastVoteService
                     ->orWhere('student_department', $voterCourseId);
             })
             ->whereHas('candidates', function ($query) use ($voterCourseId) {
-                $query->whereIn('status', ['approved', 'active'])
-                    ->whereHas('student', fn($q) => $q->where('course_id', $voterCourseId));
+                $query->whereHas('student', fn($q) => $q->where('course_id', $voterCourseId));
             })
             ->with([
                 'candidates' => function ($query) use ($voterCourseId) {
-                    $query->whereIn('status', ['approved', 'active'])->with('student');
+                    $query->with('student');
                 },
             ])
             ->orderBy('priority', 'asc')

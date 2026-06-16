@@ -1,16 +1,15 @@
 <?php
 
-use App\Models\{User, ElectionCycle, Position};
+use App\Models\{Role, User, ElectionCycle, Position};
 use Livewire\Volt\Volt;
-use Spatie\Permission\Models\Role;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function () {
-    $role = Role::create(['name' => 'admin']);
+    Role::create(['name' => 'admin']);
     $user = User::factory()->create();
-    $user->assignRole($role);
+    $user->assignRole('admin');
     $this->actingAs($user);
 });
 

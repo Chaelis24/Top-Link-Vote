@@ -79,6 +79,21 @@
                     document.body.style.overflow = '';
                     document.body.style.paddingRight = '';
                 });
+
+                Livewire.on('vote-submitted-successfully', () => {
+                    Swal.fire({
+                        title: 'Success!',
+                        text: 'Your vote has been cast successfully. Logging out...',
+                        icon: 'success',
+                        timer: 5000,
+                        timerProgressBar: true,
+                        showConfirmButton: false,
+                        allowOutsideClick: false,
+                        allowEscapeKey: false,
+                    }).then(() => {
+                        window.location.href = "{{ route('secure.logout') }}";
+                    });
+                });
             }
 
             if (typeof window.Echo !== 'undefined') {

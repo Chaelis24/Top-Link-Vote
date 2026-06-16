@@ -2,7 +2,7 @@
 
 namespace App\Jobs;
 
-use App\Models\{User, Student, Course, Block};
+use App\Models\{User, Student, Course, Block, Role};
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -10,7 +10,6 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\{DB, Hash, Log};
 use Carbon\Carbon;
-use Spatie\Permission\Models\Role;
 
 /**
  * Processes the CSV rows uploaded by an admin, creating or updating
@@ -59,13 +58,10 @@ class ImportStudentsJob implements ShouldQueue
                         );
 
                         if (!empty($row['role'])) {
-                            try {
-                                if ($role = Role::findByName($row['role'])) {
-                                    if (!$user->hasRole($role)) {
-                                        $user->assignRole($role);
-                                    }
-                                }
-                            } catch (\Spatie\Permission\Exceptions\RoleDoesNotExist $e) {
+                            $role = Role::where('name', $row['role'])->first();
+                            if ($role && !$user->hasRole($row['role'])) {
+                                $user->assignRole($row['role']);
+                            } elseif (!$role) {
                                 Log::warning("Import: Role '{$row['role']}' not found for student {$row['student_id']}. Skipping role assignment.");
                             }
                         }

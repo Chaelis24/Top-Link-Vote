@@ -269,11 +269,11 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
                 @endphp
 
                 @if ($isFinished)
-                    <button type="button" class="btn-glow d-flex align-items-center justify-content-center w-100 py-2"
+                    <button type="button" class="btn-glow d-flex align-items-center justify-content-center w-100"
                         wire:click="downloadReport" wire:loading.attr="disabled">
                         <span wire:loading wire:target="downloadReport" class="spinner-border spinner-border-sm"></span>
                         <i wire:loading.remove wire:target="downloadReport"
-                            class="bi bi-file-earmark-pdf d-md-block fs-5 p-2"></i>
+                            class="bi bi-file-earmark-pdf d-md-block fs-5"></i>
                         <span class="fw-bold d-none d-md-inline ms-2" style="font-size: 12px;">Download Result</span>
                     </button>
                 @elseif ($isOngoing)

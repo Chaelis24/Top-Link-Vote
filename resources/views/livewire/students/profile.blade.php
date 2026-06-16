@@ -45,7 +45,7 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
     public $current_password = '';
     public $new_password = '';
     public $new_password_confirmation = '';
-    public bool $isVotingOpen = false;
+    public $activeCycle;
 
     private ProfileService $profileService;
 
@@ -75,6 +75,41 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                 $this->{$key} = $value;
             }
         }
+
+        $this->activeCycle = \App\Models\ElectionCycle::where('status', 'active')->first();
+    }
+
+    /**
+     * Check whether the filing period is currently open.
+     *
+     * @return bool
+     */
+    #[Computed]
+    public function isFilingOpen()
+    {
+        return $this->profileService->isFilingOpen($this->activeCycle);
+    }
+
+    /**
+     * Check whether the campaign period is currently open.
+     *
+     * @return bool
+     */
+    #[Computed]
+    public function isCampaignOpen()
+    {
+        return $this->profileService->isCampaignOpen($this->activeCycle);
+    }
+
+    /**
+     * Check whether the voting period is currently open.
+     *
+     * @return bool
+     */
+    #[Computed]
+    public function isVotingOpen()
+    {
+        return $this->profileService->isVotingOpen($this->activeCycle);
     }
 
     /**
@@ -382,12 +417,36 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                     </div>
                     <h5 class="fw-bold mb-2 text-dark">Voting Status</h5>
 
+                    @php
+                        $isVoting = $this->isVotingOpen();
+                        $isFiling = $this->isFilingOpen();
+                        $isCampaign = $this->isCampaignOpen();
+                    @endphp
+
                     @if ($has_voted)
                         <span class="badge bg-success text-white px-3 py-2 mb-3 rounded-pill">Voted</span>
                         <p class="text-secondary mb-0 small">
                             You cast your vote on {{ \Carbon\Carbon::parse($voted_at)->format('M d, Y') }}.
                         </p>
-                    @elseif ($isVotingOpen)
+
+                    @elseif ($isFiling)
+                        <span
+                            class="badge bg-warning-subtle text-warning border border-warning-subtle px-3 py-2 mb-3 rounded-pill">Filing
+                            Period</span>
+                        <p class="text-secondary mb-0 small mx-auto" style="max-width: 500px;">
+                            The candidates are currently finalizing their platforms. Campaigning and voting will start
+                            soon!
+                        </p>
+
+                    @elseif ($isCampaign)
+                        <span
+                            class="badge bg-info-subtle text-info border border-info-subtle px-3 py-2 mb-3 rounded-pill">Campaign
+                            Ongoing</span>
+                        <p class="text-secondary mb-0 small mx-auto" style="max-width: 500px;">
+                            The candidates are currently campaigning. Get ready, voting will open shortly!
+                        </p>
+
+                    @elseif ($isVoting)
                         <span
                             class="badge bg-primary-light text-primary border border-primary-subtle px-3 py-2 mb-3 rounded-pill">Eligible</span>
                         <p class="text-secondary mb-0 small">You are eligible to vote in this election.</p>
@@ -399,7 +458,7 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                             <i class="bi bi-lock-fill me-1"></i>Locked
                         </span>
                         <p class="text-secondary mb-0 small">Voting is currently closed or has not yet started.</p>
-                        <button class="btn btn-secondary btn-sm mt-4 mt-md-2 w-100 w-md-50" disabled>
+                        <button class="btn btn-secondary btn-sm mt-3 w-100" disabled>
                             Voting Unavailable
                         </button>
                     @endif

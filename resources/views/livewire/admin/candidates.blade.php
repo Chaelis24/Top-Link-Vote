@@ -82,21 +82,13 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
 
         $stats = cache()->remember("candidates_stats_{$activeCycleId}", 120, function () use ($activeCycleId) {
             return Candidate::where('election_cycle_id', $activeCycleId)
-                ->selectRaw(
-                    "
-                count(*) as total,
-                count(case when status in ('approved', 'active') then 1 end) as approved,
-                count(case when status = 'pending' then 1 end) as pending
-            ",
-                )
+                ->selectRaw("count(*) as total")
                 ->first();
         });
 
         return [
             'candidates' => $this->loadCandidates(),
             'totalCandidates' => $stats->total ?? 0,
-            'approvedCount' => $stats->approved ?? 0,
-            'pendingCount' => $stats->pending ?? 0,
             'availablePositions' => $this->activeCycle ? Position::where('election_cycle_id', $this->activeCycle->id)->distinct()->pluck('name') : collect(),
             'availableDepartments' => Course::pluck('name')->toArray(),
         ];
@@ -292,10 +284,14 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
 
     // --- CSV Import ---
     /**
-     * Parse an uploaded CSV and import candidates/positions/platforms.
+     * Parse an uploaded CSV and import candidates with full profile and platform data.
      *
-     * Runs inside a database transaction. Skips empty rows.
-     * Creates positions on the fly if they do not exist.
+     * Expected CSV columns (strict order):
+     *   student_id, position, party_name, achievements, previous_position,
+     *   previous_school_projects, average_grade, title, tagline, agenda
+     *
+     * Runs inside a database transaction. Skips invalid rows without
+     * halting the entire import. Validates header row before processing.
      */
     public function importCandidates()
     {
@@ -310,25 +306,56 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
 
             $path = $this->csvFile->getRealPath();
             $file = fopen($path, 'r');
-            fgetcsv($file);
+
+            $expectedHeaders = ['student_id', 'position', 'party_name', 'achievements', 'previous_position', 'previous_school_projects', 'average_grade', 'title', 'tagline', 'agenda'];
+
+            $headers = fgetcsv($file);
+            if (!$headers || array_map('trim', $headers) !== $expectedHeaders) {
+                fclose($file);
+                throw new \Exception(
+                    'Invalid CSV format. Expected columns in this order: ' . implode(',', $expectedHeaders)
+                );
+            }
+
             DB::beginTransaction();
             $importedCount = 0;
+            $errors = [];
 
             while (($row = fgetcsv($file)) !== false) {
                 if (empty(array_filter($row))) {
                     continue;
                 }
 
-                $studentId = trim($row[0]);
-                $positionName = trim($row[1]);
+                $row = array_map('trim', $row);
 
-                $student = Student::where('student_id', $studentId)->first();
+                try {
+                    $studentId = $row[0] ?? '';
+                    $positionName = $row[1] ?? '';
+                    $partyName = $row[2] ?? '';
+                    $achievements = $row[3] ?? '';
+                    $previousPosition = $row[4] ?? '';
+                    $previousSchoolProjects = $row[5] ?? '';
+                    $averageGrade = $row[6] !== '' ? $row[6] : null;
+                    $title = $row[7] ?? '';
+                    $tagline = $row[8] ?? '';
+                    $agenda = $row[9] ?? '';
 
-                if ($student && $student->user_id) {
+                    if (empty($studentId) || empty($positionName)) {
+                        $errors[] = "Skipped row: student_id and position are required.";
+                        continue;
+                    }
+
+                    $student = Student::where('student_id', $studentId)->first();
+
+                    if (!$student || !$student->user_id) {
+                        $errors[] = "Skipped student_id '{$studentId}': not found or missing user account.";
+                        continue;
+                    }
+
                     $pos = Position::firstOrCreate(
                         [
                             'name' => $positionName,
-                            'election_cycle_id' => $activeCycle?->id,
+                            'election_cycle_id' => $activeCycle->id,
                             'student_department' => $student->block->course_id ?? null,
                         ],
                         [
@@ -339,14 +366,23 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                         ],
                     );
 
+                    $cleanPreviousPositions = array_values(array_filter(array_map('trim', explode(',', $previousPosition))));
+                    $cleanPreviousProjects = array_values(array_filter(array_map('trim', explode(',', $previousSchoolProjects))));
+                    $agendaArray = array_values(array_filter(array_map('trim', explode("\n", str_replace("\r", '', $agenda)))));
+
                     $can = Candidate::updateOrCreate(
                         [
                             'student_id' => $student->id,
-                            'election_cycle_id' => $activeCycle?->id,
+                            'election_cycle_id' => $activeCycle->id,
                         ],
                         [
                             'user_id' => $student->user_id,
                             'position_id' => $pos->id,
+                            'party_name' => $partyName,
+                            'achievements' => $achievements,
+                            'previous_position' => $cleanPreviousPositions,
+                            'previous_school_project' => $cleanPreviousProjects,
+                            'average_grade' => $averageGrade,
                             'status' => 'approved',
                             'approved_at' => now(),
                         ],
@@ -355,12 +391,17 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                     Platform::updateOrCreate(
                         ['candidate_id' => $can->id],
                         [
-                            'title' => '',
+                            'title' => $title,
+                            'tagline' => $tagline,
+                            'agenda' => $agendaArray,
                             'status' => 'approved',
+                            'approved_at' => now(),
                         ],
                     );
 
                     $importedCount++;
+                } catch (\Exception $e) {
+                    $errors[] = 'Row error: ' . $e->getMessage();
                 }
             }
 
@@ -369,12 +410,27 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
             cache()->forget('admin_dashboard_data');
 
             DB::commit();
+
+            $message = "Imported {$importedCount} candidates.";
+            if (!empty($errors)) {
+                $message .= ' ' . count($errors) . ' row(s) skipped.';
+            }
+
             $this->reset('csvFile');
-            $this->dispatch('swal', [
-                'title' => 'Success',
-                'text' => "Imported $importedCount candidates.",
-                'icon' => 'success',
-            ]);
+
+            if (!empty($errors)) {
+                $this->dispatch('swal', [
+                    'title' => 'Import Completed with Warnings',
+                    'text' => $message . ' Check audit trail for details.',
+                    'icon' => 'warning',
+                ]);
+            } else {
+                $this->dispatch('swal', [
+                    'title' => 'Success',
+                    'text' => $message,
+                    'icon' => 'success',
+                ]);
+            }
         } catch (\Exception $e) {
             if (isset($file)) {
                 fclose($file);
@@ -382,7 +438,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
             DB::rollBack();
             $this->dispatch('swal', [
                 'title' => 'Import Failed',
-                'text' => 'Process halted due to an error: ' . $e->getMessage(),
+                'text' => $e->getMessage(),
                 'icon' => 'error',
             ]);
         }
@@ -461,7 +517,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
             </div>
             <div class="col-6 col-md-6">
                 <div class="glass-card stat-card py-2 text-center h-100">
-                    <div class="stat-value text-success" style="font-size: 1.2rem;">{{ $approvedCount }}</div>
+                    <div class="stat-value text-success" style="font-size: 1.2rem;">{{ $totalCandidates }}</div>
                     <div class="stat-label text-uppercase fw-bold" style="letter-spacing: 1px;">Active</div>
                 </div>
             </div>
@@ -547,7 +603,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                                                         $candidate->election_cycle_id,
                                                     )
                                                         ->where('position_id', $candidate->position_id)
-                                                        ->whereIn('status', ['approved', 'active'])
+                                                        ->where('election_cycle_id', $candidate->election_cycle_id)
                                                         ->withCount('votes')
                                                         ->orderByDesc('votes_count')
                                                         ->get();

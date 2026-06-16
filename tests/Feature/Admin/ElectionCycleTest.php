@@ -1,8 +1,8 @@
 <?php
 
 use App\Models\ElectionCycle;
+use App\Models\Role;
 use Livewire\Volt\Volt;
-use Spatie\Permission\Models\Role;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
