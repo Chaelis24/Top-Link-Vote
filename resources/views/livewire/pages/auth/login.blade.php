@@ -1,14 +1,13 @@
 <?php
 
-use App\Models\User;
-use App\Models\Setting;
 use Illuminate\Support\Str;
 use Livewire\Volt\Component;
-use Livewire\Attributes\{Layout, Title};
+use App\Models\{Setting, User};
 use App\Livewire\Forms\LoginForm;
 use App\Traits\ChecksMaintenance;
 use Illuminate\Support\Facades\DB;
 use App\Events\UserLoggedInElsewhere;
+use Livewire\Attributes\{Layout, Title};
 use Illuminate\Support\Facades\{Auth, Hash, Session, RateLimiter};
 
 new #[Layout('layouts.guest')] #[Title('Login')] class extends Component {
@@ -24,55 +23,52 @@ new #[Layout('layouts.guest')] #[Title('Login')] class extends Component {
 
         if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
             $seconds = RateLimiter::availableIn($throttleKey);
-
-            $this->addError('form.student_id', "Too many login attempts. Retry in $seconds seconds.");
+            session()->flash('warning', "Too many login attempts. Retry in $seconds seconds.");
             return;
         }
 
-        try {
-            $this->validate([
-                'device_token' => 'nullable|string',
-            ]);
+        $this->validate([
+            'device_token' => 'nullable|string',
+        ]);
 
-            if (empty($this->device_token)) {
-                $this->addError('form.student_id', 'Device verification failed. Please refresh the page.');
-                RateLimiter::hit($throttleKey, 60);
-                return;
-            }
+        $user = User::whereHas('student', function ($query) {
+            $query->where('student_id', $this->form->student_id);
+        })->first();
 
-            $user = $this->form->validateCredentials();
-
-            DB::transaction(function () use ($user, &$deviceError) {
-                $dbUser = DB::table('users')->where('id', $user->id)->lockForUpdate()->first();
-
-                if ($dbUser->registered_device_token !== $this->device_token) {
-                    $deviceError = 'This device is not registered to your account. Account sharing is strictly prohibited.';
-                    return;
-                }
-                $oldSessionIds = DB::table('sessions')->where('user_id', $user->id)->pluck('id');
-                DB::table('sessions')->where('user_id', $user->id)->delete();
-                Auth::login($user, $this->form->remember);
-                if ($oldSessionIds->isNotEmpty()) {
-                    broadcast(new UserLoggedInElsewhere($user->id));
-                }
-            });
-
-            if ($deviceError) {
-                $this->addError('form.student_id', $deviceError);
-                return;
-            }
-
-            RateLimiter::clear($throttleKey);
-
-            $this->redirectIntended(route('student.dashboard'));
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        if (!$user->email_verified_at) {
+            session()->flash('warning', 'Please verify your account first before logging in.');
             RateLimiter::hit($throttleKey, 60);
-            if (RateLimiter::tooManyAttempts($throttleKey, 3)) {
-                session()->flash('warning', 'Having trouble with your password? You may reset it to regain access.');
-            }
-            $this->form->password = '';
-            throw $e;
+            return;
         }
+
+        if (!Hash::check($this->form->password, $user->password)) {
+            session()->flash('error', 'Invalid credentials.');
+            RateLimiter::hit($throttleKey, 60);
+            return;
+        }
+
+        DB::transaction(function () use ($user, &$deviceError) {
+            $dbUser = DB::table('users')->where('id', $user->id)->lockForUpdate()->first();
+
+            if ($dbUser->registered_device_token !== $this->device_token) {
+                $deviceError = 'This device is not registered to your account. Account sharing is strictly prohibited.';
+                return;
+            }
+            $oldSessionIds = DB::table('sessions')->where('user_id', $user->id)->pluck('id');
+            DB::table('sessions')->where('user_id', $user->id)->delete();
+            Auth::login($user, $this->form->remember);
+            if ($oldSessionIds->isNotEmpty()) {
+                broadcast(new UserLoggedInElsewhere($user->id));
+            }
+        });
+
+        if ($deviceError) {
+            session()->flash('error', $deviceError);
+            return;
+        }
+
+        RateLimiter::clear($throttleKey);
+        $this->redirectIntended(route('student.dashboard'));
     }
 }; ?>
 {{-- Student Login Page — provides the authentication interface for student users. --}}
@@ -143,19 +139,8 @@ new #[Layout('layouts.guest')] #[Title('Login')] class extends Component {
                         <p class="text-gray-500 text-xs md:text-sm">Log in with your Student Credentials.</p>
                     </div>
 
-                    {{-- Status and warning flash messages --}}
-                    @if (session('status'))
-                        <div
-                            class="mb-4 text-[#108500] text-[10px] md:text-[11px] font-bold uppercase p-3 bg-green-50 rounded-lg border border-green-100">
-                            {{ session('status') }}
-                        </div>
-                    @endif
-                    @if (session('warning'))
-                        <div
-                            class="mb-4 text-[#b8860b] text-[10px] md:text-[11px] font-bold uppercase p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                            {{ session('warning') }}
-                        </div>
-                    @endif
+                    {{-- Successful, Error and Warning Messages --}}
+                    <x-session-flash></x-session-flash>
 
                     <form wire:submit="login" class="space-y-4 md:space-y-5">
                         {{-- Student ID input field --}}
@@ -166,11 +151,6 @@ new #[Layout('layouts.guest')] #[Title('Login')] class extends Component {
                             <input wire:model="form.student_id" type="text" placeholder="e.g. 23-0001" required
                                 class="w-full px-4 py-2.5 md:py-3 rounded-lg border transition-all text-sm outline-none focus:outline-none focus:ring-2
                             {{ $errors->has('form.student_id') ? 'border-red-500 focus:ring-red-200 focus:border-red-500' : 'border-gray-200 focus:ring-[#9cff00]/30 focus:border-[#108500]' }}">
-                            @error('form.student_id')
-                                <p class="text-[10px] text-red-500 font-bold mt-1 ms-1 uppercase italic">
-                                    {{ $message }}
-                                </p>
-                            @enderror
                         </div>
 
                         {{-- Password input field with visibility toggle --}}
@@ -185,14 +165,9 @@ new #[Layout('layouts.guest')] #[Title('Login')] class extends Component {
                             {{ $errors->has('form.password') ? 'border-red-500 focus:ring-red-200 focus:border-red-500' : 'border-gray-200 focus:ring-[#9cff00]/30 focus:border-[#108500]' }}">
                                 <button type="button" @click="show = !show" aria-label="Toggle password visibility"
                                     class="absolute right-3 top-1/2 -translate-y-1/2 {{ $errors->has('form.password') ? 'text-red-500' : 'text-gray-400 hover:text-[#108500]' }} transition-colors">
-                                    <i :class="show ? 'bi bi-eye-slash-fill' : 'bi bi-eye-fill'" class="text-md"></i>
+                                    <i :class="show ? 'bi bi-eye-fill' : 'bi bi-eye-slash-fill'" class="text-md"></i>
                                 </button>
                             </div>
-                            @error('form.password')
-                                <p class="text-[10px] text-red-500 font-bold mt-1 ms-1 uppercase italic">
-                                    {{ $message }}
-                                </p>
-                            @enderror
                         </div>
 
                         <input type="hidden" id="device_token" wire:model="device_token">

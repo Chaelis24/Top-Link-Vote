@@ -22,10 +22,10 @@ export default defineConfig({
         port: 5173,
         strictPort: true,
         hmr: {
-            host: "nursery-enable-unsaid.ngrok-free.dev",
+            host: "wispy-stunned-overrun.ngrok-free.dev",
             protocol: "wss",
             clientPort: 443,
         },
-        allowedHosts: ["nursery-enable-unsaid.ngrok-free.dev"],
+        allowedHosts: ["wispy-stunned-overrun.ngrok-free.dev"],
     },
 });

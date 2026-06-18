@@ -128,13 +128,8 @@ new #[Layout('layouts.guest')] #[Title('Reset Password')] class extends Componen
                         <p class="text-gray-500 text-xs md:text-sm">Final step of account recovery</p>
                     </div>
 
-                    {{-- Error flash message --}}
-                    @if (session('error'))
-                        <div
-                            class="mb-4 text-red-600 text-[10px] md:text-[11px] font-bold uppercase p-3 bg-red-50 rounded-lg border border-red-200">
-                            {{ session('error') }}
-                        </div>
-                    @endif
+                    {{-- Successful, Error and Warning Messages --}}
+                    <x-session-flash></x-session-flash>
 
                     {{-- Step progress indicator (all steps completed except Reset) --}}
                     <div class="flex items-center justify-between mb-3 mb-md-8 px-1">
@@ -177,7 +172,6 @@ new #[Layout('layouts.guest')] #[Title('Reset Password')] class extends Componen
                             </label>
                             <input wire:model="email" type="email" readonly
                                 class="w-full px-4 py-2.5 md:py-3 rounded-lg border border-gray-100 bg-gray-50 text-gray-400 outline-none focus:ring-0 focus:border-gray-100 cursor-not-allowed text-sm font-semibold">
-                            <x-input-error :messages="$errors->get('email')" class="mt-2 text-red-600 text-[10px]" />
                         </div>
 
                         {{-- New password field with show/hide toggle --}}
@@ -190,9 +184,8 @@ new #[Layout('layouts.guest')] #[Title('Reset Password')] class extends Componen
                                 class="w-full px-4 py-2.5 md:py-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-[#9cff00]/30 focus:border-[#108500] outline-none transition-all text-[#252525] text-sm">
                             <button type="button" @click="show = !show" aria-label="Toggle password visibility"
                                 class="absolute right-3 top-1/2 -translate-y-1/2 mt-3 {{ $errors->has('password') ? 'text-red-500' : 'text-gray-400 hover:text-[#108500]' }} transition-colors">
-                                <i :class="show ? 'bi bi-eye-slash-fill' : 'bi bi-eye-fill'" class="text-md"></i>
+                                <i :class="show ? 'bi bi-eye-fill' : 'bi bi-eye-slash-fill'" class="text-md"></i>
                             </button>
-                            <x-input-error :messages="$errors->get('password')" class="mt-2 text-red-600 text-[10px]" />
                         </div>
 
                         {{-- Confirm password field with show/hide toggle --}}
@@ -205,7 +198,7 @@ new #[Layout('layouts.guest')] #[Title('Reset Password')] class extends Componen
                                 class="w-full px-4 py-2.5 md:py-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-[#9cff00]/30 focus:border-[#108500] outline-none transition-all text-[#252525] text-sm">
                             <button type="button" @click="show = !show" aria-label="Toggle password visibility"
                                 class="absolute right-3 top-1/2 -translate-y-1/2 mt-3 {{ $errors->has('password') ? 'text-red-500' : 'text-gray-400 hover:text-[#108500]' }} transition-colors">
-                                <i :class="show ? 'bi bi-eye-slash-fill' : 'bi bi-eye-fill'" class="text-md"></i>
+                                <i :class="show ? 'bi bi-eye-fill' : 'bi bi-eye-slash-fill'" class="text-md"></i>
                             </button>
                         </div>
 

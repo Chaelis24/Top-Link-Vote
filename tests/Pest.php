@@ -15,6 +15,18 @@ pest()->extend(Tests\TestCase::class)
     ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
     ->in('Feature');
 
+pest()->extend(Tests\TestCase::class)
+    ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
+    ->in('Performance');
+
+pest()->extend(Tests\TestCase::class)
+    ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
+    ->in('Load');
+
+pest()->extend(Tests\TestCase::class)
+    ->use(Illuminate\Foundation\Testing\RefreshDatabase::class)
+    ->in('Stress');
+
 /*
 |--------------------------------------------------------------------------
 | Expectations
@@ -32,6 +44,20 @@ expect()->extend('toBeOne', function () {
 
 /*
 |--------------------------------------------------------------------------
+| Performance Expectations
+|--------------------------------------------------------------------------
+*/
+
+expect()->extend('toBeUnderThreshold', function (float $thresholdMs) {
+    return $this->toBeLessThan($thresholdMs);
+});
+
+expect()->extend('toHaveErrorRateUnder', function (float $maxErrorRate) {
+    return expect($this->value)->toBeLessThanOrEqual($maxErrorRate);
+});
+
+/*
+|--------------------------------------------------------------------------
 | Functions
 |--------------------------------------------------------------------------
 |
@@ -41,7 +67,40 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
+function performanceHelper(): \Tests\Helpers\PerformanceHelper
 {
-    // ..
+    return new \Tests\Helpers\PerformanceHelper;
+}
+
+function runConcurrentRequests(int $count, callable $requestFn): array
+{
+    $results = [];
+    for ($i = 0; $i < $count; $i++) {
+        $results[] = $requestFn($i);
+    }
+    return $results;
+}
+
+function measureResponseTime(callable $fn): float
+{
+    $start = microtime(true);
+    $fn();
+    return (microtime(true) - $start) * 1000;
+}
+
+function formatDuration(float $ms): string
+{
+    if ($ms < 1000) {
+        return round($ms, 2) . ' ms';
+    }
+    return round($ms / 1000, 2) . ' s';
+}
+
+function performanceReportPath(string $filename = ''): string
+{
+    $path = storage_path('app/performance-reports');
+    if ($filename) {
+        $path .= '/' . $filename;
+    }
+    return $path;
 }

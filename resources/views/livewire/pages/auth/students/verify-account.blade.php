@@ -46,9 +46,8 @@ new #[Layout('layouts.guest')] #[Title('Verify Account')] class extends Componen
         $user = $student->user;
 
         if ($user->email_verified_at !== null) {
-            throw ValidationException::withMessages([
-                'student_id' => 'This account is already verified. You can now login.',
-            ]);
+            session()->flash('status', 'This account is already verified. You can now login.');
+            return;
         }
 
         if (Cache::has('otp_student_' . $this->student_id)) {
@@ -105,7 +104,7 @@ new #[Layout('layouts.guest')] #[Title('Verify Account')] class extends Componen
         ]);
 
         if (empty($this->device_token)) {
-            $this->addError('password', 'Device verification failed. Please refresh the page.');
+            session()->flash('error', 'Device verification failed. Please refresh the page.');
             return;
         }
 
@@ -135,16 +134,13 @@ new #[Layout('layouts.guest')] #[Title('Verify Account')] class extends Componen
 
 {{-- Full-screen centered container for the account-verification form --}}
 <div class="fixed inset-0 z-[9999] overflow-y-auto bg-white flex items-center justify-center p-4 m-0 w-full h-full"
-    x-init="
-        let w = $wire;
-        let i = 0;
-        (function fn() {
-            if (typeof FingerprintJS !== 'undefined') {
-                FingerprintJS.load().then(fp => fp.get()).then(r => w.set('device_token', r.visitorId)).catch(e => console.error(e));
-            } else if (i++ < 15) { setTimeout(fn, 300); }
-        })();
-    "
-    style="font-size: clamp(13px, 2vw + 8px, 16px);">
+    x-init="let w = $wire;
+    let i = 0;
+    (function fn() {
+        if (typeof FingerprintJS !== 'undefined') {
+            FingerprintJS.load().then(fp => fp.get()).then(r => w.set('device_token', r.visitorId)).catch(e => console.error(e));
+        } else if (i++ < 15) { setTimeout(fn, 300); }
+    })();" style="font-size: clamp(13px, 2vw + 8px, 16px);">
     <div class="absolute inset-0 bg-white"></div>
 
     <div
@@ -208,31 +204,10 @@ new #[Layout('layouts.guest')] #[Title('Verify Account')] class extends Componen
                         </p>
                     </div>
 
-                    {{-- Status / success flash message --}}
-                    @if (session('status'))
-                        <div
-                            class="mb-4 text-[#108500] text-[10px] md:text-[11px] font-bold uppercase p-3 bg-green-50 rounded-lg border border-green-100">
-                            {{ session('status') }}
-                        </div>
-                    @endif
-                    {{-- Warning flash message --}}
-                    @if (session('warning'))
-                        <div
-                            class="mb-4 text-[#b8860b] text-[10px] md:text-[11px] font-bold uppercase p-3 bg-yellow-50 rounded-lg border border-yellow-200">
-                            {{ session('warning') }}
-                        </div>
-                    @endif
-                    {{-- Error flash message --}}
-                    @if (session('error'))
-                        <div
-                            class="mb-4 text-red-600 text-[10px] md:text-[11px] font-bold uppercase p-3 bg-red-50 rounded-lg border border-red-200">
-                            {{ session('error') }}
-                        </div>
-                    @endif
+                    {{-- Successful, Error and Warning Messages --}}
+                    <x-session-flash></x-session-flash>
 
                     <input type="hidden" id="device_token" wire:model="device_token">
-                    <x-input-error :messages="$errors->get('device_token')"
-                        class="mt-2 text-red-600 text-[10px] uppercase font-bold block" />
 
                     {{-- Step 1: Submit Student ID to receive OTP --}}
                     @if ($step === 1)
@@ -245,7 +220,6 @@ new #[Layout('layouts.guest')] #[Title('Verify Account')] class extends Componen
                                 <input wire:model="student_id" type="text" placeholder="e.g. 23-0001" required
                                     autofocus
                                     class="w-full px-4 py-2.5 md:py-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-[#9cff00]/30 focus:border-[#108500] outline-none transition-all text-[#252525] text-sm">
-                                <x-input-error :messages="$errors->get('student_id')" class="mt-2 text-red-600 text-[10px]" />
                             </div>
 
                             {{-- Send OTP button with loading state --}}
@@ -268,7 +242,6 @@ new #[Layout('layouts.guest')] #[Title('Verify Account')] class extends Componen
                                 <input wire:model="code" type="text" maxlength="6" placeholder="000000" required
                                     autofocus
                                     class="w-full px-4 py-2.5 md:py-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-[#9cff00]/30 focus:border-[#108500] outline-none transition-all text-center text-lg md:text-xl font-bold tracking-[0.3em] md:tracking-[0.5em] text-[#252525]">
-                                <x-input-error :messages="$errors->get('code')" class="mt-2 text-red-600 text-[10px]" />
                             </div>
 
                             {{-- Verify OTP button --}}
@@ -299,9 +272,8 @@ new #[Layout('layouts.guest')] #[Title('Verify Account')] class extends Componen
                                     class="w-full px-4 py-2.5 md:py-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-[#9cff00]/30 focus:border-[#108500] outline-none transition-all text-[#252525] text-sm">
                                 <button type="button" @click="show = !show" aria-label="Toggle password visibility"
                                     class="absolute right-3 top-1/2 -translate-y-1/2 mt-3 {{ $errors->has('password') ? 'text-red-500' : 'text-gray-400 hover:text-[#108500]' }} transition-colors">
-                                    <i :class="show ? 'bi bi-eye-slash-fill' : 'bi bi-eye-fill'" class="text-md"></i>
+                                    <i :class="show ? 'bi bi-eye-fill' : 'bi bi-eye-slash-fill'" class="text-md"></i>
                                 </button>
-                                <x-input-error :messages="$errors->get('password')" class="mt-2 text-red-600 text-[10px]" />
                             </div>
 
                             {{-- Confirm password field with show/hide toggle --}}
@@ -315,7 +287,7 @@ new #[Layout('layouts.guest')] #[Title('Verify Account')] class extends Componen
                                     class="w-full px-4 py-2.5 md:py-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-[#9cff00]/30 focus:border-[#108500] outline-none transition-all text-[#252525] text-sm">
                                 <button type="button" @click="show = !show" aria-label="Toggle password visibility"
                                     class="absolute right-3 top-1/2 -translate-y-1/2 mt-3 {{ $errors->has('password') ? 'text-red-500' : 'text-gray-400 hover:text-[#108500]' }} transition-colors">
-                                    <i :class="show ? 'bi bi-eye-slash-fill' : 'bi bi-eye-fill'" class="text-md"></i>
+                                    <i :class="show ? 'bi bi-eye-fill' : 'bi bi-eye-slash-fill'" class="text-md"></i>
                                 </button>
                             </div>
 

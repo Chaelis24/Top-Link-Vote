@@ -363,9 +363,9 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
     {
         $students = Student::with('block.course')->get();
         $csv = fopen('php://temp', 'w+');
-        fputcsv($csv, ['ID', 'Name', 'Course', 'Year', 'Status']);
+        fputcsv($csv, ['Student ID', 'First Name', 'Middle Name', 'Last Name', 'Suffix', 'Course', 'Year Level', 'Section', 'Email', 'Phone', 'Address', 'Birthday', 'Gender', 'Status']);
         foreach ($students as $s) {
-            fputcsv($csv, [$s->student_id, $s->first_name . ' ' . $s->last_name, $s->block->course->name ?? 'N/A', $s->block->year_level ?? 'N/A', $s->status]);
+            fputcsv($csv, [$s->student_id, $s->first_name, $s->middle_name, $s->last_name, $s->suffix, $s->block->course->name ?? 'N/A', $s->block->year_level ?? 'N/A', $s->block->section, $s->user->email, $s->phone, $s->address, $s->birthday ? \Carbon\Carbon::parse($s->birthday)->format('Y-m-d') : '', $s->gender, $s->status]);
         }
         rewind($csv);
         $content = stream_get_contents($csv);

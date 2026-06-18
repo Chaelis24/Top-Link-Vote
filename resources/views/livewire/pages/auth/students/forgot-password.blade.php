@@ -41,7 +41,7 @@ new #[Layout('layouts.guest')] #[Title('Forgot Password')] class extends Compone
         }
 
         if ($student->user->email_verified_at === null) {
-            session()->flash('error', 'Please verify your account first before resetting your password.');
+            session()->flash('warning', 'Please verify your account first before resetting your password.');
             return;
         }
 
@@ -53,7 +53,7 @@ new #[Layout('layouts.guest')] #[Title('Forgot Password')] class extends Compone
         }
 
         $this->isSent = true;
-        session()->flash('status', 'Reset link sent!');
+        session()->flash('status', 'Email sent—please check your inbox to proceed with the password reset.');
     }
 }; ?>
 
@@ -143,13 +143,8 @@ new #[Layout('layouts.guest')] #[Title('Forgot Password')] class extends Compone
                         </div>
                     </div>
 
-                    {{-- Error flash message --}}
-                    @if (session('error'))
-                        <div
-                            class="mb-4 text-red-600 text-[10px] md:text-[11px] font-bold uppercase p-3 bg-red-50 rounded-lg border border-red-200">
-                            {{ session('error') }}
-                        </div>
-                    @endif
+                    {{-- Successful, Error and Warning Messages --}}
+                    <x-session-flash></x-session-flash>
 
                     {{-- Step 1: enter Student ID and email --}}
                     @if (!$isSent)
@@ -162,7 +157,6 @@ new #[Layout('layouts.guest')] #[Title('Forgot Password')] class extends Compone
                                 <input wire:model="student_id" type="text" placeholder="e.g. 23-0001" required
                                     autofocus
                                     class="w-full px-4 py-2.5 md:py-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-[#9cff00]/30 focus:border-[#108500] outline-none transition-all text-[#252525] text-sm">
-                                <x-input-error :messages="$errors->get('student_id')" class="mt-2 text-red-600 text-[10px]" />
                             </div>
 
                             <div>
@@ -172,7 +166,6 @@ new #[Layout('layouts.guest')] #[Title('Forgot Password')] class extends Compone
                                 </label>
                                 <input wire:model="email" type="email" placeholder="example@gmail.com" required
                                     class="w-full px-4 py-2.5 md:py-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-[#9cff00]/30 focus:border-[#108500] outline-none transition-all text-[#252525] text-sm">
-                                <x-input-error :messages="$errors->get('email')" class="mt-2 text-red-600 text-[10px]" />
                             </div>
 
                             {{-- Submit button with loading state --}}
@@ -185,21 +178,6 @@ new #[Layout('layouts.guest')] #[Title('Forgot Password')] class extends Compone
                     @else
                         {{-- Step 2: confirmation that email was sent --}}
                         <div class="text-center py-4">
-                            <div
-                                class="w-16 h-16 md:w-20 md:h-20 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-4 md:mb-6">
-                                <svg class="w-8 h-8 md:w-10 md:h-10 text-[#108500]" fill="none" stroke="currentColor"
-                                    viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z">
-                                    </path>
-                                </svg>
-                            </div>
-                            <h3 class="text-md md:text-lg font-bold text-[#252525] mb-2">Check your Email</h3>
-                            <p class="text-xs md:text-sm text-gray-500 mb-4 md:mb-6 px-4">
-                                We've sent a password reset link to <br><b
-                                    class="text-[#108500]">{{ $email }}</b>
-                            </p>
-
                             <button type="button" wire:click="$set('isSent', false)"
                                 class="text-[10px] md:text-xs font-black text-[#108500] uppercase tracking-widest hover:underline">
                                 Didn't receive it? Try again

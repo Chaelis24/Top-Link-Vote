@@ -59,6 +59,18 @@
             "@php artisan config:clear --ansi",
             "@php artisan test"
         ],
+        "test:performance": [
+            "@php artisan config:clear --ansi",
+            "@php artisan test --group=performance"
+        ],
+        "test:load": [
+            "@php artisan config:clear --ansi",
+            "@php artisan test --group=load"
+        ],
+        "test:stress": [
+            "@php artisan config:clear --ansi",
+            "@php artisan test --group=stress"
+        ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
             "@php artisan package:discover --ansi"

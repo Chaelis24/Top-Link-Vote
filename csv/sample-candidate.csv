@@ -1,49 +1,49 @@
-student_id,position
-23-0029,President
-23-0025,President
-23-0002,President
-23-0006,President
-23-0003,President
-23-0007,President
-23-0011,President
-23-0015,President
-23-0008,Vice President
-23-0009,Vice President
-23-0014,Vice President
-23-0019,Vice President
-23-0012,Vice President
-23-0022,Vice President
-23-0020,Vice President
-23-0031,Vice President
-23-0016,Secretary
-23-0018,Secretary
-23-0023,Secretary
-23-0096,Secretary
-23-0028,Secretary
-23-0033,Secretary
-23-0035,Secretary
-23-0039,Secretary
-23-0024,Treasurer
-23-0027,Treasurer
-23-0030,Treasurer
-23-0034,Treasurer
-23-0038,Treasurer
-23-0042,Treasurer
-23-0044,Treasurer
-23-0047,Treasurer
-23-0001,Auditor
-23-0036,Auditor
-23-0037,Auditor
-23-0041,Auditor
-23-0048,Auditor
-23-0053,Auditor
-23-0054,Auditor
-23-0059,Auditor
-23-0040,P.R.O.
-23-0043,P.R.O.
-23-0045,P.R.O.
-23-0050,P.R.O.
-23-0057,P.R.O.
-23-0062,P.R.O.
-23-0063,P.R.O.
-23-0067,P.R.O.
+student_id,position,party_name,achievements,previous_position,previous_school_projects,average_grade,title,tagline,agenda
+23-0029,President,Progressive Alliance,Dean's List 2025,Batch Representative,Campus Clean-up Drive,94.5,The Visionary Leader,Empowering Every Voice,Digitalizing campus services and expanding student scholarships
+23-0025,President,United Students,Leadership Award 2024,Sports Committee Head,Intramural Games 2025,91.2,The Action-Oriented Pioneer,Action Speaks Louder,Upgrading sports facilities and establishing a wellness center
+23-0002,President,Forward Movement,Best Debater 2025,PRO,Inter-school Debate Cup,95.0,The Voice of Reason,Transparency and Progress,Live-streaming student council meetings and open budget auditing
+23-0006,President,Progressive Alliance,Community Service Award,Secretary,Adopt-a-Community Program,92.8,The Servant Leader,Service Above Self,Expanding student outreach programs and local community partnerships
+23-0003,President,United Students,Academic Excellence,Treasurer,Fundraising Gala 2025,96.1,The Catalyst for Change,A Smarter Campus for All,Securing corporate sponsorships for student tech and research grants
+23-0007,President,Forward Movement,Outstanding Student 2025,Vice President,Mental Health Week,93.4,The Empathetic Advocate,Inclusivity in Every Action,Establishing 24/7 student counseling services and peer support networks
+23-0011,President,Progressive Alliance,Top 10 Batch Rank,Auditor,Financial Transparency App,94.2,The Analytical Innovator,Precision and Purpose,Automating student organization liquidations and fund requests
+23-0015,President,United Students,Youth Leadership Delegate,Grade Representative,Eco-Brick Initiative,90.5,The Eco-Warrior,Green Campus Green Future,Banning single-use plastics and installing solar-powered charging stations
+23-0008,Vice President,Progressive Alliance,Math Olympiad Finalist,Treasurer,STEM Fair 2025,92.1,The Strategic Mind,Bridging Ideas into Reality,Creating cross-department academic mentoring programs
+23-0009,Vice President,United Students,Best Organizer 2024,Logistics Head,Cultural Night Festival,89.7,The Builder of Bridges,Unity in Diversity,Expanding cultural festivals and supporting minority student circles
+23-0014,Vice President,Forward Movement,Perfect Attendance Award,Class President,Food Drive 2025,91.0,The Dedicated Partner,Reliable Leadership,Setting up a 24/7 student grievance and feedback desk
+23-0019,Vice President,Progressive Alliance,Science Fair 1st Place,Club President,Tech Expo 2025,93.5,The Tech Pioneer,Innovating Student Life,Developing a unified mobile app for campus events and room bookings
+23-0012,Vice President,United Students,Model United Nations Delegate,PRO,Model UN Conference,91.8,The Global Thinker,Broadening Our Horizons,Securing international student exchange opportunities and webinars
+23-0022,Vice President,Forward Movement,Volunteering Milestone,Secretary,Blood Donation Drive,90.2,The Heart of the Council,Compassion in Action,Partnering with local clinics for free annual medical checkups
+23-0020,Vice President,Progressive Alliance,Best Researcher 2025,Committee Member,Research Symposium,94.0,The Academic Ally,Elevating Your Standards,Providing free thesis formatting workshops and database access
+23-0031,Vice President,United Students,Varsity Captain,Sports Coordinator,Regional Meet 2025,88.9,The Team Player,Stronger Together,Upgrading the campus gym equipment and expanding intramural divisions
+23-0016,Secretary,Progressive Alliance,Journalism Award,Editor-in-Chief,Campus Newspaper Digitalization,93.1,The Detail-Oriented Archivist,Clarity and Connection,Publishing monthly digital summaries of council minutes and memos
+23-0018,Secretary,United Students,Spelling Bee Champion,Class Secretary,Yearbook Committee,91.5,The Organized Mind,Efficiency in Motion,Transitioning all student document submissions to a paperless system
+23-0023,Secretary,Forward Movement,Essay Writing Champion,Documentation Head,Arts Exhibition,90.8,The Articulate Record-Keeper,Your Words Recorded,Creating a centralized public archive for all student charter laws
+23-0096,Secretary,Progressive Alliance,Best Circle Leader,Secretary,Club Recruitment Week,89.9,The Systemizer,Streamlining Your Progress,Reducing waiting times for student ID replacements and locker rentals
+23-0028,Secretary,United Students,Honor Roll 2025,Class Representative,Charity Bazaar,92.4,The Methodical Organizer,Structure for Success,Standardizing event proposal templates for faster council approval
+23-0033,Secretary,Forward Movement,Debate Semifinalist,PRO,Literary Festival,91.1,The Communication Expert,Bridging the Gap,Launching a weekly email newsletter directly to the student body
+23-0035,Secretary,Progressive Alliance,Perfect Conduct Award,Assistant Secretary,Orientation Day,90.3,The Reliable Hand,Consistent and Clear,Creating an automated reminder system for student event deadlines
+23-0039,Secretary,United Students,Top 5 in Class,Department Secretary,Career Fair,93.8,The Record Builder,Documenting the Future,Compiling a database of active alumni for student networking
+23-0024,Treasurer,Progressive Alliance,Accountancy Quiz Bee Winner,Assistant Treasurer,Auditing Seminar,95.2,The Financial Guardian,Every Cent Accounted For,Publishing real-time budget tracking dashboards for public view
+23-0027,Treasurer,United Students,Excellence in Math,Treasurer,Bake Sale Fundraiser,91.7,The Resourceful Planner,Maximizing Our Funds,Allocating micro-grants directly to smaller, underfunded student clubs
+23-0030,Treasurer,Forward Movement,Honor Roll 2024,Class Treasurer,Charity Concert,92.9,The Budget Strategist,Fiscal Responsibility First,Reducing event overhead costs to lower student ticket prices
+23-0034,Treasurer,Progressive Alliance,Dean's List 2025,Finance Officer,Thrift Shop Project,94.1,The Transparent Safeguard,Honesty in Finance,Implementing digital payment options (G-Cash/Cards) for campus fees
+23-0038,Treasurer,United Students,Entrepreneurship Award,Project Manager,Startup Weekend,90.6,The Value Creator,Making Funds Work for You,Launching a student-run coop store with discounted school supplies
+23-0042,Treasurer,Forward Movement,Math Club Officer,Committee Member,Math Challenge 2025,91.4,The Precision Accountant,Accountability Matters,Offering monthly breakdowns of student council spending via email
+23-0044,Treasurer,Progressive Alliance,Top Accountancy Student,Treasurer,Corporate Sponsorship Drive,94.8,The Wealth Strategist,Investing in Students,Creating emergency cash funds for students facing sudden financial crises
+23-0047,Treasurer,United Students,Best Pitch Award,Finance Staff,Donation Campaign,89.5,The Practical Budgeter,Smart Spending Better Campus,Redirecting unused council funds toward student lounge improvements
+23-0001,Auditor,Progressive Alliance,Top Auditing Student,Auditor,Club Liquidation Review,95.5,The Strict Guard,Uncompromising Integrity,Conducting bi-weekly check-ins on all organizational expenditures
+23-0036,Auditor,United Students,Excellence in Statistics,Committee Member,Data Analytics Project,92.3,The Fact Checker,Data Over Speculation,Using analytics to optimize resource allocation for student events
+23-0037,Auditor,Forward Movement,Academic Scholar,Class Auditor,Inventory Drive,91.9,The Balanced Eye,Fairness and Accuracy,Creating an open portal for checking the usage of campus assets
+23-0041,Auditor,Progressive Alliance,Dean's List 2025,Finance Analyst,Budget Reform Initiative,94.6,The Systematic Checker,Zero Waste Leadership,Auditing the campus cafeteria pricing to ensure student-friendly rates
+23-0048,Auditor,United Students,Honor Roll 2025,Assistant Auditor,Compliance Check,90.1,The Accountability Partner,Your Trust Safeguarded,Enforcing strict non-bias rules during organization fund allocations
+23-0053,Auditor,Forward Movement,Best Critic Award,Ombudsman Staff,Policy Review,91.2,The Standard Bearer,Upholding Excellence,Reviewing student constitution codes to remove outdated campus policies
+23-0054,Auditor,Progressive Alliance,Math Quiz Whiz,Volunteer,E-Sports Tournament,93.0,The Logical Inspector,Clarity Through Numbers,Optimizing the logistics and supply chain of physical council goods
+23-0059,Auditor,United Students,Top 15 Batch Rank,Class Representative,Textbook Exchange Program,90.7,The Practical Reviewer,Protecting Student Assets,Auditing laboratory equipment to push for necessary school upgrades
+23-0040,P.R.O.,Progressive Alliance,Best Speaker 2025,Media Relations Officer,Campus Film Festival,91.3,The Social Connector,Amplifying Your Voice,Launching an official student council podcast and active TikTok page
+23-0043,P.R.O.,United Students,Graphics Design Award,Creative Director,Marketing Campaign 2025,89.4,The Creative Storyteller,Visualizing Our Goals,Redesigning the campus bulletin boards and creating high-quality infographics
+23-0045,P.R.O.,Forward Movement,Photography 1st Place,Publicity Head,Photojournalism Exhibit,90.5,The Lens of the Campus,Capturing Student Life,Highlighting student achievements on social media spotlights weekly
+23-0050,P.R.O.,Progressive Alliance,Best Campaign Lead,PRO,Voter Awareness Drive,92.0,The Community Voice,Informed and Involved,Setting up digital kiosks around campus for real-time news alerts
+23-0057,P.R.O.,United Students,Social Media Manager,Creative Staff,Concert Promotion,88.7,The Digital Networker,Connecting the Campus,Creating unified Discord and Telegram servers for major announcements
+23-0062,P.R.O.,Forward Movement,Public Speaking Champion,Debater,Campus Forum 2025,91.8,The Bold Orator,Truth in Communication,Holding monthly town hall meetings with university administration
+23-0063,P.R.O.,Progressive Alliance,Video Editing Award,Multimedia Artist,Short Film Showcase,90.1,The Visual Innovator,Bringing Ideas to Light,Producing high-quality video tutorials on how to navigate campus systems
+23-0067,P.R.O.,United Students,Event Host of the Year,Host/Emcee,Freshman Welcoming Party,89.2,The Engaging Communicator,Making Everyone Heard,Establishing interactive suggestion boxes across all main buildings

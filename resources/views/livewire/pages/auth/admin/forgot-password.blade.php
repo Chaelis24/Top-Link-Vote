@@ -30,6 +30,8 @@ new #[Layout('layouts.guest')] class extends Component {
         } else {
             $this->addError('email', __($status));
         }
+
+        session()->flash('status', 'Email sent—please check your inbox to proceed with the password reset.');
     }
 }; ?>
 
@@ -74,20 +76,14 @@ new #[Layout('layouts.guest')] class extends Component {
                     <p class="text-gray-500 text-xs md:text-sm">Enter your email to receive instructions.</p>
                 </div>
 
-                {{-- Status / success flash message --}}
-                @if (session('status'))
-                    <div
-                        class="mb-2 text-green-600 text-[10px] font-bold uppercase p-3 bg-green-50 rounded-lg border border-green-100">
-                        {{ session('status') }}
-                    </div>
-                @endif
+                {{-- Successful, Error and Warning Messages --}}
+                <x-session-flash></x-session-flash>
 
                 <form wire:submit="sendPasswordResetLink" class="space-y-4 md:space-y-6">
                     <div>
                         <label class="text-[10px] font-bold uppercase text-gray-500 mb-1 block ms-1">Admin Email</label>
                         <input wire:model="email" type="email" placeholder="admin@gmail.com" required autofocus
                             class="w-full px-4 py-2.5 md:py-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-blue-100 focus:border-[#1e3a8a] outline-none transition-all text-sm text-[#1e293b]">
-                        <x-input-error :messages="$errors->get('email')" class="mt-2 text-red-600 text-[10px]" />
                     </div>
 
                     {{-- Submit button with loading state --}}

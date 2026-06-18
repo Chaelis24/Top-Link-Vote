@@ -2,9 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\Block;
-use App\Models\Role;
-use App\Models\User;
+use App\Models\{User, Role};
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
@@ -31,45 +29,5 @@ class DatabaseSeeder extends Seeder
         );
 
         $admin->assignRole('admin');
-
-        $candidateRole = Role::where('name', 'candidate')->first();
-
-        if (!$candidateRole) {
-            $this->command->error("Role 'candidate' not found!");
-        }
-
-        $this->call([
-            CourseAndBlockSeeder::class,
-        ]);
-
-        $block = Block::where('year_level', 3)->where('section', 'A')->first();
-
-        $michael = User::updateOrCreate(
-            ['email' => 'michaelfarinas112@gmail.com'],
-            [
-                'name' => 'Michael Farinas',
-                'password' => Hash::make('kel'),
-            ]
-        );
-
-        $michael->assignRole('student');
-        $michael->assignRole('candidate');
-
-        $michael->student()->updateOrCreate(
-            ['student_id' => '23-0029'],
-            [
-                'first_name'  => 'Michael',
-                'middle_name' => 'Buena',
-                'last_name'   => 'Farinas',
-                'suffix'      => 'Jr',
-                'course_id'   => $block->course_id,
-                'block_id'    => $block->id,
-                'phone'       => '09515430735',
-                'address'     => 'Cabanatuan City',
-                'birthday'    => '2004-09-24',
-                'gender'      => 'Male',
-                'status'      => 'active',
-            ]
-        );
     }
 }

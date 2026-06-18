@@ -28,16 +28,14 @@ new #[Layout('layouts.guest')] class extends Component {
             $user = $this->form->validateCredentials();
 
             if (!$user->roles()->where('name', 'admin')->exists()) {
-                $this->addError('form.email', 'Unauthorized access. This portal is for administrators only.');
+                session()->flash('error', 'Unauthorized access. This portal is for administrators only.');
                 return;
             }
 
             DB::transaction(function () use ($user) {
                 DB::table('users')->where('id', $user->id)->lockForUpdate()->first();
 
-                $oldSessionIds = DB::table('sessions')
-                    ->where('user_id', $user->id)
-                    ->pluck('id');
+                $oldSessionIds = DB::table('sessions')->where('user_id', $user->id)->pluck('id');
 
                 DB::table('sessions')->where('user_id', $user->id)->delete();
 
@@ -52,9 +50,7 @@ new #[Layout('layouts.guest')] class extends Component {
             $this->redirectIntended(route('admin.dashboard'), navigate: true);
         } catch (\Illuminate\Validation\ValidationException $e) {
             $this->form->password = '';
-            $this->dispatch('auth-failed');
-
-            throw $e;
+            session()->flash('error', 'Invalid credentials.');
         }
     }
 
@@ -72,7 +68,7 @@ new #[Layout('layouts.guest')] class extends Component {
         if ($status === Password::RESET_LINK_SENT) {
             session()->flash('status', __($status));
         } else {
-            $this->addError('form.email', __($status));
+            session()->flash('error', __($status));
         }
     }
 }; ?>
@@ -122,21 +118,15 @@ new #[Layout('layouts.guest')] class extends Component {
                     <p class="text-gray-500 text-xs md:text-sm">Enter your credentials.</p>
                 </div>
 
+                {{--Successful, Error and Warning Messages--}}
+                <x-session-flash></x-session-flash>
+
                 <form wire:submit="login" class="space-y-4 md:space-y-5">
                     {{-- Email input field --}}
                     <div>
                         <label class="text-[10px] font-bold uppercase text-gray-500 mb-1 block ms-1">Admin Email</label>
                         <input wire:model="form.email" type="email" placeholder="admin@gmail.com" required autofocus
-                            class="w-full px-4 py-2.5 md:py-3 rounded-lg border outline-none transition-all text-sm text-[#1e293b] focus:ring-2
-                    {{ $errors->has('email') || $errors->has('form.email')
-                        ? 'border-red-500 focus:border-red-500 focus:ring-red-200'
-                        : 'border-gray-200 focus:ring-blue-100 focus:border-[#1e3a8a]' }}">
-                        @error('email')
-                            <p class="text-[10px] text-red-500 font-bold mt-1 ms-1 uppercase italic">{{ $message }}</p>
-                        @enderror
-                        @error('form.email')
-                            <p class="text-[10px] text-red-500 font-bold mt-1 ms-1 uppercase italic">{{ $message }}</p>
-                        @enderror
+                            class="w-full px-4 py-2.5 md:py-3 rounded-lg border outline-none transition-all text-sm text-[#1e293b] focus:ring-2">
                     </div>
 
                     {{-- Password input field with visibility toggle --}}
@@ -146,13 +136,10 @@ new #[Layout('layouts.guest')] class extends Component {
                         <div class="relative">
                             <input :type="show ? 'text' : 'password'" wire:model="form.password" placeholder="••••••••"
                                 required
-                                class="w-full px-4 py-2.5 md:py-3 rounded-lg border outline-none transition-all text-sm text-[#1e293b] focus:ring-2
-                            {{ $errors->has('password') || $errors->has('form.password')
-                                ? 'border-red-500 focus:border-red-500 focus:ring-red-200'
-                                : 'border-gray-200 focus:ring-blue-100 focus:border-[#1e3a8a]' }}">
+                                class="w-full px-4 py-2.5 md:py-3 rounded-lg border outline-none transition-all text-sm text-[#1e293b] focus:ring-2">
                             <button type="button" @click="show = !show" aria-label="Toggle password visibility"
                                 class="absolute right-3 top-1/2 -translate-y-1/2 {{ $errors->has('form.password') ? 'text-red-500' : 'text-gray-400 hover:text-[#3b82f6]' }} transition-colors">
-                                <i :class="show ? 'bi bi-eye-slash-fill' : 'bi bi-eye-fill'" class="text-md"></i>
+                                <i :class="show ? 'bi bi-eye-fill' : 'bi bi-eye-slash-fill'" class="text-md"></i>
                             </button>
                         </div>
                     </div>
