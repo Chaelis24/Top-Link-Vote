@@ -215,9 +215,11 @@ return [
     'environments' => [
         'production' => [
             'supervisor-1' => [
+                'queue' => ['default', 'imports'],
                 'maxProcesses' => 10,
                 'balanceMaxShift' => 1,
                 'balanceCooldown' => 3,
+                'timeout' => 650,
             ],
         ],
 
@@ -230,6 +232,7 @@ return [
                 'minProcesses' => 1,
                 'tries' => 1,
                 'backoff' => 0,
+                'timeout' => 650,
             ],
         ],
     ],

@@ -81,9 +81,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
         $activeCycleId = $this->activeCycle ? $this->activeCycle->id : 0;
 
         $stats = cache()->remember("candidates_stats_{$activeCycleId}", 120, function () use ($activeCycleId) {
-            return Candidate::where('election_cycle_id', $activeCycleId)
-                ->selectRaw("count(*) as total")
-                ->first();
+            return Candidate::where('election_cycle_id', $activeCycleId)->selectRaw('count(*) as total')->first();
         });
 
         return [
@@ -243,6 +241,19 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
             );
 
             DB::commit();
+
+            \App\Jobs\LogActivity::dispatch([
+                'user_id' => auth()->id(),
+                'action' => 'Updated Candidate',
+                'description' => 'Updated details for candidate: ' . $candidate->id,
+                'properties' => [
+                    'candidate_id' => $candidate->id,
+                    'party_name' => $data['party_name'],
+                ],
+                'ip_address' => request()->ip(),
+                'user_agent' => request()->userAgent(),
+            ])->onQueue('logs');
+
             $this->dispatch('close-modal', id: 'editCandidateModal');
             $this->dispatch('swal', [
                 'title' => 'Updated!',
@@ -260,23 +271,44 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
     }
 
     /**
-     * Permanently delete a candidate record.
+     * Revert a candidate's status back to pending for re-approval.
      *
      * @param  int  $id
      */
-    public function deleteCandidate($id)
+    public function backoutCandidate($id)
     {
         try {
-            Candidate::destroy($id);
+            $candidate = Candidate::findOrFail($id);
+            $previousStatus = $candidate->getOriginal('status');
+
+            $candidate->update([
+                'status' => 'pending',
+            ]);
+
+            cache()->forget('candidates_stats_' . $candidate->election_cycle_id);
+
+            \App\Jobs\LogActivity::dispatch([
+                'user_id' => auth()->id(),
+                'action' => 'Backout Candidate',
+                'description' => 'Candidate ID: ' . $id . ' status was reverted to pending.',
+                'properties' => [
+                    'candidate_id' => $id,
+                    'previous_status' => $previousStatus,
+                    'new_status' => 'pending',
+                ],
+                'ip_address' => request()->ip(),
+                'user_agent' => request()->userAgent(),
+            ])->onQueue('logs');
+
             $this->dispatch('swal', [
-                'title' => 'Deleted',
-                'text' => 'The candidate has been removed from the records.',
-                'icon' => 'info',
+                'title' => 'Backout Success',
+                'text' => 'The candidate status has been reverted to pending.',
+                'icon' => 'warning',
             ]);
         } catch (\Exception $e) {
             $this->dispatch('swal', [
-                'title' => 'Delete Error',
-                'text' => 'Could not delete candidate: ' . $e->getMessage(),
+                'title' => 'Error',
+                'text' => 'Could not backout candidate: ' . $e->getMessage(),
                 'icon' => 'error',
             ]);
         }
@@ -312,9 +344,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
             $headers = fgetcsv($file);
             if (!$headers || array_map('trim', $headers) !== $expectedHeaders) {
                 fclose($file);
-                throw new \Exception(
-                    'Invalid CSV format. Expected columns in this order: ' . implode(',', $expectedHeaders)
-                );
+                throw new \Exception('Invalid CSV format. Expected columns in this order: ' . implode(',', $expectedHeaders));
             }
 
             DB::beginTransaction();
@@ -329,19 +359,19 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                 $row = array_map('trim', $row);
 
                 try {
-                    $studentId = $row[0] ?? '';
-                    $positionName = $row[1] ?? '';
-                    $partyName = $row[2] ?? '';
-                    $achievements = $row[3] ?? '';
-                    $previousPosition = $row[4] ?? '';
-                    $previousSchoolProjects = $row[5] ?? '';
-                    $averageGrade = $row[6] !== '' ? $row[6] : null;
-                    $title = $row[7] ?? '';
-                    $tagline = $row[8] ?? '';
-                    $agenda = $row[9] ?? '';
+                    $studentId = !empty($row[0]) ? trim($row[0]) : '';
+                    $positionName = !empty($row[1]) ? trim($row[1]) : '';
+                    $partyName = !empty($row[2]) ? trim($row[2]) : '';
+                    $achievements = !empty($row[3]) ? trim($row[3]) : null;
+                    $previousPosition = !empty($row[4]) ? trim($row[4]) : null;
+                    $previousSchoolProjects = !empty($row[5]) ? trim($row[5]) : null;
+                    $averageGrade = isset($row[6]) && $row[6] !== '' ? $row[6] : null;
+                    $title = !empty($row[7]) ? trim($row[7]) : '';
+                    $tagline = !empty($row[8]) ? trim($row[8]) : '';
+                    $agenda = !empty($row[9]) ? trim($row[9]) : '';
 
                     if (empty($studentId) || empty($positionName)) {
-                        $errors[] = "Skipped row: student_id and position are required.";
+                        $errors[] = 'Skipped row: student_id and position are required.';
                         continue;
                     }
 
@@ -411,6 +441,20 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
 
             DB::commit();
 
+            \App\Jobs\LogActivity::dispatch([
+                'user_id' => auth()->id(),
+                'action' => 'Import Candidates CSV',
+                'description' => 'Admin imported candidates. ' . $importedCount . ' successes, ' . count($errors) . ' errors.',
+                'properties' => [
+                    'imported_count' => $importedCount,
+                    'skipped_rows_count' => count($errors),
+                    'errors' => $errors,
+                    'file_name' => $this->csvFile->getClientOriginalName(),
+                ],
+                'ip_address' => request()->ip(),
+                'user_agent' => request()->userAgent(),
+            ])->onQueue('logs');
+
             $message = "Imported {$importedCount} candidates.";
             if (!empty($errors)) {
                 $message .= ' ' . count($errors) . ' row(s) skipped.';
@@ -435,7 +479,18 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
             if (isset($file)) {
                 fclose($file);
             }
+
             DB::rollBack();
+
+            \App\Jobs\LogActivity::dispatch([
+                'user_id' => auth()->id(),
+                'action' => 'Failed Candidate Import',
+                'description' => 'Candidate import failed: ' . $e->getMessage(),
+                'properties' => ['error' => $e->getMessage()],
+                'ip_address' => request()->ip(),
+                'user_agent' => request()->userAgent(),
+            ])->onQueue('logs');
+
             $this->dispatch('swal', [
                 'title' => 'Import Failed',
                 'text' => $e->getMessage(),
@@ -450,6 +505,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
      *
      * @param  int  $id
      * @return string
+
      */
     public function getAvatarColor($id)
     {
@@ -679,27 +735,25 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                                                 wire:click="editCandidate({{ $candidate->id }})">
                                                 <i class="bi bi-pencil-square"></i>
                                             </x-icon-button>
-                                        @endif
 
-                                        <x-icon-button variant="delete" x-data
-                                            @click="
-                                                Swal.fire({
-                                                    title: 'Delete Candidate?',
-                                                    text: 'This action is permanent. All data associated with this candidate will be removed.',
-                                                    icon: 'warning',
-                                                    showCancelButton: true,
-                                                    confirmButtonColor: 'var(--danger-red, #dc3545)',
-                                                    cancelButtonColor: '#6c757d',
-                                                    confirmButtonText: 'Yes, delete permanently',
-                                                    cancelButtonText: 'Cancel'
-                                                }).then((result) => {
-                                                    if (result.isConfirmed) {
-                                                        $wire.deleteCandidate({{ $candidate->id }})
-                                                    }
-                                                })
-                                            ">
-                                            <i class="bi bi-trash"></i>
-                                        </x-icon-button>
+                                            <x-icon-button variant="delete" class="btn-outline-secondary" x-data
+                                                @click="
+                                                    Swal.fire({
+                                                        title: 'Backout candidate?',
+                                                        text: 'Are you sure you want to withdraw this candidate? This action cannot be undone.',
+                                                        icon: 'question',
+                                                        showCancelButton: true,
+                                                        confirmButtonColor: '#1e3a8a',
+                                                        cancelButtonColor: '#6c757d',
+                                                        confirmButtonText: 'Yes, Backout'
+                                                    }).then((result) => {
+                                                        if (result.isConfirmed) {
+                                                            $wire.backoutCandidate({{ $candidate->id }})
+                                                        }
+                                                    })
+                                                ">
+                                                <i class="bi bi-person-dash"></i> </x-icon-button>
+                                        @endif
                                     </div>
                                 </td>
                             </tr>
@@ -736,37 +790,61 @@ new #[Layout('layouts.admin')] #[Title('Manage Candidates Profile')] class exten
                                     <span class="text-muted fw-bold" style="font-size: 0.75rem;">
                                         <i class="bi bi-person-badge me-1"></i>{{ $candidate->student->student_id }}
                                     </span>
-                                    @if ($candidate->platforms->first()?->title)
-                                        <span class="badge-approved small px-2 py-1" style="font-size: 0.7rem;"><i
-                                                class="bi bi-check2-circle"></i> Complete</span>
-                                    @else
-                                        <span class="badge-pending small px-2 py-1" style="font-size: 0.7rem;"><i
-                                                class="bi bi-exclamation-triangle"></i> Missing</span>
-                                    @endif
+                                    <div
+                                        title="{{ json_encode([
+                                            'Photo' => $candidate->photo ? 'OK' : 'Missing',
+                                            'Grade' => $candidate->average_grade ? 'OK' : 'Missing',
+                                            'Platform' => $candidate->platforms()->first() ? 'Exists' : 'No Record',
+                                        ]) }}">
+                                        @if ($candidate->isProfileComplete())
+                                            <span class="badge-approved text-nowrap"><i
+                                                    class="bi bi-check2-circle me-1"></i>Completed</span>
+                                        @else
+                                            <span class="badge-pending text-nowrap"><i
+                                                    class="bi bi-exclamation-triangle me-1"></i>Missing Bio</span>
+                                        @endif
+                                    </div>
                                 </div>
                             </div>
                             <div class="d-flex align-items-center gap-3">
-                                <x-icon-button variant="edit" wire:click="editCandidate({{ $candidate->id }})">
-                                    <i class="bi bi-pencil-square"></i>
-                                </x-icon-button>
-                                <x-icon-button variant="delete" x-data
-                                    @click="
+                                @php
+                                    $active = $this->activeCycle;
+                                    $now = now();
+
+                                    $isVotingStarted = $active && $now->gt($active->voting_start);
+                                    $isVotingFinished = $active && $now->gt($active->voting_end);
+                                    $isLocked = $isVotingStarted || $isVotingFinished;
+                                @endphp
+
+                                @if ($isLocked)
+                                    <button type="button" class="btn-icon btn-edit"
+                                        style="background: rgba(108, 117, 125, 0.1); color: #6c757d; border: none; width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: not-allowed; opacity: 0.6;"
+                                        disabled title="Voting is ongoing or finished. Edits are locked.">
+                                        <i class="bi bi-lock-fill" style="font-size: 0.90rem;"></i>
+                                    </button>
+                                @else
+                                    <x-icon-button variant="edit" wire:click="editCandidate({{ $candidate->id }})">
+                                        <i class="bi bi-pencil-square"></i>
+                                    </x-icon-button>
+
+                                    <x-icon-button variant="delete" class="btn-outline-secondary" x-data
+                                        @click="
                                         Swal.fire({
-                                            title: 'Delete this candidate?',
-                                            text: 'This is permanent.',
-                                            icon: 'warning',
+                                            title: 'Backout candidate?',
+                                            text: 'Are you sure you want to withdraw this candidate? This action cannot be undone.',
+                                            icon: 'question',
                                             showCancelButton: true,
-                                            confirmButtonColor: '#dc3545',
+                                            confirmButtonColor: '#1e3a8a',
                                             cancelButtonColor: '#6c757d',
-                                            confirmButtonText: 'Delete'
+                                            confirmButtonText: 'Yes, Backout'
                                         }).then((result) => {
                                             if (result.isConfirmed) {
-                                                $wire.deleteCandidate({{ $candidate->id }})
+                                                $wire.backoutCandidate({{ $candidate->id }})
                                             }
                                         })
                                     ">
-                                    <i class="bi bi-trash"></i>
-                                </x-icon-button>
+                                        <i class="bi bi-person-dash"></i> </x-icon-button>
+                                @endif
                             </div>
                         </div>
                     </div>

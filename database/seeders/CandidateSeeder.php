@@ -2,59 +2,118 @@
 
 namespace Database\Seeders;
 
-use App\Models\Candidate;
-use App\Models\Student;
-use App\Models\Position;
-use App\Models\ElectionCycle;
 use Illuminate\Database\Seeder;
+use App\Models\{Student, Position, Candidate, Platform, ElectionCycle};
 
-/**
- * Creates candidate records for every student who has been
- * assigned the `candidate` role. Each candidate is linked to
- * the currently active election cycle and the first available position.
- */
 class CandidateSeeder extends Seeder
 {
-    /**
-     * Find students with the `candidate` role and create or update
-     * their candidacy under the active election cycle.
-     */
     public function run(): void
     {
-        $election = ElectionCycle::where('status', 'active')->first();
+        $path = base_path('csv/sample-candidate.csv');
 
-        if (!$election) {
-            $this->command->error("No active election cycle found. Cannot seed candidates.");
+        if (!file_exists($path)) {
+            $this->command->error("CSV file not found at: {$path}");
             return;
         }
 
-        $students = Student::whereHas('user', function ($query) {
-            $query->whereHas('roles', function ($q) {
-                $q->where('name', 'candidate');
-            });
-        })->get();
+        $activeCycle = ElectionCycle::where('status', 'active')->first();
 
-        if ($students->isEmpty()) {
-            $this->command->warn("No students found with the 'candidate' role.");
+        if (!$activeCycle) {
+            $this->command->error('No active election cycle found. Please seed or create a cycle first.');
             return;
         }
 
-        foreach ($students as $student) {
-            $position = Position::first();
+        if (($file = fopen($path, 'r')) !== false) {
+            fgetcsv($file);
 
-            Candidate::updateOrCreate(
-                [
-                    'student_id' => $student->id,
-                    'election_cycle_id' => $election->id,
-                ],
-                [
-                    'user_id'     => $student->user_id,
-                    'position_id' => $position->id ?? null,
-                    'status'      => 'approved',
-                ]
-            );
+            $this->command->info('Importing candidates using Controller Logic...');
+            $importedCount = 0;
+
+            while (($row = fgetcsv($file)) !== false) {
+                if (empty(array_filter($row))) {
+                    continue;
+                }
+
+                $row = array_map('trim', $row);
+
+                $studentId              = $row[0] ?? '';
+                $positionName           = $row[1] ?? '';
+                $partyName              = $row[2] ?? '';
+                $achievements           = $row[3] ?? '';
+                $previousPosition       = $row[4] ?? '';
+                $previousSchoolProjects = $row[5] ?? '';
+                $averageGrade           = $row[6] !== '' ? $row[6] : null;
+                $title                  = $row[7] ?? '';
+                $tagline                = $row[8] ?? '';
+                $agenda                 = $row[9] ?? '';
+
+                if (empty($studentId) || empty($positionName)) {
+                    continue;
+                }
+
+                $student = Student::where('student_id', $studentId)->first();
+
+                if (!$student || !$student->user_id) {
+                    $this->command->warn("Skipped student_id '{$studentId}': Not found or missing user account.");
+                    continue;
+                }
+
+                $pos = Position::firstOrCreate(
+                    [
+                        'name' => $positionName,
+                        'election_cycle_id' => $activeCycle->id,
+                        'student_department' => $student->block->course_id ?? null,
+                    ],
+                    [
+                        'max_candidates' => 10,
+                        'max_winners' => 1,
+                        'priority' => 1,
+                        'is_active' => true,
+                    ]
+                );
+
+                $cleanPreviousPositions = array_values(array_filter(array_map('trim', explode(',', $previousPosition))));
+                $cleanPreviousProjects  = array_values(array_filter(array_map('trim', explode(',', $previousSchoolProjects))));
+                $agendaArray            = array_values(array_filter(array_map('trim', explode("\n", str_replace("\r", '', $agenda)))));
+
+                $can = Candidate::updateOrCreate(
+                    [
+                        'student_id' => $student->id,
+                        'election_cycle_id' => $activeCycle->id,
+                    ],
+                    [
+                        'user_id' => $student->user_id,
+                        'position_id' => $pos->id,
+                        'party_name' => $partyName,
+                        'achievements' => $achievements,
+                        'previous_position' => $cleanPreviousPositions,
+                        'previous_school_project' => $cleanPreviousProjects,
+                        'average_grade' => $averageGrade,
+                        'status' => 'approved',
+                        'approved_at' => now(),
+                    ]
+                );
+
+                Platform::updateOrCreate(
+                    ['candidate_id' => $can->id],
+                    [
+                        'title' => $title,
+                        'tagline' => $tagline,
+                        'agenda' => $agendaArray,
+                        'status' => 'approved',
+                        'approved_at' => now(),
+                    ]
+                );
+
+                $importedCount++;
+            }
+
+            fclose($file);
+
+            cache()->forget('candidates_stats_' . $activeCycle->id);
+            cache()->forget('admin_dashboard_data');
+
+            $this->command->info("Successfully seeded {$importedCount} candidates!");
         }
-
-        $this->command->info("Candidates seeded successfully!");
     }
 }

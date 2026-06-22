@@ -7,13 +7,14 @@ use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Contracts\Queue\ShouldQueue;
 
 /**
  * Mailable sent to a student during account verification.
  * Contains the one-time passcode and the student's name
  * so the `emails.students.otp` view can personalise the message.
  */
-class OtpVerificationMail extends Mailable
+class OtpVerificationMail extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 

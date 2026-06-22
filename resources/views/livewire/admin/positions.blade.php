@@ -73,7 +73,17 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
             return collect();
         }
 
-        return Position::where('election_cycle_id', $this->activeCycle->id)->withCount('candidates')->orderBy('priority', 'asc')->get();
+        $rawPositions = Position::where('election_cycle_id', $this->activeCycle->id)->withCount('candidates')->orderBy('priority', 'asc')->get();
+
+        return $rawPositions->groupBy('name')->map(function ($group) {
+            return [
+                'name' => $group->first()->name,
+                'priority' => $group->first()->priority,
+                'max_winners' => $group->first()->max_winners,
+                'total_candidates' => $group->sum('candidates_count'),
+                'ids' => $group->pluck('id'),
+            ];
+        });
     }
 
     // --- Action / CRUD Methods ---
@@ -229,45 +239,59 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
             </div>
 
             {{-- Position list with priority badges, edit and delete actions --}}
-            @forelse($this->positions as $pos)
-                <div class="position-row glass-card mb-3 p-3 d-flex align-items-center"
-                    wire:key="pos-{{ $pos->id }}">
-                    <div class="priority-badge me-3">{{ $pos->priority }}</div>
+            @forelse($this->positions as $posName => $data)
+                <div class="position-row glass-card mb-3 p-3 d-flex align-items-center">
+                    <div class="priority-badge me-3">{{ $data['priority'] }}</div>
                     <div class="flex-grow-1">
-                        <h6 class="fw-bold text-dark mb-0">{{ $pos->name }}</h6>
+                        <h6 class="fw-bold text-dark mb-0">{{ $data['name'] }}</h6>
                         <small class="text-muted">Max Winners: <span
-                                class="fw-bold">{{ $pos->max_winners }}</span></small>
+                                class="fw-bold">{{ $data['max_winners'] }}</span></small>
                     </div>
                     <div class="text-end me-4 d-none d-md-block">
-                        <div class="fw-bold text-accent">{{ $pos->candidates_count }}</div>
+                        <div class="fw-bold text-accent">{{ $data['total_candidates'] }}</div>
                         <div class="tiny text-muted uppercase fw-bold">Candidates</div>
                     </div>
                     {{-- Edit and delete buttons --}}
                     <div class="d-flex gap-2">
-                        <x-icon-button variant="edit" wire:click="editPosition({{ $pos->id }})"
-                            data-bs-toggle="modal" data-bs-target="#addPositionModal">
-                            <i class="bi bi-pencil-square"></i>
-                        </x-icon-button>
+                        @php
+                            $active = $this->activeCycle;
+                            $now = now();
 
-                        <x-icon-button variant="delete" x-data
-                            @click="
-                                Swal.fire({
-                                    title: 'Are you sure?',
-                                    text: 'You won’t be able to revert this position once deleted!',
-                                    icon: 'warning',
-                                    showCancelButton: true,
-                                    confirmButtonColor: '#dc3545',
-                                    cancelButtonColor: '#6c757d',
-                                    confirmButtonText: 'Yes, delete it!',
-                                    cancelButtonText: 'Cancel'
-                                }).then((result) => {
-                                    if (result.isConfirmed) {
-                                        $wire.deletePosition({{ $pos->id }});
-                                    }
-                                })
+                            $isVotingStarted = $active && $now->gt($active->voting_start);
+                            $isVotingFinished = $active && $now->gt($active->voting_end);
+                            $isLocked = $isVotingStarted || $isVotingFinished;
+                        @endphp
+
+                        @if ($isLocked)
+                            <button type="button" class="btn-icon btn-edit"
+                                style="background: rgba(108, 117, 125, 0.1); color: #6c757d; border: none; width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: not-allowed; opacity: 0.6;"
+                                disabled title="Voting is ongoing or finished. Edits are locked.">
+                                <i class="bi bi-lock-fill" style="font-size: 0.90rem;"></i>
+                            </button>
+                        @else
+                            <x-icon-button variant="edit" wire:click="editPosition({{ $data['ids']->first() }})"
+                                data-bs-toggle="modal" data-bs-target="#addPositionModal">
+                                <i class="bi bi-pencil-square"></i>
+                            </x-icon-button>
+
+                            <x-icon-button variant="delete" x-data
+                                @click="
+                            Swal.fire({
+                                title: 'Are you sure?',
+                                text: 'This will delete all records for this position!',
+                                icon: 'warning',
+                                showCancelButton: true,
+                                confirmButtonColor: '#dc3545',
+                                confirmButtonText: 'Yes, delete it!'
+                            }).then((result) => {
+                                if (result.isConfirmed) {
+                                    $wire.deletePosition({{ $data['ids']->first() }});
+                                }
+                            })
                             ">
-                            <i class="bi bi-trash"></i>
-                        </x-icon-button>
+                                <i class="bi bi-trash"></i>
+                            </x-icon-button>
+                        @endif
                     </div>
                 </div>
             @empty
@@ -307,8 +331,8 @@ new #[Layout('layouts.admin')] #[Title('Manage Positions')] class extends Compon
                             </div>
                             <div class="col-6">
                                 <label class="form-label small fw-bold text-muted uppercase">Priority Order</label>
-                                <input type="number" wire:model="priority" class="form-control-modern" min="1"
-                                    required>
+                                <input type="number" wire:model="priority" class="form-control-modern"
+                                    min="1" required>
                             </div>
                         </div>
                     </form>

@@ -27,16 +27,7 @@
     ]) }}
         style="width: {{ $size }}; height: {{ $size }}; min-width: {{ $size }}; min-height: {{ $size }}; border-radius: {{ $borderRadius }}; font-size: {{ $fontSize }};">
 
-        @if ($variant !== 'custom' && $hasWireClick)
-            <span wire:loading.remove wire:target="{{ $wireClickAction }}">
-                {{ $slot }}
-            </span>
-            <span wire:loading wire:target="{{ $wireClickAction }}" class="spinner-border spinner-border-sm"
-                style="width: 12px; height: 12px;"></span>
-        @else
-            <span>
-                {{ $slot }}
-            </span>
-        @endif
+        {{ $slot }}
+
     </button>
 </div>

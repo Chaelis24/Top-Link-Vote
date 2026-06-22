@@ -189,6 +189,9 @@ class CastVoteService
                 $referenceNumber = 'REF-' . strtoupper(bin2hex(random_bytes(4)));
 
                 foreach ($selections as $positionId => $candidateId) {
+                    if (is_null($candidateId)) {
+                        continue;
+                    }
                     $candidate = Candidate::findOrFail($candidateId);
                     if ((int) $candidate->position_id !== (int) $positionId) {
                         throw new \Exception('Invalid candidate selection for this position.');

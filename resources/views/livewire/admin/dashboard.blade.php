@@ -82,6 +82,7 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
                             'label' => "{$candidate->student->first_name} {$candidate->student->last_name}",
                             'position' => $candidate->position->name ?? 'N/A',
                             'votes' => $candidate->votes_count,
+                            'dept' => $dept,
                         ],
                     )
                     ->values();
@@ -94,14 +95,14 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
                 ->distinct('student_id')
                 ->count('student_id');
 
-            $trends = Vote::whereHas('candidate', fn($q) => $q->where('election_cycle_id', $activeCycleId))
-                ->where('created_at', '>=', now()->subHours(6))
+            $trends = Student::where('has_voted', true)
+                ->where('updated_at', '>=', now()->subHours(6))
                 ->get()
-                ->groupBy(fn($vote) => $vote->created_at->format('H'))
-                ->map(function ($votes, $hour) {
+                ->groupBy(fn($student) => $student->updated_at->format('H'))
+                ->map(function ($students, $hour) {
                     return [
                         'hour' => (int) $hour . ':00',
-                        'count' => $votes->count(),
+                        'count' => $students->count(),
                     ];
                 })
                 ->sortBy('hour')
@@ -117,21 +118,9 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
                 ->orderBy('blocks.year_level', 'asc')
                 ->get();
 
-            $partyPerformance = Candidate::query()
-                ->where('election_cycle_id', $activeCycleId)
-                ->withCount('votes')
-                ->get()
-                ->groupBy('party_name')
-                ->map(function ($candidates, $partyName) {
-                    return [
-                        'party' => $partyName ?: 'Independent',
-                        'votes' => $candidates->sum('votes_count'),
-                    ];
-                })
-                ->values()
-                ->sortByDesc('votes');
+            $partyPerformance = Student::where('has_voted', true)->join('candidates', 'students.id', '=', 'candidates.student_id')->selectRaw("COALESCE(NULLIF(candidates.party_name, ''), 'Independent') as party, COUNT(*) as votes")->groupBy('candidates.party_name')->orderByDesc('votes')->get();
 
-            $courseData = Course::join('blocks', 'courses.id', '=', 'blocks.course_id')->join('students', 'blocks.id', '=', 'students.block_id')->join('votes', 'students.id', '=', 'votes.student_id')->join('candidates', 'votes.candidate_id', '=', 'candidates.id')->where('candidates.election_cycle_id', $activeCycleId)->selectRaw('courses.name as course_name, COUNT(votes.id) as vote_count')->groupBy('courses.name')->get();
+            $courseData = Student::where('has_voted', true)->join('courses', 'students.course_id', '=', 'courses.id')->selectRaw('courses.name as course_name, COUNT(*) as vote_count')->groupBy('courses.name', 'courses.id')->get();
 
             return [
                 'academic_year' => $activeCycle?->academic_year,
@@ -213,6 +202,18 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
 
         $data['fingerprint'] = hash('sha256', $data['totalVotes'] . now()->timestamp . $admin->id);
 
+        \App\Jobs\LogActivity::dispatch([
+            'user_id' => $admin->id,
+            'action' => 'Download Election Report',
+            'description' => 'Admin ' . $admin->name . ' generated the official election report.',
+            'properties' => [
+                'total_votes_at_time' => $data['totalVotes'],
+                'fingerprint' => $data['fingerprint'],
+            ],
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
+        ])->onQueue('logs');
+
         $pdf = Pdf::loadView('pdf.election-report', $data)->setPaper('a4', 'portrait');
 
         return response()->streamDownload(function () use ($pdf) {
@@ -271,7 +272,6 @@ new #[Layout('layouts.admin'), Title('Admin Dashboard')] class extends Component
                 @if ($isFinished)
                     <button type="button" class="btn-glow d-flex align-items-center justify-content-center w-100"
                         wire:click="downloadReport" wire:loading.attr="disabled">
-                        <span wire:loading wire:target="downloadReport" class="spinner-border spinner-border-sm"></span>
                         <i wire:loading.remove wire:target="downloadReport"
                             class="bi bi-file-earmark-pdf d-md-block fs-5"></i>
                         <span class="fw-bold d-none d-md-inline ms-2" style="font-size: 12px;">Download Result</span>

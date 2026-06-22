@@ -51,6 +51,8 @@ class VoteSeeder extends Seeder
                             ]
                         );
 
+                        $candidate->increment('votes_count');
+
                         $selections[$position->id] = $candidate->id;
                     }
                 }

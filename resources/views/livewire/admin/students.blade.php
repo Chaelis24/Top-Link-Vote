@@ -47,6 +47,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
         'address' => '',
         'birthday' => '',
         'gender' => '',
+        'role_id' => '',
     ];
 
     // --- Computed & View Customization ---
@@ -87,6 +88,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
             'votedCount' => $stats->voted,
             'notVotedCount' => $stats->not_voted,
             'disabledCount' => $stats->disabled,
+            'roles' => \App\Models\Role::all(),
         ];
     }
 
@@ -130,20 +132,6 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
             ->orderBy('student_id', 'asc');
 
         return $paginate ? $query->paginate(10) : $query->get();
-    }
-
-    /**
-     * Sync select-all checkbox with individual selections.
-     *
-     * @param  bool  $value
-     */
-    public function updatedSelectAll($value)
-    {
-        if ($value) {
-            $this->selectedStudents = $this->loadStudents(false)->pluck('id')->toArray();
-        } else {
-            $this->selectedStudents = [];
-        }
     }
 
     /**
@@ -205,8 +193,10 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
      */
     public function editStudent($id)
     {
-        $student = Student::with('block')->findOrFail($id);
+        $student = Student::with(['block', 'user.roles'])->findOrFail($id);
         $this->editingStudentId = $id;
+
+        $currentRoleId = $student->user && $student->user->roles->first() ? $student->user->roles->first()->id : '';
 
         $this->editForm = [
             'first_name' => $student->first_name,
@@ -219,6 +209,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
             'address' => $student->address,
             'birthday' => $student->birthday ? $student->birthday->format('Y-m-d') : '',
             'gender' => $student->gender,
+            'role_id' => $currentRoleId,
         ];
         $this->dispatch('open-modal', id: 'editStudentModal');
     }
@@ -232,7 +223,26 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
 
         try {
             $student = Student::findOrFail($this->editingStudentId);
-            $student->update($this->editForm);
+
+            $studentData = collect($this->editForm)->except('role_id')->toArray();
+            $student->update($studentData);
+
+            if ($student->user) {
+                $roleId = $this->editForm['role_id'] ?: null;
+                $student->user->roles()->sync($roleId ? [$roleId] : []);
+            }
+
+            \App\Jobs\LogActivity::dispatch([
+                'user_id' => auth()->id(),
+                'action' => 'Update Student',
+                'description' => 'Updated details for student: ' . $student->student_id,
+                'properties' => [
+                    'student_id' => $student->id,
+                    'changed_fields' => array_keys($this->editForm),
+                ],
+                'ip_address' => request()->ip(),
+                'user_agent' => request()->userAgent(),
+            ])->onQueue('logs');
 
             $this->dispatch('close-modal', id: 'editStudentModal');
             $this->dispatch('swal', [
@@ -259,6 +269,18 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
         try {
             $student = Student::findOrFail($id);
             $student->update(['status' => 'inactive']);
+
+            \App\Jobs\LogActivity::dispatch([
+                'user_id' => auth()->id(),
+                'action' => 'Deactivate Student',
+                'description' => 'Deactivated student: ' . $student->student_id,
+                'properties' => [
+                    'student_id' => $student->id,
+                    'student_id_number' => $student->student_id,
+                ],
+                'ip_address' => request()->ip(),
+                'user_agent' => request()->userAgent(),
+            ])->onQueue('logs');
 
             $this->dispatch('swal', [
                 'title' => 'Student Deactivated',
@@ -336,6 +358,18 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                 throw new \Exception('No data found.');
             }
 
+            \App\Jobs\LogActivity::dispatch([
+                'user_id' => auth()->id(),
+                'action' => 'Import Students CSV',
+                'description' => 'Admin initiated bulk student import.',
+                'properties' => [
+                    'total_rows' => count($rowsToImport),
+                    'file_name' => $this->csvFile->getClientOriginalName(),
+                ],
+                'ip_address' => request()->ip(),
+                'user_agent' => request()->userAgent(),
+            ])->onQueue('logs');
+
             \App\Jobs\ImportStudentsJob::dispatch($rowsToImport);
 
             $this->reset('csvFile');
@@ -362,6 +396,18 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
     public function exportStudents()
     {
         $students = Student::with('block.course')->get();
+
+        \App\Jobs\LogActivity::dispatch([
+            'user_id' => auth()->id(),
+            'action' => 'Export Students',
+            'description' => 'Exported all students to CSV format.',
+            'properties' => [
+                'count' => $students->count(),
+            ],
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
+        ])->onQueue('logs');
+
         $csv = fopen('php://temp', 'w+');
         fputcsv($csv, ['Student ID', 'First Name', 'Middle Name', 'Last Name', 'Suffix', 'Course', 'Year Level', 'Section', 'Email', 'Phone', 'Address', 'Birthday', 'Gender', 'Status']);
         foreach ($students as $s) {
@@ -548,13 +594,29 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
         {{-- Desktop table view with select-all, student columns, and action buttons --}}
         <div class="glass-card p-0 overflow-hidden border-0 shadow-sm">
             <div class="table-responsive hidden md:block">
-                <table class="table table-hover mb-0">
+                <table class="table table-hover mb-0" x-data="{
+                    selected: [],
+                    allSelected: false,
+                    init() {
+                        this.$watch('selected', value => {
+                            this.allSelected = value.length > 0 && value.length === {{ (int) $students->count() }};
+                        });
+                    },
+                    toggleAll() {
+                        if (this.allSelected) {
+                            this.selected = [];
+                        } else {
+                            this.selected = {{ Js::from($students->pluck('id')->toArray()) }};
+                        }
+                        this.allSelected = !this.allSelected;
+                    }
+                }">
                     <thead class="bg-light">
                         <tr class="align-middle">
                             <th class="p-3 ps-4" style="width: 50px;">
                                 <div class="form-check">
-                                    <input type="checkbox" wire:model.live="selectAll" class="form-check-input"
-                                        id="selectAll">
+                                    <input type="checkbox" x-model="allSelected" @click="toggleAll"
+                                        class="form-check-input" id="selectAll">
                                 </div>
                             </th>
                             <th class="p-3">ID</th>
@@ -569,8 +631,8 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                         @forelse($students as $student)
                             <tr wire:key="student-desktop-{{ $student->id }}">
                                 <td class="ps-4">
-                                    <input type="checkbox" value="{{ $student->id }}"
-                                        wire:model.live="selectedStudents" class="form-check-input">
+                                    <input type="checkbox" value="{{ $student->id }}" x-model="selected"
+                                        class="form-check-input">
                                 </td>
                                 <td>{{ $student->student_id }}</td>
                                 <td class="text-primary fw-bold">
@@ -611,19 +673,25 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                                         </x-icon-button>
                                         <x-icon-button variant="custom" type="button"
                                             class="flex items-center justify-center border-none bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 transition-colors"
-                                            x-data
-                                            @click.prevent.stop="Swal.fire({
-                                                title: 'Deactivate Student?',
-                                                text: 'This will set the status of {{ count($selectedStudents) }} student(s) to inactive.',
+                                            @click.prevent.stop="
+                                            let count = selected.length > 0 ? selected.length : 1;
+
+                                            Swal.fire({
+                                                title: count > 1 ? 'Deactivate Selected Students?' : 'Deactivate Student?',
+                                                text: `This will set the status of ${count} student(s) to inactive.`,
                                                 icon: 'warning',
                                                 showCancelButton: true,
                                                 confirmButtonColor: '#f43f5e',
                                                 cancelButtonColor: '#6c757d',
-                                                confirmButtonText: 'Yes, deactivate it!',
+                                                confirmButtonText: 'Yes, deactivate!',
                                                 cancelButtonText: 'Cancel'
                                             }).then((result) => {
                                                 if (result.isConfirmed) {
-                                                    $wire.deleteStudent({{ $student->id }})
+                                                    if (selected.length > 0) {
+                                                        $wire.deleteSelectedStudents(selected);
+                                                    } else {
+                                                        $wire.deleteStudent({{ $student->id }});
+                                                    }
                                                 }
                                             })">
                                             <i class="bi bi-person-x"></i>
@@ -871,7 +939,7 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                                     disabled>
                             </div>
                             {{-- Phone number (editable) --}}
-                            <div class="col-md-5 col-4">
+                            <div class="col-md-4 col-4">
                                 <label class="form-label mb-0 text-primary fw-bold" style="font-size: 0.65rem;">PHONE
                                     NUMBER</label>
                                 <input type="text" wire:model="editForm.phone"
@@ -879,14 +947,25 @@ new #[Layout('layouts.admin')] #[Title('Manage Students')] class extends Compone
                                     placeholder="09xxxxxxxxx" style="font-size: 0.8rem;">
                             </div>
                             {{-- Address (editable) --}}
-                            <div class="col-md-7 col-12">
+                            <div class="col-md-4 col-6">
                                 <label class="form-label mb-0 text-primary fw-bold"
                                     style="font-size: 0.65rem;">ADDRESS</label>
                                 <textarea wire:model="editForm.address"
                                     class="form-control-modern py-1 @error('editForm.address') is-invalid @enderror" rows="1"
                                     style="font-size: 0.8rem;"></textarea>
                             </div>
-
+                            <div class="col-md-4 col-6">
+                                <label class="form-label mb-0 text-primary fw-bold" style="font-size: 0.65rem;"
+                                    for="role">Role</label>
+                                <select wire:model="editForm.role_id" id="role"
+                                    class="form-select-modern py-1 bg-light">
+                                    @foreach ($roles as $role)
+                                        @if (strtolower($role->name) !== 'admin')
+                                            <option value="{{ $role->id }}">{{ $role->name }}</option>
+                                        @endif
+                                    @endforeach
+                                </select>
+                            </div>
                         </div>
                     </div>
 

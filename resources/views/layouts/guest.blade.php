@@ -15,7 +15,7 @@
     @stack('styles')
 </head>
 
-<body>
+<body class="m-0 min-h-screen">
     {{ $slot }}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -45,7 +45,9 @@
             const input = document.getElementById('device_token');
             if (input) {
                 input.value = token;
-                input.dispatchEvent(new Event('input', { bubbles: true }));
+                input.dispatchEvent(new Event('input', {
+                    bubbles: true
+                }));
             }
         }
 
@@ -59,19 +61,25 @@
                         setDeviceToken(getFallbackDeviceToken());
                     });
             } else if (retries < 15) {
-                setTimeout(function() { secureSyncDeviceToken(retries + 1); }, 300);
+                setTimeout(function() {
+                    secureSyncDeviceToken(retries + 1);
+                }, 300);
             } else {
                 setDeviceToken(getFallbackDeviceToken());
             }
         }
 
         document.addEventListener('livewire:navigated', function() {
-            setTimeout(function() { secureSyncDeviceToken(); }, 300);
+            setTimeout(function() {
+                secureSyncDeviceToken();
+            }, 300);
         });
 
         window.addEventListener('DOMContentLoaded', function() {
             secureSyncDeviceToken();
-            setTimeout(function() { secureSyncDeviceToken(); }, 500);
+            setTimeout(function() {
+                secureSyncDeviceToken();
+            }, 500);
         });
 
         document.addEventListener('livewire:update', function() {

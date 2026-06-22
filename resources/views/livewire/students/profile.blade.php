@@ -124,6 +124,16 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
         $result = $this->profileService->updateProfile($user, $validated, $this->photo);
 
         if (isset($result['error'])) {
+        \App\Jobs\LogActivity::dispatch([
+            'user_id' => $user->id,
+            'student_id' => $user->student?->id,
+            'action' => 'Failed Profile Update',
+            'description' => 'Student failed to update profile: ' . $result['error'],
+            'properties' => ['error' => $result['error']],
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
+        ])->onQueue('logs');
+
             $this->dispatch('swal', [
                 'title' => 'Update Failed',
                 'text' => $result['error'],
@@ -131,6 +141,19 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
             ]);
             return;
         }
+
+        \App\Jobs\LogActivity::dispatch([
+            'user_id' => $user->id,
+            'student_id' => $user->student?->id,
+            'action' => 'Update Profile',
+            'description' => 'Student updated their personal profile information.',
+            'properties' => [
+                'fields_updated' => array_keys($validated),
+                'has_photo' => $this->photo !== null,
+            ],
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
+        ])->onQueue('logs');
 
         if (isset($result['profile_photo_path'])) {
             $this->profile_photo_path = $result['profile_photo_path'];
@@ -157,6 +180,16 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
         $validated = $this->validate($request->rules());
 
         $this->profileService->updatePassword(Auth::user(), $validated['new_password']);
+
+        \App\Jobs\LogActivity::dispatch([
+            'user_id' => Auth::id(),
+            'student_id' => Auth::user()->student?->id,
+            'action' => 'Change Password',
+            'description' => 'Student successfully changed their account password.',
+            'properties' => ['user_id' => Auth::id()],
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
+        ])->onQueue('logs');
 
         $this->reset(['current_password', 'new_password', 'new_password_confirmation']);
 
@@ -428,7 +461,6 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                         <p class="text-secondary mb-0 small">
                             You cast your vote on {{ \Carbon\Carbon::parse($voted_at)->format('M d, Y') }}.
                         </p>
-
                     @elseif ($isFiling)
                         <span
                             class="badge bg-warning-subtle text-warning border border-warning-subtle px-3 py-2 mb-3 rounded-pill">Filing
@@ -437,7 +469,6 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                             The candidates are currently finalizing their platforms. Campaigning and voting will start
                             soon!
                         </p>
-
                     @elseif ($isCampaign)
                         <span
                             class="badge bg-info-subtle text-info border border-info-subtle px-3 py-2 mb-3 rounded-pill">Campaign
@@ -445,7 +476,6 @@ new #[Layout('layouts.app')] #[Title('My Profile')] class extends Component {
                         <p class="text-secondary mb-0 small mx-auto" style="max-width: 500px;">
                             The candidates are currently campaigning. Get ready, voting will open shortly!
                         </p>
-
                     @elseif ($isVoting)
                         <span
                             class="badge bg-primary-light text-primary border border-primary-subtle px-3 py-2 mb-3 rounded-pill">Eligible</span>

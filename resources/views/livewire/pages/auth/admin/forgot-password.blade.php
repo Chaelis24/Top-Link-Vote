@@ -36,11 +36,14 @@ new #[Layout('layouts.guest')] class extends Component {
 }; ?>
 
 {{-- Full-screen centered container for the forgot-password form --}}
-<div class="fixed inset-0 z-[9999] overflow-y-auto bg-white flex items-center justify-center p-4 m-0 w-full h-full">
-    <div class="absolute inset-0 bg-white"></div>
+<div
+    class="fixed inset-0 z-[9999] overflow-y-auto bg-transparent flex items-center justify-center p-4 m-0 w-full h-full">
+    {{-- Background image with overlay --}}
+    <div class="fixed inset-0 bg-cover bg-center bg-no-repeat"
+        style="background-image: url('{{ asset('images/bg.jpeg') }}');"></div>
+    <div class="fixed inset-0 bg-black/40"></div>
 
-    <div
-        class="relative z-10 max-w-4xl w-full bg-white shadow-2xl rounded-2xl overflow-hidden border border-gray-100 mx-2 md:mx-0">
+    <div class="relative z-10 max-w-4xl w-full bg-white shadow-2xl rounded-2xl overflow-hidden mx-2 md:mx-0">
         <div class="flex flex-col md:flex-row">
             {{-- Branding panel (left) --}}
             <div

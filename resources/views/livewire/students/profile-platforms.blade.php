@@ -462,7 +462,7 @@ new #[Layout('layouts.app')] #[Title('Platforms')] class extends Component {
                     </div>
                     <h2 class="text-2xl font-bold text-gray-800 mb-3">No Active Election</h2>
                     <p class="text-secondary mx-auto mb-4" style="max-width: 500px;">
-                        Please stand by until the Student Council Election Committee initiates the next voting cycle.
+                        Please stand by until the Administrator initiates the next voting cycle.
                     </p>
                 </div>
             @endif

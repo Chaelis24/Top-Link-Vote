@@ -74,13 +74,15 @@ new #[Layout('layouts.guest')] class extends Component {
 }; ?>
 {{-- Admin Login Page — provides the authentication interface for administrators. --}}
 
-<div class="fixed inset-0 z-[9999] overflow-y-auto bg-white flex items-center justify-center p-4 m-0 w-full h-full">
-    {{-- Background overlay --}}
-    <div class="absolute inset-0 bg-white"></div>
+<div
+    class="fixed inset-0 z-[9999] overflow-y-auto bg-transparent flex items-center justify-center p-4 m-0 w-full h-full">
+    {{-- Background image with overlay --}}
+    <div class="fixed inset-0 bg-cover bg-center bg-no-repeat"
+        style="background-image: url('{{ asset('images/bg.jpeg') }}');"></div>
+    <div class="fixed inset-0 bg-black/40"></div>
 
     {{-- Main card container with brand panel and login form side-by-side on larger screens --}}
-    <div
-        class="relative z-10 max-w-4xl w-full bg-white shadow-2xl rounded-2xl overflow-hidden border border-gray-100 mx-2 md:mx-0">
+    <div class="relative z-10 max-w-4xl w-full bg-white shadow-2xl rounded-2xl overflow-hidden mx-2 md:mx-0">
         <div class="flex flex-col md:flex-row">
             {{-- Branding panel — displays the logo, portal title, and description --}}
             <div
@@ -118,7 +120,7 @@ new #[Layout('layouts.guest')] class extends Component {
                     <p class="text-gray-500 text-xs md:text-sm">Enter your credentials.</p>
                 </div>
 
-                {{--Successful, Error and Warning Messages--}}
+                {{-- Successful, Error and Warning Messages --}}
                 <x-session-flash></x-session-flash>
 
                 <form wire:submit="login" class="space-y-4 md:space-y-5">
@@ -126,7 +128,7 @@ new #[Layout('layouts.guest')] class extends Component {
                     <div>
                         <label class="text-[10px] font-bold uppercase text-gray-500 mb-1 block ms-1">Admin Email</label>
                         <input wire:model="form.email" type="email" placeholder="admin@gmail.com" required autofocus
-                            class="w-full px-4 py-2.5 md:py-3 rounded-lg border outline-none transition-all text-sm text-[#1e293b] focus:ring-2">
+                            class="w-full px-4 py-2.5 md:py-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-blue-100 focus:border-[#1e3a8a] outline-none transition-all text-sm text-[#1e293b]">
                     </div>
 
                     {{-- Password input field with visibility toggle --}}
@@ -136,7 +138,7 @@ new #[Layout('layouts.guest')] class extends Component {
                         <div class="relative">
                             <input :type="show ? 'text' : 'password'" wire:model="form.password" placeholder="••••••••"
                                 required
-                                class="w-full px-4 py-2.5 md:py-3 rounded-lg border outline-none transition-all text-sm text-[#1e293b] focus:ring-2">
+                                class="w-full px-4 py-2.5 md:py-3 rounded-lg border border-gray-200 focus:ring-2 focus:ring-blue-100 focus:border-[#1e3a8a] outline-none transition-all text-sm text-[#1e293b]">
                             <button type="button" @click="show = !show" aria-label="Toggle password visibility"
                                 class="absolute right-3 top-1/2 -translate-y-1/2 {{ $errors->has('form.password') ? 'text-red-500' : 'text-gray-400 hover:text-[#3b82f6]' }} transition-colors">
                                 <i :class="show ? 'bi bi-eye-fill' : 'bi bi-eye-slash-fill'" class="text-md"></i>

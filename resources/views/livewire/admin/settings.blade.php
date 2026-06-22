@@ -60,6 +60,17 @@ new #[Layout('layouts.admin')] #[Title('Settings')] class extends Component {
 
         $this->user->update($validated);
 
+        \App\Jobs\LogActivity::dispatch([
+            'user_id' => auth()->id(),
+            'action' => 'Update Admin Profile',
+            'description' => 'Admin profile information was updated.',
+            'properties' => [
+                'changed_fields' => array_keys($validated),
+            ],
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
+        ])->onQueue('logs');
+
         $this->dispatch('swal', [
             'title' => 'Admin Profile Updated',
             'text' => 'Your information is now up to date.',
@@ -83,6 +94,17 @@ new #[Layout('layouts.admin')] #[Title('Settings')] class extends Component {
         $this->user->update([
             'password' => Hash::make($validated['password']),
         ]);
+
+        \App\Jobs\LogActivity::dispatch([
+            'user_id' => auth()->id(),
+            'action' => 'Update Admin Password',
+            'description' => 'Admin password was changed for security.',
+            'properties' => [
+                'user_id' => $this->user->id,
+            ],
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
+        ])->onQueue('logs');
 
         $this->reset(['current_password', 'password', 'password_confirmation']);
 

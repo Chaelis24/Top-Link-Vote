@@ -165,31 +165,40 @@
         </table>
     </div>
 
-    @foreach ($tallyByDept as $dept => $candidates)
-        <div class="dept-section">
-            <div class="dept-title">{{ $dept }} Department Standings</div>
-            <table>
-                <thead>
+    @php
+        $allCandidates = collect($tallyByDept)->flatten(1);
+        $winners = $allCandidates->groupBy('position')->map(function ($candidates) {
+            $sorted = $candidates->sortByDesc('votes')->values();
+            $winnerVotes = $sorted->first()['votes'] ?? 0;
+            return $sorted->firstWhere('votes', $winnerVotes);
+        });
+    @endphp
+
+    <div class="dept-section">
+        <div class="dept-title">Winners</div>
+        <table>
+            <thead>
+                <tr>
+                    <th style="text-align: left;">Position</th>
+                    <th style="text-align: left;">Winner</th>
+                    <th style="text-align: left;">Department</th>
+                    <th style="text-align: right; width: 120px;">Votes Received</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($winners as $position => $candidate)
                     <tr>
-                        <th style="text-align: left;">Candidate Name</th>
-                        <th style="text-align: left;">Position</th>
-                        <th style="text-align: right; width: 120px;">Votes Received</th>
+                        <td>{{ $position }}</td>
+                        <td>{{ $candidate['label'] }}</td>
+                        <td>{{ $candidate['dept'] ?? 'N/A' }}</td>
+                        <td style="text-align: right; font-weight: bold;">
+                            {{ number_format($candidate['votes']) }}
+                        </td>
                     </tr>
-                </thead>
-                <tbody>
-                    @foreach ($candidates as $candidate)
-                        <tr>
-                            <td>{{ $candidate['label'] }}</td>
-                            <td>{{ $candidate['position'] }}</td>
-                            <td style="text-align: right; font-weight: bold;">
-                                {{ number_format($candidate['votes']) }}
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-    @endforeach
+                @endforeach
+            </tbody>
+        </table>
+    </div>
 
     <div class="footer-section">
         <div class="signature-wrapper">

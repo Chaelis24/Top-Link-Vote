@@ -17,7 +17,7 @@ class UpdateProfileRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return Auth::check() && Auth::user()->hasRole('student');
+        return Auth::check() && Auth::user()->hasAnyRole(['student', 'candidate']);
     }
 
     /**

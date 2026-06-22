@@ -166,7 +166,7 @@ new #[Layout('layouts.admin')] #[Title('User Activity')] class extends Component
                 <table class="table table-hover align-middle mb-0 hidden md:table">
                     <thead class="bg-light">
                         <tr style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px;">
-                            <th class="ps-4">Student / Candidate</th>
+                            <th class="ps-4">Users</th>
                             <th>Action & Description</th>
                             <th class="text-end pe-4">IP Address & Time</th>
                         </tr>
@@ -177,12 +177,17 @@ new #[Layout('layouts.admin')] #[Title('User Activity')] class extends Component
                                 {{-- Student or admin identifier --}}
                                 <td class="ps-4">
                                     <div class="fw-bold text-dark">
-                                        {{ $log->student->student_id ?? ($log->student_id ?? 'ADMIN') }}</div>
+                                        @if ($log->student_id)
+                                            {{ $log->student->student_id }}
+                                        @else
+                                            Administrator
+                                        @endif
+                                    </div>
                                     <div class="text-muted small">
-                                        @if ($log->student)
+                                        @if ($log->student_id)
                                             {{ $log->student->first_name }} {{ $log->student->last_name }}
                                         @else
-                                            {{ $log->user->name ?? 'System User' }}
+                                            {{ $log->user->name ?? '' }}
                                         @endif
                                     </div>
                                 </td>
@@ -237,9 +242,19 @@ new #[Layout('layouts.admin')] #[Title('User Activity')] class extends Component
                         <div class="border rounded-xl p-3 bg-white shadow-sm">
                             <div class="d-flex justify-content-between align-items-start mb-2">
                                 <div>
-                                    <div class="fw-bold text-primary">{{ $log->student->student_id ?? 'ADMIN' }}</div>
+                                    <div class="fw-bold text-primary">
+                                        @if ($log->student_id)
+                                            {{ $log->student->student_id }}
+                                        @else
+                                            ADMIN
+                                        @endif
+                                    </div>
                                     <div class="small fw-bold text-dark">
-                                        {{ $log->student ? $log->student->first_name . ' ' . $log->student->last_name : $log->user->name ?? 'System' }}
+                                        @if ($log->student_id)
+                                            {{ $log->student->first_name }} {{ $log->student->last_name }}
+                                        @else
+                                            {{ $log->user->name ?? 'System' }}
+                                        @endif
                                     </div>
                                 </div>
                                 <span class="badge {{ $badgeClass }}">{{ $log->action }}</span>

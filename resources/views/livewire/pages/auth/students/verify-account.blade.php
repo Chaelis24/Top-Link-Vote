@@ -133,7 +133,7 @@ new #[Layout('layouts.guest')] #[Title('Verify Account')] class extends Componen
 }; ?>
 
 {{-- Full-screen centered container for the account-verification form --}}
-<div class="fixed inset-0 z-[9999] overflow-y-auto bg-white flex items-center justify-center p-4 m-0 w-full h-full"
+<div class="fixed inset-0 z-[9999] overflow-y-auto bg-transparent flex items-center justify-center p-4 m-0 w-full h-full"
     x-init="let w = $wire;
     let i = 0;
     (function fn() {
@@ -141,10 +141,12 @@ new #[Layout('layouts.guest')] #[Title('Verify Account')] class extends Componen
             FingerprintJS.load().then(fp => fp.get()).then(r => w.set('device_token', r.visitorId)).catch(e => console.error(e));
         } else if (i++ < 15) { setTimeout(fn, 300); }
     })();" style="font-size: clamp(13px, 2vw + 8px, 16px);">
-    <div class="absolute inset-0 bg-white"></div>
+    {{-- Background image with overlay --}}
+    <div class="fixed inset-0 bg-cover bg-center bg-no-repeat" style="background-image: url('{{ asset('images/bg.jpeg') }}');"></div>
+    <div class="fixed inset-0 bg-black/40"></div>
 
     <div
-        class="relative z-10 max-w-4xl w-full bg-white shadow-2xl rounded-2xl overflow-hidden border border-gray-100 mx-2 md:mx-0">
+        class="relative z-10 max-w-4xl w-full bg-white shadow-2xl rounded-2xl overflow-hidden mx-2 md:mx-0">
         {{-- Maintenance mode banner --}}
         @if ($isMaintenance)
             <div class="bg-gray-50 py-16 px-6 w-full flex flex-col justify-center items-center min-h-[400px]">
@@ -169,8 +171,9 @@ new #[Layout('layouts.guest')] #[Title('Verify Account')] class extends Componen
                 {{-- Branding panel (left) --}}
                 <div
                     class="md:w-1/2 bg-[linear-gradient(115deg,#0dff00,#068a08,#010d05)] p-2 md:p-12 text-white flex flex-col justify-center relative overflow-hidden min-h-[180px] md:min-h-[450px]">
-                    <div class="absolute -top-24 -left-24 w-64 h-64 bg-black/10 rounded-full"></div>
-                    <div class="absolute -bottom-24 -right-24 w-48 h-48 bg-white/20 rounded-full"></div>
+                    <div class="absolute -top-24 -left-24 w-64 h-64 bg-black/10 rounded-full animate-float"></div>
+                    <div class="absolute -bottom-24 -right-24 w-48 h-48 bg-white/20 rounded-full animate-float"
+                        style="animation-delay: 2s;"></div>
 
                     <div class="relative z-10 flex flex-col items-center text-center">
                         <div class="mb-2 md:mb-4">

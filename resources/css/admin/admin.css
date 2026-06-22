@@ -188,6 +188,22 @@
     font-weight: 700;
 }
 
+.badge-rejected {
+    background: #fef2f2;
+    color: #dc2626;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 700;
+}
+
+.badge-secondary {
+    background: #f1f5f9;
+    color: #475569;
+    border-radius: 20px;
+    font-size: 0.7rem;
+    font-weight: 700;
+}
+
 .badge-danger-soft {
     background: #fef2f2;
     color: #991b1b;

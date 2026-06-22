@@ -35,13 +35,15 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
     {
         $activeCycleId = ElectionCycle::where('status', 'active')->value('id') ?? 0;
 
-        return Platform::with(['candidate.student', 'candidate.position'])
+        $query = Platform::with(['candidate.student', 'candidate.position'])
             ->whereHas('candidate', function ($q) use ($activeCycleId) {
                 $q->where('election_cycle_id', $activeCycleId);
             })
             ->whereNotNull('title')
-            ->where('title', '!=', '')
-            ->where(function ($query) {
+            ->where('title', '!=', '');
+
+        if ($this->search) {
+            $query->where(function ($query) {
                 $query
                     ->where('title', 'like', '%' . $this->search . '%')
                     ->orWhereHas('candidate.student', function ($q) {
@@ -50,9 +52,10 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                     ->orWhereHas('candidate', function ($q) {
                         $q->where('party_name', 'like', '%' . $this->search . '%');
                     });
-            })
-            ->latest('created_at')
-            ->paginate(10);
+            });
+        }
+
+        return $query->latest('created_at')->paginate(10);
     }
 
     // --- Lifecycle / Updating Hooks ---
@@ -179,7 +182,8 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                                 <td class="text-end pe-4">
                                     <div class="d-flex justify-content-end gap-2">
                                         <x-icon-button variant="edit" wire:click="viewPlatform({{ $platform->id }})"
-                                            title="Review Profile" size="30px" borderRadius="8px">
+                                            wire:loading.delay.200ms.attr="disabled" title="Review Profile"
+                                            size="30px" borderRadius="8px">
                                             <i class="bi bi-eye"></i>
                                         </x-icon-button>
                                     </div>
@@ -239,7 +243,8 @@ new #[Layout('layouts.admin')] #[Title('Platform Management')] class extends Com
                                 <i class="bi bi-calendar3 me-1"></i> {{ $platform->created_at->format('M d, Y') }}
                             </div>
                             <div class="flex gap-2">
-                                <x-icon-button variant="edit" wire:click="viewPlatform({{ $platform->id }})">
+                                <x-icon-button variant="edit" wire:click="viewPlatform({{ $platform->id }})"
+                                    wire:loading.attr="disabled">
                                     <i class="bi bi-eye"></i>
                                 </x-icon-button>
                             </div>

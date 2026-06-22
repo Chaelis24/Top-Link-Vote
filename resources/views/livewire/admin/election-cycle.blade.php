@@ -194,11 +194,11 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                     $this->allowVoting = true;
                     Setting::updateOrCreate(['key' => 'allowVoting'], ['value' => 1]);
 
-                    if (!$active->notifications_sent) {
-                        \App\Jobs\SendElectionStartedEmail::dispatch();
+                    // if (!$active->notifications_sent) {
+                    //     \App\Jobs\SendElectionStartedEmail::dispatch();
 
-                        $active->update(['notifications_sent' => true]);
-                    }
+                    //     $active->update(['notifications_sent' => true]);
+                    // }
 
                     $this->dispatch('swal', [
                         'title' => 'Election is Live',
@@ -276,6 +276,18 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
             $this->{$setting} = !$this->{$setting};
             Setting::updateOrCreate(['key' => $setting], ['value' => $this->{$setting} ? 1 : 0]);
 
+            \App\Jobs\LogActivity::dispatch([
+                'user_id' => auth()->id(),
+                'action' => 'Toggle System Setting',
+                'description' => 'Admin changed ' . $setting . ' to ' . ($this->{$setting} ? 'Enabled' : 'Disabled'),
+                'properties' => [
+                    'setting' => $setting,
+                    'new_value' => $this->{$setting},
+                ],
+                'ip_address' => request()->ip(),
+                'user_agent' => request()->userAgent(),
+            ])->onQueue('logs');
+
             $this->dispatch('swal', [
                 'title' => 'Setting Updated',
                 'text' => 'The configuration has been successfully changed.',
@@ -339,7 +351,7 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                     'voted_at' => null,
                 ]);
 
-                ElectionCycle::create([
+                $newCycle = ElectionCycle::create([
                     'name' => $this->cycle_name,
                     'academic_year' => $this->academic_year,
                     'filing_start' => $this->filing_start,
@@ -351,6 +363,18 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                     'results_date' => $this->results_date,
                     'status' => 'active',
                 ]);
+
+                \App\Jobs\LogActivity::dispatch([
+                    'user_id' => auth()->id(),
+                    'action' => 'Create New Election Cycle',
+                    'description' => 'Initialized new election cycle: ' . $this->cycle_name,
+                    'properties' => [
+                        'cycle_id' => $newCycle->id,
+                        'academic_year' => $this->academic_year,
+                    ],
+                    'ip_address' => request()->ip(),
+                    'user_agent' => request()->userAgent(),
+                ])->onQueue('logs');
             });
 
             cache()->forget('admin_dashboard_data');
@@ -403,6 +427,26 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                 ]);
 
                 Cache::forget('active_election_cycle');
+
+                \App\Jobs\LogActivity::dispatch([
+                    'user_id' => auth()->id(),
+                    'action' => 'Update Election Dates',
+                    'description' => 'Updated schedule for election cycle: ' . $active->id,
+                    'properties' => [
+                        'election_cycle_id' => $active->id,
+                        'new_dates' => [
+                            'filing_start' => $this->filing_start,
+                            'filing_end' => $this->filing_end,
+                            'campaign_start' => $this->campaign_start,
+                            'campaign_end' => $this->campaign_end,
+                            'voting_start' => $this->start_date,
+                            'voting_end' => $this->end_date,
+                            'results_date' => $this->results_date,
+                        ],
+                    ],
+                    'ip_address' => request()->ip(),
+                    'user_agent' => request()->userAgent(),
+                ])->onQueue('logs');
 
                 unset($this->active);
                 $this->mount();
@@ -843,21 +887,8 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
 
                         <div class="mt-3 mt-md-4 pt-3 border-top d-flex flex-column gap-2 mb-12 mb-md-0">
                             <button class="btn btn-outline-primary btn-sm w-100 py-2 fw-bold text-[12px] md:text-sm"
-                                @click.prevent="
-                                Swal.fire({
-                                    title: 'Update Schedule?',
-                                    text: 'Changing the dates may affect the current election flow.',
-                                    icon: 'info',
-                                    showCancelButton: true,
-                                    confirmButtonColor: '#3085d6',
-                                    cancelButtonColor: '#6c757d',
-                                    confirmButtonText: 'Yes, Open Editor'
-                                }).then((result) => {
-                                    if (result.isConfirmed) {
-                                        new bootstrap.Modal(document.getElementById('updateDatesModal')).show();
-                                    }
-                                })
-                                ">
+                                type="button"
+                                @click="new bootstrap.Modal(document.getElementById('updateDatesModal')).show()">
                                 <i class="bi bi-calendar-check me-2"></i>Update Cycle Dates
                             </button>
                         </div>
@@ -1087,14 +1118,24 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                         style="border-bottom-left-radius: 15px; border-bottom-right-radius: 15px;">
                         <button type="button" class="btn btn-secondary px-4 border"
                             data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit"
-                            class="btn btn-primary px-4 fw-bold shadow-sm d-flex align-items-center">
-                            <span wire:loading.remove wire:target="updateDates">
-                                <i class="bi bi-check-circle me-2"></i>Save Timeline
-                            </span>
-                            <span wire:loading wire:target="updateDates">
-                                <span class="spinner-border spinner-border-sm me-2"></span>Saving...
-                            </span>
+                        <button type="button"
+                            class="btn btn-primary px-4 fw-bold shadow-sm d-flex align-items-center"
+                            @click="
+                                Swal.fire({
+                                    title: 'Confirm Update?',
+                                    text: 'Are you sure you want to save these timeline changes?',
+                                    icon: 'question',
+                                    showCancelButton: true,
+                                    confirmButtonColor: '#0d6efd',
+                                    cancelButtonColor: '#6c757d',
+                                    confirmButtonText: 'Yes, Save'
+                                }).then((result) => {
+                                    if (result.isConfirmed) {
+                                        $wire.updateDates();
+                                    }
+                                })
+                            ">
+                            <i class="bi bi-check-circle me-2"></i>Save Timeline
                         </button>
                     </div>
                 </form>

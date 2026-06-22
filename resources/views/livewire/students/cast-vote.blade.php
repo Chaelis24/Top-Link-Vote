@@ -241,18 +241,6 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
             return;
         }
 
-        if ($position->candidates->isNotEmpty()) {
-            $candidateId = $this->selections[$position->id] ?? null;
-            if (!$candidateId) {
-                $this->dispatch('swal', [
-                    'title' => 'No Selection',
-                    'text' => 'Please select a candidate before proceeding.',
-                    'icon' => 'warning',
-                ]);
-                return;
-            }
-        }
-
         if ($this->isLastPosition) {
             $this->currentStep = 2;
             session(['election_current_step' => 2]);
@@ -293,15 +281,6 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                 'title' => 'Access Denied',
                 'text' => 'Voting is either closed or you have already submitted your ballot.',
                 'icon' => 'error',
-            ]);
-            return;
-        }
-
-        if (empty(array_filter($this->selections))) {
-            $this->dispatch('swal', [
-                'title' => 'Empty Ballot',
-                'text' => 'Please select at least one candidate before submitting.',
-                'icon' => 'warning',
             ]);
             return;
         }
@@ -451,7 +430,7 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                 </div>
                 <h2 class="text-2xl font-bold text-gray-800 mb-3">No Active Election</h2>
                 <p class="text-secondary mx-auto mb-4" style="max-width: 500px;">
-                    Please stand by until the Student Council Election Committee initiates the next voting cycle.
+                    Please stand by until the Administrator initiates the next voting cycle.
                 </p>
             </div>
             {{-- Ballot voting flow: Select -> Review -> Confirm --}}
@@ -665,7 +644,7 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                                     </div>
                                     <div class="mt-4 py-4">
                                         <i class="bi bi-dash-circle text-gray-300 text-2xl mb-2"></i>
-                                        <p class="text-[10px] font-bold text-gray-400 uppercase">Abstain / No
+                                        <p class="text-[10px] font-bold text-gray-400 uppercase">No
                                             Selection
                                         </p>
                                     </div>
@@ -715,10 +694,10 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                                 class="w-16 h-16 md:w-20 md:h-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-4">
                                 <i class="bi bi-shield-lock-fill text-[#10b981] text-[1.8rem] md:text-[2.5rem]"></i>
                             </div>
-                            <h3 class="text-xl md:text-2xl font-black text-gray-800 tracking-tight mb-2">Final
+                            <h3 class="text-xl md:text-2xl font-black text-gray-800 tracking-tight">Final
                                 Confirmation</h3>
-                            <p class="text-[12px] md:text-sm text-gray-500 leading-relaxed px-2">
-                                Are you sure about your selections? <br class="hidden md:block">
+                            <p class="text-[12px] md:text-sm text-gray-500 leading-relaxed px-2"><br
+                                    class="hidden md:block">
                                 <span class="text-emerald-600 font-bold block md:inline">Once you submit, you
                                     cannot
                                     change your vote.</span>
@@ -737,10 +716,22 @@ new #[Layout('layouts.app')] #[Title('Digital Ballot')] class extends Component 
                             <div x-data="{ isOffline: !navigator.onLine }" x-init="window.addEventListener('online', () => isOffline = false);
                             window.addEventListener('offline', () => isOffline = true)">
 
-                                <button wire:click="submitVote" wire:loading.attr="disabled" :disabled="isOffline"
+                                <button type="button" :disabled="isOffline" x-data
+                                    @click="Swal.fire({
+                                        title: 'Are you sure?',
+                                        text: 'Are you sure you want to cast your vote? This action is permanent and cannot be undone.',
+                                        icon: 'warning',
+                                        showCancelButton: true,
+                                        confirmButtonColor: '#10b981',
+                                        cancelButtonColor: '#6b7280',
+                                        confirmButtonText: 'Yes, Cast Vote!'
+                                    }).then((result) => {
+                                        if (result.isConfirmed) {
+                                            $wire.submitVote();
+                                        }
+                                    })"
                                     class="w-full xs:w-auto group relative inline-flex items-center justify-center px-6 py-3 md:py-2.5 font-bold text-white transition-all duration-200 rounded-full shadow-lg active:scale-95 disabled:opacity-75 min-h-[44px] md:min-h-[42px]"
-                                    :class="isOffline ? 'bg-secondary cursor-not-allowed' :
-                                        'bg-[#10b981] hover:bg-emerald-600'">
+                                    :class="isOffline ? 'bg-secondary cursor-not-allowed' : 'bg-[#10b981] hover:bg-emerald-600'">
 
                                     <span x-show="!isOffline" wire:loading.remove wire:target="submitVote"
                                         class="flex items-center gap-2 uppercase tracking-wider text-[10px] md:text-[11px] h-full">
