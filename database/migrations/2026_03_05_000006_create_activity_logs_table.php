@@ -28,6 +28,7 @@ return new class extends Migration
             $table->index('student_id');
             $table->index('action');
             $table->index('created_at');
+            $table->index(['action', 'created_at']);
         });
     }
 

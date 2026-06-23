@@ -25,6 +25,8 @@ return new class extends Migration
             $table->index('election_cycle_id');
             $table->index('student_id');
             $table->unique(['student_id', 'position_id', 'election_cycle_id'], 'unique_student_vote');
+            $table->index(['candidate_id', 'election_cycle_id']);
+            $table->index('voted_at');
         });
     }
 

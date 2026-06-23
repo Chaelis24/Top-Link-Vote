@@ -31,6 +31,10 @@ return new class extends Migration
             $table->integer('votes_count')->default(0);
             $table->timestamps();
             $table->softDeletes();
+
+            $table->index(['election_cycle_id', 'status']);
+            $table->index(['position_id', 'election_cycle_id']);
+            $table->index(['student_id', 'election_cycle_id']);
         });
     }
 

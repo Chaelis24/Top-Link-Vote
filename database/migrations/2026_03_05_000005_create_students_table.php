@@ -36,6 +36,7 @@ return new class extends Migration
             $table->index(['course_id', 'block_id']);
             $table->index('status');
             $table->index('has_voted');
+            $table->index(['first_name', 'last_name']);
         });
     }
 

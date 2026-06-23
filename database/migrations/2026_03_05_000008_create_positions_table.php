@@ -24,6 +24,8 @@ return new class extends Migration
             $table->softDeletes();
 
             $table->index(['election_cycle_id', 'student_department']);
+            $table->index('name');
+            $table->index('priority');
         });
     }
 
