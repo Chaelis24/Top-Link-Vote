@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\ElectionCycle;
 use App\Models\Student;
+use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -25,6 +26,11 @@ class ElectionCycleSeeder extends Seeder
                 'vote_reference' => null,
                 'has_voted'       => 0,
                 'voted_at'       => null
+            ]);
+
+            User::query()->update([
+                'registered_device_token' => null,
+                'email_verified_at' => null,
             ]);
 
             $now = Carbon::now();

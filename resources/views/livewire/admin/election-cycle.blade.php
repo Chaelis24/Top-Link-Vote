@@ -351,6 +351,11 @@ new #[Layout('layouts.admin')] #[Title('Election Cycle')] class extends Componen
                     'voted_at' => null,
                 ]);
 
+                User::query()->update([
+                    'registered_device_token' => null,
+                    'email_verified_at' => null,
+                ]);
+
                 $newCycle = ElectionCycle::create([
                     'name' => $this->cycle_name,
                     'academic_year' => $this->academic_year,
